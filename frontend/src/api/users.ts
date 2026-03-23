@@ -1,5 +1,5 @@
 import client from './client'
-import type { CreateUserPayload, User, UserList, UserWithCredentials } from '../types/user'
+import type { CreateUserPayload, User, UserList, UserType, UserWithCredentials } from '../types/user'
 
 export interface ImportUserPayload {
   name: string
