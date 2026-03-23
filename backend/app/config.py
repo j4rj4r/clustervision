@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
+            v = v.strip()
+            if not v or v == "[]":
+                return []
+            # JSON array: '["https://example.com"]'
+            if v.startswith("["):
+                import json
+                return json.loads(v)
+            # Comma-separated fallback
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
