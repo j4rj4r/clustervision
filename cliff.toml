@@ -9,22 +9,7 @@ body = """
 {% endfor %}
 {% endfor %}\n
 """
-footer = """
-## Images Docker
-
-| Image | Tag |
-|-------|-----|
-| `ghcr.io/j4rj4r/clustervision-backend` | `{{ version }}` |
-| `ghcr.io/j4rj4r/clustervision-frontend` | `{{ version }}` |
-
-## Helm chart
-
-```bash
-helm upgrade --install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \\
-  --version {{ version }} \\
-  --namespace clustervision --create-namespace
-```
-"""
+footer = ""
 trim = true
 
 [git]

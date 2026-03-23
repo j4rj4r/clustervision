@@ -151,7 +151,25 @@ jobs:
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog
-        run: git-cliff --current --output CHANGELOG.md
+        run: |
+          git-cliff --current --output CHANGELOG.md
+          cat >> CHANGELOG.md << 'EOF'
+
+          ## Images Docker
+
+          | Image | Tag |
+          |-------|-----|
+          | `ghcr.io/j4rj4r/clustervision-backend` | `${{ steps.ver.outputs.version }}` |
+          | `ghcr.io/j4rj4r/clustervision-frontend` | `${{ steps.ver.outputs.version }}` |
+
+          ## Helm chart
+
+          ```bash
+          helm upgrade --install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \
+            --version ${{ steps.ver.outputs.version }} \
+            --namespace clustervision --create-namespace
+          ```
+          EOF
 
       - name: Package chart
         run: |
