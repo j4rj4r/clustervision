@@ -67,7 +67,7 @@ jobs:
 
       - name: Build & push backend (by digest)
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           platforms: ${{ matrix.platform }}
@@ -177,7 +177,7 @@ jobs:
 
       - name: Build & push frontend (by digest)
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           platforms: ${{ matrix.platform }}
