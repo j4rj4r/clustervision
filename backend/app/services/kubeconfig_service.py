@@ -143,6 +143,19 @@ class KubeconfigService:
             return "https://kubernetes.default.svc"
 
     def _get_sa_token(self, sa_name: str, namespace: str) -> str:
+        # Prefer a long-lived service-account-token secret if one exists
+        secrets = self.core_v1.list_namespaced_secret(namespace)
+        for secret in secrets.items:
+            if secret.type != "kubernetes.io/service-account-token":
+                continue
+            annotations = (secret.metadata.annotations or {})
+            if annotations.get("kubernetes.io/service-account.name") != sa_name:
+                continue
+            token_bytes = (secret.data or {}).get("token")
+            if token_bytes:
+                return base64.b64decode(token_bytes).decode()
+
+        # Fallback: generate an ephemeral token via TokenRequest API
         token_request = client.AuthenticationV1TokenRequest(
             spec=client.V1TokenRequestSpec(
                 audiences=["https://kubernetes.default.svc"],
