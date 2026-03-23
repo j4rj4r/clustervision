@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 from datetime import datetime
 from typing import Optional
@@ -27,10 +27,17 @@ class UserRead(BaseModel):
     name: str
     user_type: UserType
     groups: list[str]
-    namespace: str
+    namespace: str = "default"
     created_at: str
     cert_expiry: Optional[str] = None
     csr_name: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_type_field(cls, data):
+        if isinstance(data, dict) and "user_type" not in data and "type" in data:
+            data = {**data, "user_type": data["type"]}
+        return data
 
 
 class UserWithCredentials(UserRead):
