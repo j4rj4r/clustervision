@@ -23,35 +23,21 @@ env:
   FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/clustervision-frontend
 
 jobs:
-  # ── Determine the image tag ─────────────────────────────────────────────────
-  meta:
-    name: Compute metadata
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      is_release: ${{ steps.version.outputs.is_release }}
-    steps:
-      - name: Compute version
-        id: version
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-          else
-            SHORT_SHA="${GITHUB_SHA::8}"
-            echo "version=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  # ── Backend ─────────────────────────────────────────────────────────────────
+  # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
-    name: Backend image
-    needs: meta
-    runs-on: ubuntu-latest
+    name: Backend (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -79,25 +65,89 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build & push backend
+      - name: Build & push backend (by digest)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./backend
+          platforms: ${{ matrix.platform }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-          platforms: linux/amd64,linux/arm64
+          outputs: type=image,name=${{ env.BACKEND_IMAGE }},push-by-digest=true,name-canonical=true
+          cache-from: type=gha,scope=backend-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=backend-${{ matrix.platform }}
 
-  # ── Frontend ─────────────────────────────────────────────────────────────────
-  build-frontend:
-    name: Frontend image
-    needs: meta
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests/backend
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/backend/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-digest-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: /tmp/digests/backend/*
+          retention-days: 1
+
+  merge-backend:
+    name: Backend manifest merge
+    needs: build-backend
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/backend
+          pattern: backend-digest-*
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Create and push multi-platform manifest
+        working-directory: /tmp/digests/backend
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.BACKEND_IMAGE }}@sha256:%s ' *)
+
+  # ── Frontend: build per platform on native runners, then merge ──────────────
+  build-frontend:
+    name: Frontend (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -125,29 +175,86 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build & push frontend
+      - name: Build & push frontend (by digest)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
+          platforms: ${{ matrix.platform }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-          platforms: linux/amd64,linux/arm64
+          outputs: type=image,name=${{ env.FRONTEND_IMAGE }},push-by-digest=true,name-canonical=true
+          cache-from: type=gha,scope=frontend-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=frontend-${{ matrix.platform }}
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests/frontend
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/frontend/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-digest-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: /tmp/digests/frontend/*
+          retention-days: 1
+
+  merge-frontend:
+    name: Frontend manifest merge
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests/frontend
+          pattern: frontend-digest-*
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Create and push multi-platform manifest
+        working-directory: /tmp/digests/frontend
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.FRONTEND_IMAGE }}@sha256:%s ' *)
 
   # ── Summary ──────────────────────────────────────────────────────────────────
   summary:
     name: Build summary
-    needs: [build-backend, build-frontend, meta]
+    needs: [merge-backend, merge-frontend]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Write summary
         run: |
-          echo "## Images built" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Images published" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Image | Tag |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-------|-----|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`${{ env.BACKEND_IMAGE }}\` | \`${{ needs.meta.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`${{ env.FRONTEND_IMAGE }}\` | \`${{ needs.meta.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Platforms |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-----------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| \`${{ env.BACKEND_IMAGE }}\` | linux/amd64, linux/arm64 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| \`${{ env.FRONTEND_IMAGE }}\` | linux/amd64, linux/arm64 |" >> "$GITHUB_STEP_SUMMARY"
