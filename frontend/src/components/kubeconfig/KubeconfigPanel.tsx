@@ -5,24 +5,22 @@ import Select from '../ui/Select'
 import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
 import { useGenerateKubeconfig } from '../../hooks/useKubeconfig'
-import type { User } from '../../types/user'
-
 interface Props {
-  preselectedUser?: User
+  preselectedName?: string
 }
 
-export default function KubeconfigPanel({ preselectedUser }: Props) {
+export default function KubeconfigPanel({ preselectedName }: Props) {
   const { data: usersData } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
   const generate = useGenerateKubeconfig()
 
   const users = usersData?.users ?? []
 
-  const [selectedUsername, setSelectedUsername] = useState(preselectedUser?.name ?? '')
+  const [selectedUsername, setSelectedUsername] = useState(preselectedName ?? '')
   const [namespace, setNamespace] = useState('default')
   const [privateKey, setPrivateKey] = useState('')
 
-  const selectedUser = users.find((u) => u.name === selectedUsername) ?? preselectedUser
+  const selectedUser = users.find((u) => u.name === selectedUsername)
 
   const handleGenerate = () => {
     if (!selectedUser) return

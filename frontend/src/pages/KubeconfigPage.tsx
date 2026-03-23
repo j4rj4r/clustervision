@@ -1,13 +1,10 @@
 import { useSearchParams } from 'react-router-dom'
 import { FileCode2 } from 'lucide-react'
 import KubeconfigPanel from '../components/kubeconfig/KubeconfigPanel'
-import { useUsers } from '../hooks/useUsers'
 
 export default function KubeconfigPage() {
   const [searchParams] = useSearchParams()
-  const { data } = useUsers()
-  const preselectedName = searchParams.get('user')
-  const preselected = data?.users.find((u) => u.name === preselectedName)
+  const preselectedName = searchParams.get('user') ?? undefined
 
   return (
     <div className="space-y-6">
@@ -29,7 +26,7 @@ export default function KubeconfigPage() {
           </div>
         </div>
 
-        <KubeconfigPanel preselectedUser={preselected} />
+        <KubeconfigPanel preselectedName={preselectedName} />
       </div>
     </div>
   )
