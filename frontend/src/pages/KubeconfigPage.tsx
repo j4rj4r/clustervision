@@ -5,6 +5,7 @@ import KubeconfigPanel from '../components/kubeconfig/KubeconfigPanel'
 export default function KubeconfigPage() {
   const [searchParams] = useSearchParams()
   const preselectedName = searchParams.get('user') ?? undefined
+  const preselectedNamespace = searchParams.get('namespace') ?? undefined
 
   return (
     <div className="space-y-6">
@@ -26,7 +27,7 @@ export default function KubeconfigPage() {
           </div>
         </div>
 
-        <KubeconfigPanel preselectedName={preselectedName} />
+        <KubeconfigPanel preselectedName={preselectedName} preselectedNamespace={preselectedNamespace} />
       </div>
     </div>
   )

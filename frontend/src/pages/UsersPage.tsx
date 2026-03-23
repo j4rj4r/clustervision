@@ -46,7 +46,8 @@ export default function UsersPage() {
             users={data?.users ?? []}
             onDelete={setToDelete}
             onKubeconfig={(user) => {
-              window.location.href = `/kubeconfig?user=${user.name}`
+              const ns = user.namespace && user.namespace !== 'default' ? `&namespace=${user.namespace}` : ''
+              window.location.href = `/kubeconfig?user=${user.name}${ns}`
             }}
           />
         )}

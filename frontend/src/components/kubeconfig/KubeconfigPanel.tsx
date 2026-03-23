@@ -7,9 +7,10 @@ import { useNamespaces } from '../../hooks/useRbac'
 import { useGenerateKubeconfig } from '../../hooks/useKubeconfig'
 interface Props {
   preselectedName?: string
+  preselectedNamespace?: string
 }
 
-export default function KubeconfigPanel({ preselectedName }: Props) {
+export default function KubeconfigPanel({ preselectedName, preselectedNamespace }: Props) {
   const { data: usersData } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
   const generate = useGenerateKubeconfig()
@@ -17,7 +18,7 @@ export default function KubeconfigPanel({ preselectedName }: Props) {
   const users = usersData?.users ?? []
 
   const [selectedUsername, setSelectedUsername] = useState(preselectedName ?? '')
-  const [namespace, setNamespace] = useState('default')
+  const [namespace, setNamespace] = useState(preselectedNamespace ?? 'default')
   const [privateKey, setPrivateKey] = useState('')
 
   const selectedUser = users.find((u) => u.name === selectedUsername)
