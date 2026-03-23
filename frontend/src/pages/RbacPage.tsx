@@ -10,7 +10,7 @@ export default function RbacPage() {
   const qc = useQueryClient()
   const [namespace, setNamespace] = useState('default')
   const [showSystem, setShowSystem] = useState(false)
-  const [showClusterRoles, setShowClusterRoles] = useState(true)
+  const [showClusterRoles, setShowClusterRoles] = useState(false)
 
   const { data: clusterRoles = [], isLoading: loadingCR } = useClusterRoles(showSystem)
   const { data: roles = [], isLoading: loadingR } = useRoles(namespace)

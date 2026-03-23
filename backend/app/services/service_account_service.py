@@ -162,7 +162,11 @@ class ServiceAccountService:
 
     def list_unmanaged(self) -> list[dict]:
         """Return ServiceAccounts in K8s that are not in the registry."""
-        registry = {u["name"] for u in self._load_registry() if u.get("type") == "service_account"}
+        registry = {
+            (u["name"], u.get("namespace", "default"))
+            for u in self._load_registry()
+            if u.get("type") == "service_account"
+        }
         result = []
         namespaces = self.core_v1.list_namespace()
         for ns in namespaces.items:
@@ -171,7 +175,7 @@ class ServiceAccountService:
                 # Skip default/system SAs
                 if sa.metadata.name in ("default",) or sa.metadata.name.startswith("system:"):
                     continue
-                if sa.metadata.name not in registry:
+                if (sa.metadata.name, ns.metadata.name) not in registry:
                     result.append({
                         "name": sa.metadata.name,
                         "namespace": ns.metadata.name,
