@@ -167,19 +167,17 @@ class ServiceAccountService:
             for u in self._load_registry()
             if u.get("type") == "service_account"
         }
+        # 1 call for all SAs across all namespaces (instead of 1 per namespace)
+        all_sas = self.core_v1.list_service_account_for_all_namespaces()
         result = []
-        namespaces = self.core_v1.list_namespace()
-        for ns in namespaces.items:
-            sas = self.core_v1.list_namespaced_service_account(ns.metadata.name)
-            for sa in sas.items:
-                # Skip default/system SAs
-                if sa.metadata.name in ("default",) or sa.metadata.name.startswith("system:"):
-                    continue
-                if (sa.metadata.name, ns.metadata.name) not in registry:
-                    result.append({
-                        "name": sa.metadata.name,
-                        "namespace": ns.metadata.name,
-                    })
+        for sa in all_sas.items:
+            if sa.metadata.name in ("default",) or sa.metadata.name.startswith("system:"):
+                continue
+            if (sa.metadata.name, sa.metadata.namespace) not in registry:
+                result.append({
+                    "name": sa.metadata.name,
+                    "namespace": sa.metadata.namespace,
+                })
         return result
 
     def get_token(self, sa_name: str, namespace: str) -> str:

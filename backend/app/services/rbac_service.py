@@ -192,19 +192,33 @@ class RbacService:
     # ── User-centric convenience methods ────────────────────────────────────
 
     def get_user_permissions(self, username: str) -> dict:
+        # 1 call for all CRBs
+        crbs = self.rbac_v1.list_cluster_role_binding()
         cluster_bindings = []
-        for crb_data in self.list_cluster_role_bindings():
-            subjects = crb_data.get("subjects") or []
-            if any(s.get("name") == username and s.get("kind") in ("User", "ServiceAccount") for s in subjects):
-                cluster_bindings.append(crb_data)
+        for crb in crbs.items:
+            subjects = crb.subjects or []
+            if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
+                cluster_bindings.append({
+                    "name": crb.metadata.name,
+                    "namespace": None,
+                    "role_ref": crb.role_ref.name,
+                    "role_kind": crb.role_ref.kind,
+                    "subjects": [_subject_from_k8s(s) for s in subjects],
+                })
 
-        namespaces = [ns.metadata.name for ns in self.core_v1.list_namespace().items]
+        # 1 call for all RoleBindings across all namespaces (instead of 1 per namespace)
+        rbs = self.rbac_v1.list_role_binding_for_all_namespaces()
         namespace_bindings = []
-        for ns in namespaces:
-            for rb_data in self.list_role_bindings(ns):
-                subjects = rb_data.get("subjects") or []
-                if any(s.get("name") == username and s.get("kind") in ("User", "ServiceAccount") for s in subjects):
-                    namespace_bindings.append(rb_data)
+        for rb in rbs.items:
+            subjects = rb.subjects or []
+            if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
+                namespace_bindings.append({
+                    "name": rb.metadata.name,
+                    "namespace": rb.metadata.namespace,
+                    "role_ref": rb.role_ref.name,
+                    "role_kind": rb.role_ref.kind,
+                    "subjects": [_subject_from_k8s(s) for s in subjects],
+                })
 
         return {
             "username": username,
