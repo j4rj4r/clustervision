@@ -1,0 +1,46 @@
+[changelog]
+header = ""
+body = """
+## Changements\n
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}\n
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first | trim }} ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/j4rj4r/clustervision/commit/{{ commit.id }}))\
+{% endfor %}
+{% endfor %}\n
+"""
+footer = """
+## Images Docker
+
+| Image | Tag |
+|-------|-----|
+| `ghcr.io/j4rj4r/clustervision-backend` | `{{ version }}` |
+| `ghcr.io/j4rj4r/clustervision-frontend` | `{{ version }}` |
+
+## Helm chart
+
+```bash
+helm upgrade --install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \\
+  --version {{ version }} \\
+  --namespace clustervision --create-namespace
+```
+"""
+trim = true
+
+[git]
+conventional_commits = false
+filter_unconventional = false
+commit_parsers = [
+  { message = "^feat", group = "🚀 Nouveautés" },
+  { message = "^fix", group = "🐛 Corrections" },
+  { message = "^chore", group = "🔧 Maintenance" },
+  { message = "^ci", group = "🏗️ CI/CD" },
+  { message = "^docs", group = "📖 Documentation" },
+  { message = "^refactor", group = "♻️ Refactoring" },
+  { message = ".*", group = "🔧 Maintenance" },
+]
+filter_commits = false
+tag_pattern = "v[0-9].*"
+ignore_tags = ""
+topo_order = false
+sort_commits = "newest"

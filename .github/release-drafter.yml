@@ -52,11 +52,17 @@ template: |
 
   $CHANGES
 
-  **Image Docker** : `ghcr.io/j4rj4r/clustervision-backend:$RESOLVED_VERSION`
+  ## Images Docker
 
-  **Helm chart** :
+  | Image | Tag |
+  |-------|-----|
+  | `ghcr.io/j4rj4r/clustervision-backend` | `$RESOLVED_VERSION` |
+  | `ghcr.io/j4rj4r/clustervision-frontend` | `$RESOLVED_VERSION` |
+
+  ## Helm chart
+
   ```bash
   helm upgrade --install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \
     --version $RESOLVED_VERSION \
-    --namespace clustervision
+    --namespace clustervision --create-namespace
   ```

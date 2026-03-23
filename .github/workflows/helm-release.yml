@@ -133,15 +133,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
           version: "3.16.3"
 
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
       - name: Resolve version
         id: ver
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        run: git-cliff --current --output CHANGELOG.md
 
       - name: Package chart
         run: |
@@ -153,4 +163,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: /tmp/helm-packages/clustervision-${{ steps.ver.outputs.version }}.tgz
-          generate_release_notes: true
+          body_path: CHANGELOG.md
