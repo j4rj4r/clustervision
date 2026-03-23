@@ -20,11 +20,7 @@ Create a default fully qualified app name.
 Namespace to deploy into.
 */}}
 {{- define "clustervision.namespace" -}}
-{{- if .Values.namespace.create -}}
-{{- .Values.namespace.name }}
-{{- else -}}
 {{- .Release.Namespace }}
-{{- end }}
 {{- end }}
 
 {{/*

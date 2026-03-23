@@ -74,5 +74,4 @@ networkPolicy:
   ingressControllerNamespace: ingress-nginx  # adjust to your Ingress controller namespace
 
 namespace:
-  create: true
   name: clustervision
