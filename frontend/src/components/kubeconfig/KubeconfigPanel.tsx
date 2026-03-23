@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import Button from '../ui/Button'
-import Input from '../ui/Input'
 import Select from '../ui/Select'
 import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
