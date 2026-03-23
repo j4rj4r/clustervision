@@ -2,8 +2,8 @@ apiVersion: v2
 name: clustervision
 description: Kubernetes user and RBAC management application
 type: application
-version: 0.1.3
-appVersion: "1.0.3"
+version: 0.1.4
+appVersion: "1.0.4"
 keywords:
   - kubernetes
   - rbac
