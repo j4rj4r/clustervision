@@ -1,39 +1,50 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { usersApi, type ImportUserPayload } from '../api/users'
+import { useClusterStore } from '../store/clusterStore'
 import type { CreateUserPayload } from '../types/user'
 
-export const useUsers = () =>
-  useQuery({ queryKey: ['users'], queryFn: usersApi.list })
+const useCluster = () => useClusterStore((s) => s.activeCluster)
 
-export const useUser = (username: string) =>
-  useQuery({ queryKey: ['users', username], queryFn: () => usersApi.get(username) })
+export const useUsers = () => {
+  const cluster = useCluster()
+  return useQuery({ queryKey: ['users', cluster], queryFn: usersApi.list })
+}
+
+export const useUser = (username: string) => {
+  const cluster = useCluster()
+  return useQuery({ queryKey: ['users', cluster, username], queryFn: () => usersApi.get(username) })
+}
 
 export const useCreateUser = (onSuccess?: (data: Awaited<ReturnType<typeof usersApi.create>>) => void) => {
   const qc = useQueryClient()
+  const cluster = useCluster()
   return useMutation({
     mutationFn: (payload: CreateUserPayload) => usersApi.create(payload),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['users', cluster] })
       onSuccess?.(data)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export const useUnmanagedServiceAccounts = () =>
-  useQuery({
-    queryKey: ['unmanaged-sa'],
+export const useUnmanagedServiceAccounts = () => {
+  const cluster = useCluster()
+  return useQuery({
+    queryKey: ['unmanaged-sa', cluster],
     queryFn: usersApi.listUnmanagedServiceAccounts,
   })
+}
 
 export const useImportUser = (onSuccess?: () => void) => {
   const qc = useQueryClient()
+  const cluster = useCluster()
   return useMutation({
     mutationFn: (payload: ImportUserPayload) => usersApi.import(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users'] })
-      qc.invalidateQueries({ queryKey: ['unmanaged-sa'] })
+      qc.invalidateQueries({ queryKey: ['users', cluster] })
+      qc.invalidateQueries({ queryKey: ['unmanaged-sa', cluster] })
       toast.success('Utilisateur importé')
       onSuccess?.()
     },
@@ -43,11 +54,12 @@ export const useImportUser = (onSuccess?: () => void) => {
 
 export const useDeleteUser = () => {
   const qc = useQueryClient()
+  const cluster = useCluster()
   return useMutation({
     mutationFn: ({ username, userType, namespace }: { username: string; userType: string; namespace?: string }) =>
       usersApi.delete(username, userType, namespace),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['users', cluster] })
       toast.success('User deleted')
     },
     onError: (err: Error) => toast.error(err.message),

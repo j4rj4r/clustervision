@@ -1,8 +1,17 @@
 import axios from 'axios'
+import { useClusterStore } from '../store/clusterStore'
 
 const client = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+})
+
+client.interceptors.request.use((config) => {
+  const cluster = useClusterStore.getState().activeCluster
+  if (cluster && cluster !== 'local') {
+    config.params = { ...config.params, cluster }
+  }
+  return config
 })
 
 client.interceptors.response.use(

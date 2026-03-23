@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
-def get_api_client() -> client.ApiClient:
+def get_local_api_client() -> client.ApiClient:
     try:
         config.load_incluster_config()
         logger.info("Loaded in-cluster Kubernetes config")
@@ -14,6 +14,10 @@ def get_api_client() -> client.ApiClient:
         config.load_kube_config()
         logger.info("Loaded local kubeconfig")
     return client.ApiClient()
+
+
+# Keep backward-compat alias
+get_api_client = get_local_api_client
 
 
 def get_core_v1(api_client: client.ApiClient = None) -> client.CoreV1Api:

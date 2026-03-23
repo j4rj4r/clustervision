@@ -1,11 +1,18 @@
-from fastapi import Depends
+from fastapi import Depends, Query
 from kubernetes import client
 
-from .core.kubernetes_client import get_api_client
+from .core.kubernetes_client import get_local_api_client
+from .services.cluster_service import get_cluster_service
 from .services.certificate_service import CertificateService
 from .services.service_account_service import ServiceAccountService
 from .services.rbac_service import RbacService
 from .services.kubeconfig_service import KubeconfigService
+
+
+def get_api_client(cluster: str = Query("local")) -> client.ApiClient:
+    if cluster == "local":
+        return get_local_api_client()
+    return get_cluster_service().get_api_client(cluster)
 
 
 def get_cert_service(api_client: client.ApiClient = Depends(get_api_client)) -> CertificateService:

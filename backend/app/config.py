@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     cluster_api_url: str = ""
     registry_namespace: str = "clustervision"
     registry_configmap: str = "user-registry"
+    clusters_secret: str = "clustervision-clusters"
     cors_origins: list[str] = []
 
     @field_validator("cors_origins", mode="before")

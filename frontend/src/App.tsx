@@ -3,6 +3,7 @@ import Layout from './components/layout/Layout'
 import UsersPage from './pages/UsersPage'
 import RbacPage from './pages/RbacPage'
 import KubeconfigPage from './pages/KubeconfigPage'
+import ClustersPage from './pages/ClustersPage'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="rbac" element={<RbacPage />} />
           <Route path="kubeconfig" element={<KubeconfigPage />} />
+          <Route path="clusters" element={<ClustersPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
