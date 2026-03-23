@@ -35,7 +35,7 @@ def _subject_to_k8s(s: Subject) -> client.RbacV1Subject:
     )
 
 
-def _subject_from_k8s(s: client.V1Subject) -> dict:
+def _subject_from_k8s(s: client.RbacV1Subject) -> dict:
     return {"kind": s.kind, "name": s.name, "namespace": s.namespace}
 
 
