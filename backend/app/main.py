@@ -12,6 +12,7 @@ from .core.exceptions import (
     UserNotFoundError,
     UserAlreadyExistsError,
 )
+from .config import get_settings
 from .core.kubernetes_client import get_api_client
 from .routers import users, rbac, kubeconfig, cluster
 
@@ -37,9 +38,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

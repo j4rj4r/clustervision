@@ -42,6 +42,8 @@ spec:
               value: {{ .Values.backend.env.clusterApiUrl | quote }}
             - name: REGISTRY_NAMESPACE
               value: {{ .Values.backend.env.registryNamespace | quote }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.backend.env.corsOrigins | join "," | quote }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
           livenessProbe:

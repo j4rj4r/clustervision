@@ -15,6 +15,9 @@ backend:
     clusterName: "kubernetes"
     clusterApiUrl: ""        # Auto-detected in-cluster if empty
     registryNamespace: "clustervision"
+    # corsOrigins: restrict to your frontend host, e.g. https://clustervision.example.com
+    # Leave empty to deny all cross-origin requests (nginx Ingress handles routing)
+    corsOrigins: []
 
   resources:
     requests:
@@ -65,6 +68,10 @@ serviceAccount:
 
 rbac:
   create: true
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx  # adjust to your Ingress controller namespace
 
 namespace:
   create: true
