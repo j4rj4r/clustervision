@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function UserList({ users, onDelete, onKubeconfig }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (users.length === 0) {
     return (
@@ -29,10 +29,14 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
         <div key={user.name}>
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-slate-800/50 transition-colors">
             <button
-              onClick={() => setExpanded(expanded === user.name ? null : user.name)}
+              onClick={() => setExpanded(prev => {
+                const next = new Set(prev)
+                next.has(user.name) ? next.delete(user.name) : next.add(user.name)
+                return next
+              })}
               className="text-slate-500 hover:text-slate-300"
             >
-              {expanded === user.name ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              {expanded.has(user.name) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
 
             <div className="flex-1 min-w-0">
@@ -62,7 +66,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
             </div>
           </div>
 
-          {expanded === user.name && (
+          {expanded.has(user.name) && (
             <div className="px-12 pb-4 bg-slate-900/50">
               <UserPermissionsPanel username={user.name} userType={user.user_type} />
             </div>
