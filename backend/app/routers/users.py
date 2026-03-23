@@ -45,22 +45,12 @@ async def create_user(
     return result
 
 
-@router.get("/{username}", response_model=UserRead)
-async def get_user(
-    username: str,
-    cert_svc: CertificateService = Depends(get_cert_service),
+@router.get("/unmanaged-serviceaccounts")
+async def list_unmanaged_service_accounts(
     sa_svc: ServiceAccountService = Depends(get_sa_service),
 ):
     loop = asyncio.get_event_loop()
-    # Try cert user first, then SA
-    try:
-        return await loop.run_in_executor(None, cert_svc.get_user, username)
-    except Exception:
-        pass
-    try:
-        return await loop.run_in_executor(None, sa_svc.get_user, username, "default")
-    except Exception:
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    return await loop.run_in_executor(None, sa_svc.list_unmanaged)
 
 
 @router.post("/import", response_model=UserRead, status_code=201)
@@ -80,12 +70,22 @@ async def import_user(
         )
 
 
-@router.get("/unmanaged-serviceaccounts")
-async def list_unmanaged_service_accounts(
+@router.get("/{username}", response_model=UserRead)
+async def get_user(
+    username: str,
+    cert_svc: CertificateService = Depends(get_cert_service),
     sa_svc: ServiceAccountService = Depends(get_sa_service),
 ):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, sa_svc.list_unmanaged)
+    # Try cert user first, then SA
+    try:
+        return await loop.run_in_executor(None, cert_svc.get_user, username)
+    except Exception:
+        pass
+    try:
+        return await loop.run_in_executor(None, sa_svc.get_user, username, "default")
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
 
 
 @router.delete("/{username}", status_code=204)
