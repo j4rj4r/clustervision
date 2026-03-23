@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 
 from ..models.rbac import (
     ClusterRoleCreate, RoleCreate, BindingCreate,
-    AssignRoleRequest, UserPermissionSummary,
+    AssignRoleRequest, UserPermissionSummary, PolicyRule,
 )
 from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
@@ -31,6 +31,16 @@ async def create_cluster_role(
     return await loop.run_in_executor(None, svc.create_cluster_role, payload.name, payload.rules)
 
 
+@router.put("/cluster-roles/{name}")
+async def update_cluster_role(
+    name: str,
+    rules: list[PolicyRule],
+    svc: RbacService = Depends(get_rbac_service),
+):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, svc.update_cluster_role, name, rules)
+
+
 @router.delete("/cluster-roles/{name}", status_code=204)
 async def delete_cluster_role(name: str, svc: RbacService = Depends(get_rbac_service)):
     loop = asyncio.get_event_loop()
@@ -49,6 +59,17 @@ async def list_roles(namespace: str, svc: RbacService = Depends(get_rbac_service
 async def create_role(payload: RoleCreate, svc: RbacService = Depends(get_rbac_service)):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, svc.create_role, payload.namespace, payload.name, payload.rules)
+
+
+@router.put("/roles/{namespace}/{name}")
+async def update_role(
+    namespace: str,
+    name: str,
+    rules: list[PolicyRule],
+    svc: RbacService = Depends(get_rbac_service),
+):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, svc.update_role, namespace, name, rules)
 
 
 @router.delete("/roles/{namespace}/{name}", status_code=204)

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { rbacApi } from '../api/rbac'
-import type { AssignRolePayload } from '../types/rbac'
+import type { AssignRolePayload, PolicyRule } from '../types/rbac'
 
 export const useClusterRoles = (includeSystem = false) =>
   useQuery({
@@ -25,6 +25,87 @@ export const useUserPermissions = (username: string) =>
 
 export const useNamespaces = () =>
   useQuery({ queryKey: ['namespaces'], queryFn: rbacApi.listNamespaces })
+
+export const useCreateClusterRole = (onSuccess?: () => void) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, rules }: { name: string; rules: PolicyRule[] }) =>
+      rbacApi.createClusterRole(name, rules),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cluster-roles'] })
+      toast.success('ClusterRole créé')
+      onSuccess?.()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useUpdateClusterRole = (onSuccess?: () => void) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, rules }: { name: string; rules: PolicyRule[] }) =>
+      rbacApi.updateClusterRole(name, rules),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cluster-roles'] })
+      toast.success('ClusterRole mis à jour')
+      onSuccess?.()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useDeleteClusterRole = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => rbacApi.deleteClusterRole(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cluster-roles'] })
+      toast.success('ClusterRole supprimé')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useCreateRole = (onSuccess?: () => void) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ namespace, name, rules }: { namespace: string; name: string; rules: PolicyRule[] }) =>
+      rbacApi.createRole(namespace, name, rules),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['roles', vars.namespace] })
+      toast.success('Role créé')
+      onSuccess?.()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useUpdateRole = (onSuccess?: () => void) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ namespace, name, rules }: { namespace: string; name: string; rules: PolicyRule[] }) =>
+      rbacApi.updateRole(namespace, name, rules),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['roles', vars.namespace] })
+      toast.success('Role mis à jour')
+      onSuccess?.()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useDeleteRole = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
+      rbacApi.deleteRole(namespace, name),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['roles', vars.namespace] })
+      toast.success('Role supprimé')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
 
 export const useAssignRole = (username: string) => {
   const qc = useQueryClient()

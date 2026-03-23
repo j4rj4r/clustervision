@@ -79,6 +79,16 @@ class RbacService:
         created = self.rbac_v1.create_cluster_role(cr)
         return {"name": created.metadata.name}
 
+    def update_cluster_role(self, name: str, rules: list[PolicyRule]) -> dict:
+        cr = self.rbac_v1.read_cluster_role(name)
+        cr.rules = [_rule_to_k8s(r) for r in rules]
+        updated = self.rbac_v1.replace_cluster_role(name, cr)
+        return {
+            "name": updated.metadata.name,
+            "rules": [_rule_from_k8s(r) for r in (updated.rules or [])],
+            "is_system": updated.metadata.name.startswith("system:"),
+        }
+
     def delete_cluster_role(self, name: str):
         self.rbac_v1.delete_cluster_role(name)
 
@@ -107,6 +117,17 @@ class RbacService:
         )
         created = self.rbac_v1.create_namespaced_role(namespace, role)
         return {"name": created.metadata.name, "namespace": namespace}
+
+    def update_role(self, namespace: str, name: str, rules: list[PolicyRule]) -> dict:
+        role = self.rbac_v1.read_namespaced_role(name, namespace)
+        role.rules = [_rule_to_k8s(r) for r in rules]
+        updated = self.rbac_v1.replace_namespaced_role(name, namespace, role)
+        return {
+            "name": updated.metadata.name,
+            "namespace": updated.metadata.namespace,
+            "rules": [_rule_from_k8s(r) for r in (updated.rules or [])],
+            "is_system": False,
+        }
 
     def delete_role(self, namespace: str, name: str):
         self.rbac_v1.delete_namespaced_role(name, namespace)

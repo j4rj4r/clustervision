@@ -1,12 +1,30 @@
 import client from './client'
-import type { AssignRolePayload, BindingRead, RoleRead, UserPermissionSummary } from '../types/rbac'
+import type { AssignRolePayload, BindingRead, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
 
 export const rbacApi = {
   listClusterRoles: (includeSystem = false): Promise<RoleRead[]> =>
     client.get('/rbac/cluster-roles', { params: { include_system: includeSystem } }).then((r) => r.data),
 
+  createClusterRole: (name: string, rules: PolicyRule[]): Promise<RoleRead> =>
+    client.post('/rbac/cluster-roles', { name, rules }).then((r) => r.data),
+
+  updateClusterRole: (name: string, rules: PolicyRule[]): Promise<RoleRead> =>
+    client.put(`/rbac/cluster-roles/${name}`, rules).then((r) => r.data),
+
+  deleteClusterRole: (name: string): Promise<void> =>
+    client.delete(`/rbac/cluster-roles/${name}`).then(() => undefined),
+
   listRoles: (namespace: string): Promise<RoleRead[]> =>
     client.get(`/rbac/roles/${namespace}`).then((r) => r.data),
+
+  createRole: (namespace: string, name: string, rules: PolicyRule[]): Promise<RoleRead> =>
+    client.post('/rbac/roles', { namespace, name, rules }).then((r) => r.data),
+
+  updateRole: (namespace: string, name: string, rules: PolicyRule[]): Promise<RoleRead> =>
+    client.put(`/rbac/roles/${namespace}/${name}`, rules).then((r) => r.data),
+
+  deleteRole: (namespace: string, name: string): Promise<void> =>
+    client.delete(`/rbac/roles/${namespace}/${name}`).then(() => undefined),
 
   listClusterBindings: (): Promise<BindingRead[]> =>
     client.get('/rbac/bindings/cluster').then((r) => r.data),

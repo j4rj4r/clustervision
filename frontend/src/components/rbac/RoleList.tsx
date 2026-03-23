@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Shield } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Shield, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import Badge from '../ui/Badge'
 import type { RoleRead } from '../../types/rbac'
@@ -6,12 +6,21 @@ import type { RoleRead } from '../../types/rbac'
 interface Props {
   roles: RoleRead[]
   title: string
+  onEdit?: (role: RoleRead) => void
+  onDelete?: (role: RoleRead) => void
 }
 
-export default function RoleList({ roles, title }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null)
+export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (roles.length === 0) return null
+
+  const toggle = (name: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(name) ? next.delete(name) : next.add(name)
+      return next
+    })
 
   return (
     <div>
@@ -19,18 +28,33 @@ export default function RoleList({ roles, title }: Props) {
       <div className="bg-slate-900 border border-slate-800 rounded-lg divide-y divide-slate-800">
         {roles.map((role) => (
           <div key={role.name}>
-            <button
-              onClick={() => setExpanded(expanded === role.name ? null : role.name)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 text-left transition-colors"
-            >
-              {expanded === role.name ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
-              <Shield size={14} className="text-brand-400" />
+            <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-800/50 transition-colors">
+              <button onClick={() => toggle(role.name)} className="text-slate-500 hover:text-slate-300">
+                {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              <Shield size={14} className="text-brand-400 shrink-0" />
               <span className="font-mono text-sm text-slate-200 flex-1">{role.name}</span>
               {role.is_system && <Badge>system</Badge>}
               <span className="text-xs text-slate-500">{role.rules?.length ?? 0} rules</span>
-            </button>
+              {!role.is_system && onEdit && (
+                <button
+                  onClick={() => onEdit(role)}
+                  className="text-slate-600 hover:text-slate-300 transition-colors"
+                >
+                  <Pencil size={13} />
+                </button>
+              )}
+              {!role.is_system && onDelete && (
+                <button
+                  onClick={() => onDelete(role)}
+                  className="text-slate-600 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
 
-            {expanded === role.name && (
+            {expanded.has(role.name) && (
               <div className="px-4 pb-4 bg-slate-950/50">
                 <div className="divide-y divide-slate-800">
                   {role.rules?.map((rule, i) => (
