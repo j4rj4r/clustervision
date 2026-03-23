@@ -27,8 +27,8 @@ def _rule_from_k8s(rule: client.V1PolicyRule) -> dict:
     }
 
 
-def _subject_to_k8s(s: Subject) -> client.V1Subject:
-    return client.V1Subject(
+def _subject_to_k8s(s: Subject) -> client.RbacV1Subject:
+    return client.RbacV1Subject(
         kind=s.kind.value,
         name=s.name,
         namespace=s.namespace,
