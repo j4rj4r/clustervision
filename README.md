@@ -9,28 +9,37 @@ Application de gestion des utilisateurs Kubernetes — création, droits RBAC et
 - **RBAC** : visualisation des ClusterRoles/Roles, assignation et révocation par utilisateur
 - **Kubeconfig** : génération et téléchargement du fichier de configuration kubectl
 
-## Démarrage rapide (dev local)
+## Déploiement avec Helm
 
 ```bash
-# Prérequis : Docker, un kubeconfig valide dans ~/.kube/config
-
-docker-compose up --build
-# Frontend : http://localhost:3000
-# Backend API : http://localhost:8000/docs
+helm install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \
+  --version 1.0.0 \
+  --namespace clustervision --create-namespace \
+  --set ingress.host=clustervision.example.com
 ```
 
-## Déploiement Kubernetes
+### Valeurs personnalisables
+
+```yaml
+# values-prod.yaml
+backend:
+  env:
+    clusterName: "mon-cluster"
+
+ingress:
+  host: clustervision.example.com
+  className: nginx
+  tls:
+    - secretName: clustervision-tls
+      hosts:
+        - clustervision.example.com
+```
 
 ```bash
-# 1. Build des images
-docker build -t clustervision-backend:latest ./backend
-docker build -t clustervision-frontend:latest ./frontend
-
-# 2. Appliquer les manifests
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/backend/
-kubectl apply -f k8s/frontend/
-kubectl apply -f k8s/ingress.yaml
+helm install clustervision oci://ghcr.io/j4rj4r/charts/clustervision \
+  --version 1.0.0 \
+  --namespace clustervision --create-namespace \
+  -f values-prod.yaml
 ```
 
 ## Architecture
@@ -49,7 +58,7 @@ clustervision/
 │       ├── hooks/        # React Query hooks
 │       ├── components/   # UI components
 │       └── pages/        # Pages
-└── k8s/                  # Manifests Kubernetes
+└── helm/clustervision/   # Helm chart
 ```
 
 ## Variables d'environnement (backend)
