@@ -10,6 +10,7 @@ export default function RbacPage() {
   const qc = useQueryClient()
   const [namespace, setNamespace] = useState('default')
   const [showSystem, setShowSystem] = useState(false)
+  const [showClusterRoles, setShowClusterRoles] = useState(true)
 
   const { data: clusterRoles = [], isLoading: loadingCR } = useClusterRoles(showSystem)
   const { data: roles = [], isLoading: loadingR } = useRoles(namespace)
@@ -26,11 +27,20 @@ export default function RbacPage() {
           <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
             <input
               type="checkbox"
+              checked={showClusterRoles}
+              onChange={(e) => setShowClusterRoles(e.target.checked)}
+              className="accent-brand-500"
+            />
+            ClusterRoles
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
               checked={showSystem}
               onChange={(e) => setShowSystem(e.target.checked)}
               className="accent-brand-500"
             />
-            Show system roles
+            Roles système
           </label>
           <Button variant="ghost" size="sm" onClick={() => {
             qc.invalidateQueries({ queryKey: ['cluster-roles'] })
@@ -41,11 +51,11 @@ export default function RbacPage() {
         </div>
       </div>
 
-      {loadingCR ? (
+      {showClusterRoles && (loadingCR ? (
         <div className="text-sm text-slate-500 text-center py-8">Loading roles...</div>
       ) : (
         <RoleList roles={clusterRoles} title="ClusterRoles" />
-      )}
+      ))}
 
       <div className="space-y-3">
         <div className="flex items-center gap-3">
