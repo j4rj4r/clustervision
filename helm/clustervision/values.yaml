@@ -53,7 +53,7 @@ frontend:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   host: clustervision.local
   annotations: {}
   tls: []
@@ -71,7 +71,4 @@ rbac:
 
 networkPolicy:
   enabled: true
-  ingressControllerNamespace: ingress-nginx  # adjust to your Ingress controller namespace
-
-namespace:
-  name: clustervision
+  ingressControllerNamespace: traefik  # adjust to your Ingress controller namespace
