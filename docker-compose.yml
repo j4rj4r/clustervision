@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/.kube/config:/root/.kube/config:ro
+    environment:
+      - CLUSTER_NAME=kubernetes
+      - CLUSTER_API_URL=
+      - REGISTRY_NAMESPACE=clustervision
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

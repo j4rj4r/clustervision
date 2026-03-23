@@ -1,0 +1,54 @@
+import { useState } from 'react'
+import { Plus, RefreshCw } from 'lucide-react'
+import Button from '../components/ui/Button'
+import UserList from '../components/users/UserList'
+import CreateUserModal from '../components/users/CreateUserModal'
+import DeleteUserModal from '../components/users/DeleteUserModal'
+import { useUsers } from '../hooks/useUsers'
+import { useQueryClient } from '@tanstack/react-query'
+import type { User } from '../types/user'
+
+export default function UsersPage() {
+  const { data, isLoading } = useUsers()
+  const qc = useQueryClient()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [toDelete, setToDelete] = useState<User | null>(null)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-100">Users</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : 'Loading...'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['users'] })}>
+            <RefreshCw size={13} />
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus size={14} /> Create user
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-slate-500">Loading users...</div>
+        ) : (
+          <UserList
+            users={data?.users ?? []}
+            onDelete={setToDelete}
+            onKubeconfig={(user) => {
+              window.location.href = `/kubeconfig?user=${user.name}`
+            }}
+          />
+        )}
+      </div>
+
+      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <DeleteUserModal user={toDelete} onClose={() => setToDelete(null)} />
+    </div>
+  )
+}

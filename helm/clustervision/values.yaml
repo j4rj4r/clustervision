@@ -1,0 +1,71 @@
+# Global image settings
+global:
+  imageRegistry: ghcr.io
+  imagePullSecrets: []
+
+backend:
+  image:
+    repository: ghcr.io/j4rj4r/clustervision-backend
+    tag: ""  # defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  env:
+    clusterName: "kubernetes"
+    clusterApiUrl: ""        # Auto-detected in-cluster if empty
+    registryNamespace: "clustervision"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+frontend:
+  image:
+    repository: ghcr.io/j4rj4r/clustervision-frontend
+    tag: ""  # defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: clustervision.local
+  annotations: {}
+  tls: []
+  # tls:
+  #   - secretName: clustervision-tls
+  #     hosts:
+  #       - clustervision.local
+
+serviceAccount:
+  create: true
+  name: clustervision-backend
+
+rbac:
+  create: true
+
+namespace:
+  create: true
+  name: clustervision

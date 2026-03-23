@@ -1,0 +1,156 @@
+name: Helm Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+    paths:
+      - "helm/**"
+      - ".github/workflows/helm-release.yml"
+  # Allow manual trigger (e.g. to re-publish after a hotfix)
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: "Chart version to publish (e.g. 0.2.0)"
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  CHART_REPO: ghcr.io/${{ github.repository_owner }}/charts
+
+jobs:
+  lint-and-test:
+    name: Lint & validate chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.16.3"
+
+      - name: Helm lint
+        run: helm lint helm/clustervision --strict
+
+      - name: Helm template (dry-run render)
+        run: |
+          helm template clustervision helm/clustervision \
+            --set backend.image.tag=sha-test \
+            --set frontend.image.tag=sha-test \
+            --debug \
+            > /dev/null
+
+      - name: Install chart-testing (ct)
+        uses: helm/chart-testing-action@v2.7.0
+
+      - name: Run chart-testing lint
+        run: ct lint --chart-dirs helm --target-branch ${{ github.event.repository.default_branch }}
+
+  publish:
+    name: Package & push to GHCR (OCI)
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.16.3"
+
+      # Resolve chart version: tag → strip leading v, or input, or Chart.yaml
+      - name: Resolve chart version
+        id: chart_version
+        run: |
+          if [[ -n "${{ github.event.inputs.chart_version }}" ]]; then
+            VERSION="${{ github.event.inputs.chart_version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="$(grep '^version:' helm/clustervision/Chart.yaml | awk '{print $2}')"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved chart version: ${VERSION}"
+
+      # Update appVersion in Chart.yaml to match the git tag
+      - name: Sync appVersion with tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          APP_VERSION="${GITHUB_REF#refs/tags/v}"
+          sed -i "s/^appVersion:.*/appVersion: \"${APP_VERSION}\"/" helm/clustervision/Chart.yaml
+          sed -i "s/^version:.*/version: ${{ steps.chart_version.outputs.version }}/" helm/clustervision/Chart.yaml
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            helm registry login ${{ env.REGISTRY }} \
+              --username ${{ github.actor }} \
+              --password-stdin
+
+      - name: Package chart
+        run: |
+          helm package helm/clustervision \
+            --version ${{ steps.chart_version.outputs.version }} \
+            --destination /tmp/helm-packages
+
+      - name: Push chart to GHCR OCI registry
+        run: |
+          helm push \
+            /tmp/helm-packages/clustervision-${{ steps.chart_version.outputs.version }}.tgz \
+            oci://${{ env.CHART_REPO }}
+
+      - name: Write summary
+        run: |
+          echo "## Helm chart published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm install clustervision oci://${{ env.CHART_REPO }}/clustervision \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --version ${{ steps.chart_version.outputs.version }} \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --set backend.image.repository=ghcr.io/${{ github.repository_owner }}/clustervision-backend \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --set frontend.image.repository=ghcr.io/${{ github.repository_owner }}/clustervision-frontend \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --set ingress.host=clustervision.example.com" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Optional: create a GitHub Release with the .tgz attached ────────────────
+  github-release:
+    name: Attach chart to GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.16.3"
+
+      - name: Resolve version
+        id: ver
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.ver.outputs.version }}/" helm/clustervision/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.ver.outputs.version }}\"/" helm/clustervision/Chart.yaml
+          helm package helm/clustervision --destination /tmp/helm-packages
+
+      - name: Upload chart to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /tmp/helm-packages/clustervision-${{ steps.ver.outputs.version }}.tgz
+          generate_release_notes: true

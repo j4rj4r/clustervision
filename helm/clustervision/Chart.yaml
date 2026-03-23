@@ -1,0 +1,13 @@
+apiVersion: v2
+name: clustervision
+description: Kubernetes user and RBAC management application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - rbac
+  - user-management
+maintainers:
+  - name: ClusterVision
+home: https://github.com/j4rj4r/clustervision

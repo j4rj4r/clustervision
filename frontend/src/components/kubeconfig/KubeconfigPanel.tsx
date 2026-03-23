@@ -1,0 +1,85 @@
+import { useState } from 'react'
+import { Download } from 'lucide-react'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
+import Select from '../ui/Select'
+import { useUsers } from '../../hooks/useUsers'
+import { useNamespaces } from '../../hooks/useRbac'
+import { useGenerateKubeconfig } from '../../hooks/useKubeconfig'
+import type { User } from '../../types/user'
+
+interface Props {
+  preselectedUser?: User
+}
+
+export default function KubeconfigPanel({ preselectedUser }: Props) {
+  const { data: usersData } = useUsers()
+  const { data: namespaces = [] } = useNamespaces()
+  const generate = useGenerateKubeconfig()
+
+  const users = usersData?.users ?? []
+
+  const [selectedUsername, setSelectedUsername] = useState(preselectedUser?.name ?? '')
+  const [namespace, setNamespace] = useState('default')
+  const [privateKey, setPrivateKey] = useState('')
+
+  const selectedUser = users.find((u) => u.name === selectedUsername) ?? preselectedUser
+
+  const handleGenerate = () => {
+    if (!selectedUser) return
+    generate.mutate({
+      username: selectedUser.name,
+      user_type: selectedUser.user_type,
+      namespace,
+      private_key_pem: selectedUser.user_type === 'certificate' ? privateKey : undefined,
+    })
+  }
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <Select
+        label="User"
+        value={selectedUsername}
+        onChange={(e) => setSelectedUsername(e.target.value)}
+        options={[
+          { value: '', label: 'Select a user...' },
+          ...users.map((u) => ({ value: u.name, label: `${u.name} (${u.user_type === 'certificate' ? 'X.509' : 'SA'})` })),
+        ]}
+      />
+
+      <Select
+        label="Default namespace"
+        value={namespace}
+        onChange={(e) => setNamespace(e.target.value)}
+        options={[{ value: 'default', label: 'default' }, ...namespaces.filter((n) => n !== 'default').map((n) => ({ value: n, label: n }))]}
+      />
+
+      {selectedUser?.user_type === 'certificate' && (
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-400">
+            Private Key PEM
+          </label>
+          <textarea
+            value={privateKey}
+            onChange={(e) => setPrivateKey(e.target.value)}
+            placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+            rows={6}
+            className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-300 font-mono placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+          />
+          <p className="text-xs text-slate-500">
+            Paste the private key saved at user creation time.
+          </p>
+        </div>
+      )}
+
+      <Button
+        onClick={handleGenerate}
+        loading={generate.isPending}
+        disabled={!selectedUsername || (selectedUser?.user_type === 'certificate' && !privateKey)}
+        className="w-full"
+      >
+        <Download size={14} /> Generate & Download
+      </Button>
+    </div>
+  )
+}
