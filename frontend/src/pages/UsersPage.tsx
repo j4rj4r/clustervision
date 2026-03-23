@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, FileInput } from 'lucide-react'
 import Button from '../components/ui/Button'
 import UserList from '../components/users/UserList'
 import CreateUserModal from '../components/users/CreateUserModal'
 import DeleteUserModal from '../components/users/DeleteUserModal'
+import ImportUserModal from '../components/users/ImportUserModal'
 import { useUsers } from '../hooks/useUsers'
 import { useQueryClient } from '@tanstack/react-query'
 import type { User } from '../types/user'
@@ -12,6 +13,7 @@ export default function UsersPage() {
   const { data, isLoading } = useUsers()
   const qc = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [toDelete, setToDelete] = useState<User | null>(null)
 
   return (
@@ -27,8 +29,11 @@ export default function UsersPage() {
           <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['users'] })}>
             <RefreshCw size={13} />
           </Button>
+          <Button variant="secondary" onClick={() => setImportOpen(true)}>
+            <FileInput size={14} /> Importer
+          </Button>
           <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={14} /> Create user
+            <Plus size={14} /> Créer
           </Button>
         </div>
       </div>
@@ -48,6 +53,7 @@ export default function UsersPage() {
       </div>
 
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ImportUserModal open={importOpen} onClose={() => setImportOpen(false)} />
       <DeleteUserModal user={toDelete} onClose={() => setToDelete(null)} />
     </div>
   )

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { usersApi } from '../api/users'
+import { usersApi, type ImportUserPayload } from '../api/users'
 import type { CreateUserPayload } from '../types/user'
 
 export const useUsers = () =>
@@ -16,6 +16,26 @@ export const useCreateUser = (onSuccess?: (data: Awaited<ReturnType<typeof users
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['users'] })
       onSuccess?.(data)
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useUnmanagedServiceAccounts = () =>
+  useQuery({
+    queryKey: ['unmanaged-sa'],
+    queryFn: usersApi.listUnmanagedServiceAccounts,
+  })
+
+export const useImportUser = (onSuccess?: () => void) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ImportUserPayload) => usersApi.import(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['unmanaged-sa'] })
+      toast.success('Utilisateur importé')
+      onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
   })

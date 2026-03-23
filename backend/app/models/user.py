@@ -10,10 +10,17 @@ class UserType(str, Enum):
 
 
 class UserCreate(BaseModel):
-    name: str = Field(..., pattern=r"^[a-z0-9][a-z0-9\-\.]*$", description="Username (lowercase, alphanumeric, dash, dot)")
+    name: str = Field(..., pattern=r"^[a-z0-9][a-z0-9\-\.]*$")
     user_type: UserType = UserType.certificate
     groups: list[str] = Field(default_factory=list)
-    namespace: str = Field(default="default", description="Namespace (for ServiceAccount users)")
+    namespace: str = Field(default="default")
+
+
+class UserImport(BaseModel):
+    name: str = Field(..., pattern=r"^[a-z0-9][a-z0-9\-\.]*$")
+    user_type: UserType
+    namespace: str = Field(default="default")
+    groups: list[str] = Field(default_factory=list)
 
 
 class UserRead(BaseModel):

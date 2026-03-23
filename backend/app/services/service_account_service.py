@@ -137,6 +137,47 @@ class ServiceAccountService:
         self._save_registry(updated)
         logger.info(f"Deleted service account user: {username}")
 
+    def import_user(self, name: str, namespace: str = "default") -> dict:
+        """Register an existing ServiceAccount in the ClusterVision registry."""
+        # Verify the SA actually exists in K8s
+        self.core_v1.read_namespaced_service_account(name, namespace)
+
+        users = self._load_registry()
+        if any(u["name"] == name and u.get("type") == "service_account" for u in users):
+            raise UserAlreadyExistsError(name)
+
+        now = datetime.now(timezone.utc).isoformat()
+        user_record = {
+            "name": name,
+            "type": "service_account",
+            "groups": [],
+            "namespace": namespace,
+            "created_at": now,
+            "imported": True,
+        }
+        users.append(user_record)
+        self._save_registry(users)
+        logger.info(f"Imported service account user: {name} from {namespace}")
+        return user_record
+
+    def list_unmanaged(self) -> list[dict]:
+        """Return ServiceAccounts in K8s that are not in the registry."""
+        registry = {u["name"] for u in self._load_registry() if u.get("type") == "service_account"}
+        result = []
+        namespaces = self.core_v1.list_namespace()
+        for ns in namespaces.items:
+            sas = self.core_v1.list_namespaced_service_account(ns.metadata.name)
+            for sa in sas.items:
+                # Skip default/system SAs
+                if sa.metadata.name in ("default",) or sa.metadata.name.startswith("system:"):
+                    continue
+                if sa.metadata.name not in registry:
+                    result.append({
+                        "name": sa.metadata.name,
+                        "namespace": ns.metadata.name,
+                    })
+        return result
+
     def get_token(self, sa_name: str, namespace: str) -> str:
         """Get the token for a ServiceAccount using the TokenRequest API."""
         token_request = client.AuthenticationV1TokenRequest(

@@ -186,6 +186,26 @@ class CertificateService:
         self._save_registry(updated)
         logger.info(f"Deleted certificate user: {username}")
 
+    def import_user(self, username: str, groups: list[str]) -> dict:
+        """Register an existing certificate user in the registry (no CSR created)."""
+        users = self._load_registry()
+        if any(u["name"] == username for u in users):
+            raise UserAlreadyExistsError(username)
+
+        now = datetime.now(timezone.utc).isoformat()
+        user_record = {
+            "name": username,
+            "type": "certificate",
+            "groups": groups,
+            "namespace": "default",
+            "created_at": now,
+            "imported": True,
+        }
+        users.append(user_record)
+        self._save_registry(users)
+        logger.info(f"Imported certificate user: {username}")
+        return user_record
+
     def get_certificate_pem(self, username: str) -> str:
         user = self.get_user(username)
         csr = self.certs_api.read_certificate_signing_request(user["csr_name"])

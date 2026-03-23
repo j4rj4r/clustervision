@@ -1,0 +1,125 @@
+import { useState } from 'react'
+import { Download } from 'lucide-react'
+import Modal from '../ui/Modal'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
+import Select from '../ui/Select'
+import Badge from '../ui/Badge'
+import { useImportUser, useUnmanagedServiceAccounts } from '../../hooks/useUsers'
+
+interface Props {
+  open: boolean
+  onClose: () => void
+}
+
+export default function ImportUserModal({ open, onClose }: Props) {
+  const [userType, setUserType] = useState<'certificate' | 'service_account'>('service_account')
+  const [name, setName] = useState('')
+  const [namespace, setNamespace] = useState('default')
+  const [groups, setGroups] = useState('')
+  const [selectedSA, setSelectedSA] = useState<{ name: string; namespace: string } | null>(null)
+
+  const { data: unmanagedSAs = [] } = useUnmanagedServiceAccounts()
+  const importUser = useImportUser(onClose)
+
+  const handleClose = () => {
+    setName(''); setNamespace('default'); setGroups(''); setSelectedSA(null)
+    onClose()
+  }
+
+  const handleSelectSA = (sa: { name: string; namespace: string }) => {
+    setSelectedSA(sa)
+    setName(sa.name)
+    setNamespace(sa.namespace)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    importUser.mutate({
+      name,
+      user_type: userType,
+      namespace,
+      groups: groups.split(',').map((g) => g.trim()).filter(Boolean),
+    })
+  }
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Importer un utilisateur existant" size="lg">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Select
+          label="Type"
+          value={userType}
+          onChange={(e) => { setUserType(e.target.value as typeof userType); setSelectedSA(null); setName('') }}
+          options={[
+            { value: 'service_account', label: 'ServiceAccount' },
+            { value: 'certificate', label: 'Certificate (X.509)' },
+          ]}
+        />
+
+        {userType === 'service_account' && unmanagedSAs.length > 0 && (
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-slate-400">
+              ServiceAccounts non gérés ({unmanagedSAs.length})
+            </label>
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-slate-700 rounded-md p-2 bg-slate-950">
+              {unmanagedSAs.map((sa) => (
+                <button
+                  key={`${sa.namespace}/${sa.name}`}
+                  type="button"
+                  onClick={() => handleSelectSA(sa)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm text-left transition-colors ${
+                    selectedSA?.name === sa.name && selectedSA?.namespace === sa.namespace
+                      ? 'bg-brand-600 text-white'
+                      : 'hover:bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  <span className="font-mono">{sa.name}</span>
+                  <Badge variant="default">{sa.namespace}</Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Input
+          label="Nom"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="rapvoy"
+          required
+        />
+
+        {userType === 'service_account' && (
+          <Input
+            label="Namespace"
+            value={namespace}
+            onChange={(e) => setNamespace(e.target.value)}
+            placeholder="rapvoy-dev"
+          />
+        )}
+
+        {userType === 'certificate' && (
+          <Input
+            label="Groupes (comma-separated)"
+            value={groups}
+            onChange={(e) => setGroups(e.target.value)}
+            placeholder="developers, devops"
+          />
+        )}
+
+        <p className="text-xs text-slate-500">
+          L'import enregistre l'utilisateur dans ClusterVision sans modifier les ressources Kubernetes existantes.
+        </p>
+
+        <div className="flex gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
+            Annuler
+          </Button>
+          <Button type="submit" loading={importUser.isPending} disabled={!name} className="flex-1">
+            <Download size={14} /> Importer
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
