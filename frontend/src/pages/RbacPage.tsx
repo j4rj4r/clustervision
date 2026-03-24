@@ -25,6 +25,7 @@ export default function RbacPage() {
     open: boolean
     isCluster: boolean
     role?: RoleRead
+    copyFrom?: RoleRead
   }>({ open: false, isCluster: false })
 
   const [deleteTarget, setDeleteTarget] = useState<{ role: RoleRead; isCluster: boolean } | null>(null)
@@ -33,7 +34,7 @@ export default function RbacPage() {
   const { data: roles = [], isLoading: loadingR, isError: errorR, refetch: refetchR } = useRoles(namespace)
   const { data: namespaces = [] } = useNamespaces()
 
-  const closeModal = () => setModal({ open: false, isCluster: false })
+  const closeModal = () => setModal({ open: false, isCluster: false, role: undefined, copyFrom: undefined })
 
   const createCR = useCreateClusterRole(closeModal)
   const updateCR = useUpdateClusterRole(closeModal)
@@ -144,6 +145,7 @@ export default function RbacPage() {
               roles={roles}
               title={`Roles — ${namespace}`}
               onEdit={(role) => setModal({ open: true, isCluster: false, role })}
+              onCopy={(role) => setModal({ open: true, isCluster: false, copyFrom: role })}
               onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
             />
           )}
@@ -170,6 +172,7 @@ export default function RbacPage() {
               roles={clusterRoles}
               title="ClusterRoles"
               onEdit={(role) => setModal({ open: true, isCluster: true, role })}
+              onCopy={(role) => setModal({ open: true, isCluster: true, copyFrom: role })}
               onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
             />
           )}
@@ -179,6 +182,7 @@ export default function RbacPage() {
       {modal.open && (
         <RoleEditorModal
           role={modal.role}
+          copyFrom={modal.copyFrom}
           namespace={namespace}
           isCluster={modal.isCluster}
           onSave={handleSave}
