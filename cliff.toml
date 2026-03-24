@@ -1,7 +1,7 @@
 [changelog]
 header = ""
 body = """
-## Changements\n
+## Changes\n
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group }}\n
 {% for commit in commits %}
@@ -16,9 +16,9 @@ trim = true
 conventional_commits = false
 filter_unconventional = false
 commit_parsers = [
-  { message = "^feat", group = "🚀 Nouveautés" },
-  { message = "^fix", group = "🐛 Corrections" },
-  { message = "^chore", group = "🔧 Maintenance" },
+  { message = "^Merge", skip = true },
+  { message = "^feat", group = "🚀 Features" },
+  { message = "^fix", group = "🐛 Bug Fixes" },
   { message = "^ci", group = "🏗️ CI/CD" },
   { message = "^docs", group = "📖 Documentation" },
   { message = "^refactor", group = "♻️ Refactoring" },
