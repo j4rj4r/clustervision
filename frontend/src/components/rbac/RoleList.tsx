@@ -35,7 +35,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
                 aria-label={expanded.has(role.name) ? 'Collapse' : 'Expand'}
                 aria-expanded={expanded.has(role.name)}
                 onClick={() => toggle(role.name)}
-                className="text-slate-500 hover:text-slate-300"
+                className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors shrink-0"
               >
                 {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>

@@ -36,29 +36,30 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
                 next.has(user.name) ? next.delete(user.name) : next.add(user.name)
                 return next
               })}
-              className="text-slate-500 hover:text-slate-300"
+              className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer group"
             >
-              {expanded.has(user.name) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <span className="p-1 rounded text-slate-500 group-hover:text-slate-300 group-hover:bg-slate-700/50 transition-colors shrink-0">
+                {expanded.has(user.name) ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-sm font-medium text-slate-100">{user.name}</span>
+                  <Badge variant={user.user_type === 'certificate' ? 'info' : 'default'}>
+                    {user.user_type === 'certificate' ? 'X.509' : 'ServiceAccount'}
+                  </Badge>
+                  {user.groups?.length > 0 && (
+                    <span className="text-xs text-slate-500">{user.groups.join(', ')}</span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Created {new Date(user.created_at).toLocaleDateString()}
+                  {user.namespace !== 'default' && ` · ns: ${user.namespace}`}
+                  {user.cert_expiry && ` · expires ${new Date(user.cert_expiry).toLocaleDateString()}`}
+                </p>
+              </div>
             </button>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-medium text-slate-100">{user.name}</span>
-                <Badge variant={user.user_type === 'certificate' ? 'info' : 'default'}>
-                  {user.user_type === 'certificate' ? 'X.509' : 'ServiceAccount'}
-                </Badge>
-                {user.groups?.length > 0 && (
-                  <span className="text-xs text-slate-500">{user.groups.join(', ')}</span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Created {new Date(user.created_at).toLocaleDateString()}
-                {user.namespace !== 'default' && ` · ns: ${user.namespace}`}
-                {user.cert_expiry && ` · expires ${new Date(user.cert_expiry).toLocaleDateString()}`}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button size="sm" variant="ghost" onClick={() => onKubeconfig(user)}>
                 <FileCode2 size={13} /> Kubeconfig
               </Button>
