@@ -8,6 +8,7 @@ const ALL_VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'
 
 interface Props {
   role?: RoleRead
+  copyFrom?: RoleRead
   namespace?: string
   isCluster: boolean
   onSave: (name: string, rules: PolicyRule[], namespace?: string) => void
@@ -80,11 +81,14 @@ function RuleRow({
   )
 }
 
-export default function RoleEditorModal({ role, namespace: defaultNs, isCluster, onSave, onClose, loading }: Props) {
+export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, isCluster, onSave, onClose, loading }: Props) {
   const isEdit = !!role
-  const [name, setName] = useState(role?.name ?? '')
-  const [namespace, setNamespace] = useState(role?.namespace ?? defaultNs ?? 'default')
-  const [rules, setRules] = useState<PolicyRule[]>(role?.rules?.length ? role.rules : [emptyRule()])
+  const isCopy = !!copyFrom
+  const [name, setName] = useState(role?.name ?? (isCopy ? `copy-of-${copyFrom!.name}` : ''))
+  const [namespace, setNamespace] = useState(role?.namespace ?? copyFrom?.namespace ?? defaultNs ?? 'default')
+  const [rules, setRules] = useState<PolicyRule[]>(
+    role?.rules?.length ? role.rules : copyFrom?.rules?.length ? copyFrom.rules : [emptyRule()]
+  )
 
   const updateRule = (i: number, r: PolicyRule) => setRules((prev) => prev.map((x, idx) => (idx === i ? r : x)))
   const removeRule = (i: number) => setRules((prev) => prev.filter((_, idx) => idx !== i))
@@ -98,7 +102,7 @@ export default function RoleEditorModal({ role, namespace: defaultNs, isCluster,
     <Modal
       open
       onClose={onClose}
-      title={`${isEdit ? 'Edit' : 'Create'} ${isCluster ? 'ClusterRole' : 'Role'}`}
+      title={`${isEdit ? 'Edit' : isCopy ? 'Copy' : 'Create'} ${isCluster ? 'ClusterRole' : 'Role'}`}
       size="lg"
     >
       <div className="space-y-4">
@@ -109,7 +113,7 @@ export default function RoleEditorModal({ role, namespace: defaultNs, isCluster,
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={isEdit}
+              disabled={isEdit && !isCopy}
               placeholder='my-role'
             />
           </div>
@@ -120,7 +124,7 @@ export default function RoleEditorModal({ role, namespace: defaultNs, isCluster,
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
                 value={namespace}
                 onChange={(e) => setNamespace(e.target.value)}
-                disabled={isEdit}
+                disabled={isEdit && !isCopy}
               />
             </div>
           )}

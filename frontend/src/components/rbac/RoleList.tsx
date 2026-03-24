@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Pencil, Shield, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Pencil, Shield, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import Badge from '../ui/Badge'
 import type { RoleRead } from '../../types/rbac'
@@ -7,10 +7,11 @@ interface Props {
   roles: RoleRead[]
   title: string
   onEdit?: (role: RoleRead) => void
+  onCopy?: (role: RoleRead) => void
   onDelete?: (role: RoleRead) => void
 }
 
-export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
+export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (roles.length === 0) return (
@@ -43,6 +44,15 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
               <span className="font-mono text-sm text-slate-200 flex-1">{role.name}</span>
               {role.is_system && <Badge>system</Badge>}
               <span className="text-xs text-slate-500">{role.rules?.length ?? 0} rules</span>
+              {onCopy && (
+                <button
+                  aria-label="Copy role"
+                  onClick={() => onCopy(role)}
+                  className="text-slate-600 hover:text-slate-300 transition-colors"
+                >
+                  <Copy size={13} />
+                </button>
+              )}
               {!role.is_system && onEdit && (
                 <button
                   aria-label="Edit role"
