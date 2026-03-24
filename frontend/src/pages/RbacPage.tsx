@@ -70,7 +70,7 @@ export default function RbacPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-100">RBAC</h1>
-          <p className="text-sm text-slate-500 mt-0.5">ClusterRoles et Roles par namespace</p>
+          <p className="text-sm text-slate-500 mt-0.5">ClusterRoles and namespace Roles</p>
         </div>
         <div className="flex gap-2 items-center">
           <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
@@ -104,15 +104,15 @@ export default function RbacPage() {
         <div className="space-y-2">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
-              <Plus size={13} /> Créer ClusterRole
+              <Plus size={13} /> Create ClusterRole
             </Button>
           </div>
           {loadingCR ? (
-            <div className="text-sm text-slate-500 text-center py-8">Chargement...</div>
+            <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
           ) : errorCR ? (
             <div className="text-center py-8 space-y-2">
-              <p className="text-sm text-red-400">Impossible de charger les ClusterRoles.</p>
-              <button onClick={() => refetchCR()} className="text-xs text-brand-400 hover:underline">Réessayer</button>
+              <p className="text-sm text-red-400">Failed to load ClusterRoles.</p>
+              <button onClick={() => refetchCR()} className="text-xs text-brand-400 hover:underline">Retry</button>
             </div>
           ) : (
             <RoleList
@@ -134,15 +134,15 @@ export default function RbacPage() {
             options={namespaces.map((n) => ({ value: n, label: n }))}
           />
           <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
-            <Plus size={13} /> Créer Role
+            <Plus size={13} /> Create Role
           </Button>
         </div>
         {loadingR ? (
-          <div className="text-sm text-slate-500 text-center py-8">Chargement...</div>
+          <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
         ) : errorR ? (
           <div className="text-center py-8 space-y-2">
-            <p className="text-sm text-red-400">Impossible de charger les Roles.</p>
-            <button onClick={() => refetchR()} className="text-xs text-brand-400 hover:underline">Réessayer</button>
+            <p className="text-sm text-red-400">Failed to load Roles.</p>
+            <button onClick={() => refetchR()} className="text-xs text-brand-400 hover:underline">Retry</button>
           </div>
         ) : (
           <RoleList
@@ -168,17 +168,17 @@ export default function RbacPage() {
       <Modal
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title="Confirmer la suppression"
+        title="Confirm deletion"
         size="sm"
       >
         <p className="text-sm text-slate-300 mb-6">
-          Supprimer le {deleteTarget?.isCluster ? 'ClusterRole' : 'Role'}{' '}
-          <span className="font-mono text-white">{deleteTarget?.role.name}</span> ?
-          Cette action est irréversible et peut affecter tous les utilisateurs liés.
+          Delete {deleteTarget?.isCluster ? 'ClusterRole' : 'Role'}{' '}
+          <span className="font-mono text-white">{deleteTarget?.role.name}</span>?
+          This action is irreversible and may affect all bound users.
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" onClick={() => setDeleteTarget(null)}>
-            Annuler
+            Cancel
           </Button>
           <Button
             variant="danger"
@@ -186,7 +186,7 @@ export default function RbacPage() {
             loading={deleteCR.isPending || deleteR.isPending}
             onClick={confirmDelete}
           >
-            Supprimer
+            Delete
           </Button>
         </div>
       </Modal>

@@ -14,7 +14,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (roles.length === 0) return (
-    <div className="text-center py-8 text-slate-600 text-sm">{title} — aucun rôle</div>
+    <div className="text-center py-8 text-slate-600 text-sm">{title} — no roles</div>
   )
 
   const toggle = (name: string) =>
@@ -32,7 +32,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
           <div key={role.name}>
             <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-800/50 transition-colors">
               <button
-                aria-label={expanded.has(role.name) ? 'Réduire' : 'Développer'}
+                aria-label={expanded.has(role.name) ? 'Collapse' : 'Expand'}
                 aria-expanded={expanded.has(role.name)}
                 onClick={() => toggle(role.name)}
                 className="text-slate-500 hover:text-slate-300"
@@ -45,7 +45,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
               <span className="text-xs text-slate-500">{role.rules?.length ?? 0} rules</span>
               {!role.is_system && onEdit && (
                 <button
-                  aria-label="Modifier le rôle"
+                  aria-label="Edit role"
                   onClick={() => onEdit(role)}
                   className="text-slate-600 hover:text-slate-300 transition-colors"
                 >
@@ -54,7 +54,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
               )}
               {!role.is_system && onDelete && (
                 <button
-                  aria-label="Supprimer le rôle"
+                  aria-label="Delete role"
                   onClick={() => onDelete(role)}
                   className="text-slate-600 hover:text-red-400 transition-colors"
                 >

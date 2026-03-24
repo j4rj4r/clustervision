@@ -22,7 +22,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-xl font-semibold text-slate-100">Users</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {data ? `${data.total} utilisateur${data.total !== 1 ? 's' : ''}` : 'Chargement...'}
+            {data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : 'Loading...'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -30,21 +30,21 @@ export default function UsersPage() {
             <RefreshCw size={13} />
           </Button>
           <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <FileInput size={14} /> Importer
+            <FileInput size={14} /> Import
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={14} /> Créer
+            <Plus size={14} /> Create
           </Button>
         </div>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500">Chargement...</div>
+          <div className="py-16 text-center text-sm text-slate-500">Loading users...</div>
         ) : isError ? (
           <div className="py-16 text-center space-y-3">
-            <p className="text-sm text-red-400">Impossible de charger les utilisateurs.</p>
-            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:underline">Réessayer</button>
+            <p className="text-sm text-red-400">Failed to load users.</p>
+            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:underline">Retry</button>
           </div>
         ) : (
           <UserList

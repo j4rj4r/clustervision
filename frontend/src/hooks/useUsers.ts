@@ -45,7 +45,7 @@ export const useImportUser = (onSuccess?: () => void) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', cluster] })
       qc.invalidateQueries({ queryKey: ['unmanaged-sa', cluster] })
-      toast.success('Utilisateur importé')
+      toast.success('User imported')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -60,7 +60,7 @@ export const useDeleteUser = () => {
       usersApi.delete(username, userType, namespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', cluster] })
-      toast.success('Utilisateur supprimé')
+      toast.success('User deleted')
     },
     onError: (err: Error) => toast.error(err.message),
   })

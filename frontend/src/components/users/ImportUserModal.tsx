@@ -44,7 +44,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Importer un utilisateur existant" size="lg">
+    <Modal open={open} onClose={handleClose} title="Import existing user" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Select
           label="Type"
@@ -59,7 +59,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
         {userType === 'service_account' && unmanagedSAs.length > 0 && (
           <div className="space-y-1">
             <label className="block text-xs font-medium text-slate-400">
-              ServiceAccounts non gérés ({unmanagedSAs.length})
+              Unmanaged ServiceAccounts ({unmanagedSAs.length})
             </label>
             <div className="max-h-48 overflow-y-auto space-y-1 border border-slate-700 rounded-md p-2 bg-slate-950">
               {unmanagedSAs.map((sa) => (
@@ -82,7 +82,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
         )}
 
         <Input
-          label="Nom"
+          label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="rapvoy"
@@ -100,7 +100,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
 
         {userType === 'certificate' && (
           <Input
-            label="Groupes (comma-separated)"
+            label="Groups (comma-separated)"
             value={groups}
             onChange={(e) => setGroups(e.target.value)}
             placeholder="developers, devops"
@@ -108,15 +108,15 @@ export default function ImportUserModal({ open, onClose }: Props) {
         )}
 
         <p className="text-xs text-slate-500">
-          L'import enregistre l'utilisateur dans ClusterVision sans modifier les ressources Kubernetes existantes.
+          Import registers the user in ClusterVision without modifying existing Kubernetes resources.
         </p>
 
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
-            Annuler
+            Cancel
           </Button>
           <Button type="submit" loading={importUser.isPending} disabled={!name} className="flex-1">
-            <LogIn size={14} /> Importer
+            <LogIn size={14} /> Import
           </Button>
         </div>
       </form>

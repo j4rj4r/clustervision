@@ -28,11 +28,11 @@ export default function TopBar() {
         <Server size={13} className="text-brand-400 shrink-0" />
         {clusters.length > 1 ? (
           <select
-            aria-label="Cluster actif"
+            aria-label="Active cluster"
             value={activeCluster}
             onChange={(e) => setActiveCluster(e.target.value)}
             className="bg-transparent text-xs text-slate-200 font-mono cursor-pointer focus:outline-none"
-            title="Changer de cluster cible pour toutes les opérations"
+            title="Switch the target cluster for all operations"
           >
             {clusters.map((c) => (
               <option key={c.name} value={c.name} className="bg-slate-800">

@@ -35,7 +35,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
   if (usersError) return (
     <div className="text-center py-8 space-y-2">
-      <p className="text-sm text-red-400">Impossible de charger les utilisateurs.</p>
+      <p className="text-sm text-red-400">Failed to load users.</p>
     </div>
   )
 

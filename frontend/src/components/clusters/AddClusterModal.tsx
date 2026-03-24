@@ -23,10 +23,10 @@ export default function AddClusterModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Ajouter un cluster">
+    <Modal open onClose={onClose} title="Add cluster">
       <form onSubmit={handleSubmit} className="space-y-3">
         <Input
-          label="Nom"
+          label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="prod-cluster"
@@ -68,7 +68,7 @@ export default function AddClusterModal({ onClose }: Props) {
         </div>
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-            Annuler
+            Cancel
           </Button>
           <Button
             type="submit"
@@ -76,7 +76,7 @@ export default function AddClusterModal({ onClose }: Props) {
             loading={add.isPending}
             disabled={!name || !apiUrl || !caData || !token}
           >
-            Ajouter
+            Add
           </Button>
         </div>
       </form>
