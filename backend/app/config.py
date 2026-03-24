@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     registry_configmap: str = "user-registry"
     clusters_secret: str = "clustervision-clusters"
     cors_origins: list[str] = []
+    # Public URL used in bootstrap scripts — auto-detected from request if empty
+    public_url: str = ""
 
     @field_validator("cors_origins", mode="before")
     @classmethod

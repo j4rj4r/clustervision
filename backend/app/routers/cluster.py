@@ -1,12 +1,16 @@
 import asyncio
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from kubernetes import client
 
+from ..config import get_settings
 from ..core.kubernetes_client import get_local_api_client, get_version_api
 from ..services.cluster_service import get_cluster_service
 from ..dependencies import get_api_client
+
+_CLUSTER_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,63}$')
 
 
 router = APIRouter(prefix="/api/cluster", tags=["cluster"])
@@ -65,7 +69,13 @@ async def add_cluster(payload: ClusterAdd):
 
 @router.get("/bootstrap-script", response_class=PlainTextResponse)
 async def bootstrap_script(request: Request, name: str = Query(..., description="Name to give this cluster in ClusterVision")):
-    base_url = str(request.base_url).rstrip("/")
+    if not _CLUSTER_NAME_RE.match(name):
+        raise HTTPException(
+            status_code=422,
+            detail="Cluster name must be 1–63 alphanumeric characters, hyphens or underscores."
+        )
+    settings = get_settings()
+    base_url = settings.public_url.rstrip("/") if settings.public_url else str(request.base_url).rstrip("/")
     script = f"""#!/bin/sh
 # ClusterVision — bootstrap agent on a remote cluster
 # Run this script with a kubeconfig targeting the cluster you want to add.

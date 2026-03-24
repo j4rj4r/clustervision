@@ -18,6 +18,9 @@ backend:
     # corsOrigins: restrict to your frontend host, e.g. https://clustervision.example.com
     # Leave empty to deny all cross-origin requests (nginx Ingress handles routing)
     corsOrigins: []
+    # publicUrl: canonical URL used in bootstrap scripts (prevents Host header injection)
+    # e.g. https://clustervision.example.com — auto-detected from request if empty
+    publicUrl: ""
 
   resources:
     requests:
