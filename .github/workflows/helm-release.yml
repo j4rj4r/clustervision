@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - "v*.*.*"
-    paths:
-      - "helm/**"
-      - ".github/workflows/helm-release.yml"
   # Allow manual trigger (e.g. to re-publish after a hotfix)
   workflow_dispatch:
     inputs:
