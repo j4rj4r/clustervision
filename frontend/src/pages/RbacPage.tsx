@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, RefreshCw } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Select from '../components/ui/Select'
+import Modal from '../components/ui/Modal'
 import RoleList from '../components/rbac/RoleList'
 import RoleEditorModal from '../components/rbac/RoleEditorModal'
 import {
@@ -16,7 +17,7 @@ export default function RbacPage() {
   const qc = useQueryClient()
   const [namespace, setNamespace] = useState('default')
   const [showSystem, setShowSystem] = useState(false)
-  const [showClusterRoles, setShowClusterRoles] = useState(false)
+  const [showClusterRoles, setShowClusterRoles] = useState(true)
 
   const [modal, setModal] = useState<{
     open: boolean
@@ -24,8 +25,10 @@ export default function RbacPage() {
     role?: RoleRead
   }>({ open: false, isCluster: true })
 
-  const { data: clusterRoles = [], isLoading: loadingCR } = useClusterRoles(showSystem)
-  const { data: roles = [], isLoading: loadingR } = useRoles(namespace)
+  const [deleteTarget, setDeleteTarget] = useState<{ role: RoleRead; isCluster: boolean } | null>(null)
+
+  const { data: clusterRoles = [], isLoading: loadingCR, isError: errorCR, refetch: refetchCR } = useClusterRoles(showSystem)
+  const { data: roles = [], isLoading: loadingR, isError: errorR, refetch: refetchR } = useRoles(namespace)
   const { data: namespaces = [] } = useNamespaces()
 
   const closeModal = () => setModal({ open: false, isCluster: true })
@@ -52,12 +55,22 @@ export default function RbacPage() {
   const isSaving =
     createCR.isPending || updateCR.isPending || createR.isPending || updateR.isPending
 
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    if (deleteTarget.isCluster) {
+      deleteCR.mutate(deleteTarget.role.name)
+    } else {
+      deleteR.mutate({ namespace: deleteTarget.role.namespace ?? namespace, name: deleteTarget.role.name })
+    }
+    setDeleteTarget(null)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-100">RBAC</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Cluster roles and namespace roles</p>
+          <p className="text-sm text-slate-500 mt-0.5">ClusterRoles and namespace Roles</p>
         </div>
         <div className="flex gap-2 items-center">
           <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
@@ -91,17 +104,22 @@ export default function RbacPage() {
         <div className="space-y-2">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
-              <Plus size={13} /> Créer ClusterRole
+              <Plus size={13} /> Create ClusterRole
             </Button>
           </div>
           {loadingCR ? (
-            <div className="text-sm text-slate-500 text-center py-8">Loading roles...</div>
+            <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
+          ) : errorCR ? (
+            <div className="text-center py-8 space-y-2">
+              <p className="text-sm text-red-400">Failed to load ClusterRoles.</p>
+              <button onClick={() => refetchCR()} className="text-xs text-brand-400 hover:underline">Retry</button>
+            </div>
           ) : (
             <RoleList
               roles={clusterRoles}
               title="ClusterRoles"
               onEdit={(role) => setModal({ open: true, isCluster: true, role })}
-              onDelete={(role) => deleteCR.mutate(role.name)}
+              onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
             />
           )}
         </div>
@@ -116,17 +134,22 @@ export default function RbacPage() {
             options={namespaces.map((n) => ({ value: n, label: n }))}
           />
           <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
-            <Plus size={13} /> Créer Role
+            <Plus size={13} /> Create Role
           </Button>
         </div>
         {loadingR ? (
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
+        ) : errorR ? (
+          <div className="text-center py-8 space-y-2">
+            <p className="text-sm text-red-400">Failed to load Roles.</p>
+            <button onClick={() => refetchR()} className="text-xs text-brand-400 hover:underline">Retry</button>
+          </div>
         ) : (
           <RoleList
             roles={roles}
-            title={`Roles in ${namespace}`}
+            title={`Roles — ${namespace}`}
             onEdit={(role) => setModal({ open: true, isCluster: false, role })}
-            onDelete={(role) => deleteR.mutate({ namespace: role.namespace ?? namespace, name: role.name })}
+            onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
           />
         )}
       </div>
@@ -141,6 +164,32 @@ export default function RbacPage() {
           loading={isSaving}
         />
       )}
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Confirm deletion"
+        size="sm"
+      >
+        <p className="text-sm text-slate-300 mb-6">
+          Delete {deleteTarget?.isCluster ? 'ClusterRole' : 'Role'}{' '}
+          <span className="font-mono text-white">{deleteTarget?.role.name}</span>?
+          This action is irreversible and may affect all bound users.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => setDeleteTarget(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            loading={deleteCR.isPending || deleteR.isPending}
+            onClick={confirmDelete}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

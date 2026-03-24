@@ -1,4 +1,4 @@
-import { Activity, ChevronDown, Server } from 'lucide-react'
+import { Activity, Server } from 'lucide-react'
 import { useClusterInfo, useClusters } from '../../hooks/useCluster'
 import { useClusterStore } from '../../store/clusterStore'
 
@@ -24,25 +24,26 @@ export default function TopBar() {
 
       <div className="flex-1" />
 
-      {clusters.length > 1 && (
-        <div className="relative">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-600 transition-colors group">
-            <Server size={13} className="text-brand-400" />
-            <select
-              value={activeCluster}
-              onChange={(e) => setActiveCluster(e.target.value)}
-              className="bg-transparent text-xs text-slate-200 font-mono cursor-pointer focus:outline-none appearance-none pr-4"
-            >
-              {clusters.map((c) => (
-                <option key={c.name} value={c.name} className="bg-slate-800">
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="text-slate-500 pointer-events-none absolute right-2" />
-          </div>
-        </div>
-      )}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors">
+        <Server size={13} className="text-brand-400 shrink-0" />
+        {clusters.length > 1 ? (
+          <select
+            aria-label="Active cluster"
+            value={activeCluster}
+            onChange={(e) => setActiveCluster(e.target.value)}
+            className="bg-transparent text-xs text-slate-200 font-mono cursor-pointer focus:outline-none"
+            title="Switch the target cluster for all operations"
+          >
+            {clusters.map((c) => (
+              <option key={c.name} value={c.name} className="bg-slate-800">
+                {c.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-xs text-slate-200 font-mono">{activeCluster}</span>
+        )}
+      </div>
     </header>
   )
 }

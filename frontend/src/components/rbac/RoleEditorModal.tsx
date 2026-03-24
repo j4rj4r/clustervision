@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import type { PolicyRule, RoleRead } from '../../types/rbac'
 
@@ -36,7 +37,7 @@ function RuleRow({
     <div className="border border-slate-700 rounded-lg p-3 space-y-2 bg-slate-900">
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="block text-xs text-slate-500 mb-1">API Groups <span className="text-slate-600">(virgule, vide = core)</span></label>
+          <label className="block text-xs text-slate-500 mb-1">API Groups <span className="text-slate-600">(comma, empty = core)</span></label>
           <input
             className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-brand-500"
             value={rule.api_groups.join(', ')}
@@ -45,7 +46,7 @@ function RuleRow({
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs text-slate-500 mb-1">Resources <span className="text-slate-600">(virgule)</span></label>
+          <label className="block text-xs text-slate-500 mb-1">Resources <span className="text-slate-600">(comma-separated)</span></label>
           <input
             className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-brand-500"
             value={rule.resources.join(', ')}
@@ -53,7 +54,7 @@ function RuleRow({
             placeholder='pods, deployments'
           />
         </div>
-        <button onClick={onRemove} className="self-end text-slate-600 hover:text-red-400 transition-colors pb-1">
+        <button aria-label="Remove rule" onClick={onRemove} className="self-end text-slate-600 hover:text-red-400 transition-colors pb-1">
           <Trash2 size={14} />
         </button>
       </div>
@@ -94,63 +95,59 @@ export default function RoleEditorModal({ role, namespace: defaultNs, isCluster,
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-          <h2 className="text-sm font-semibold text-slate-100">
-            {isEdit ? 'Modifier' : 'Créer'} {isCluster ? 'ClusterRole' : 'Role'}
-          </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="block text-xs text-slate-400 mb-1">Nom</label>
+    <Modal
+      open
+      onClose={onClose}
+      title={`${isEdit ? 'Edit' : 'Create'} ${isCluster ? 'ClusterRole' : 'Role'}`}
+      size="lg"
+    >
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs text-slate-400 mb-1">Name</label>
+            <input
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isEdit}
+              placeholder='my-role'
+            />
+          </div>
+          {!isCluster && (
+            <div className="w-40">
+              <label className="block text-xs text-slate-400 mb-1">Namespace</label>
               <input
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={namespace}
+                onChange={(e) => setNamespace(e.target.value)}
                 disabled={isEdit}
-                placeholder='mon-role'
               />
             </div>
-            {!isCluster && (
-              <div className="w-40">
-                <label className="block text-xs text-slate-400 mb-1">Namespace</label>
-                <input
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
-                  value={namespace}
-                  onChange={(e) => setNamespace(e.target.value)}
-                  disabled={isEdit}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-slate-400">Règles</label>
-              <button
-                onClick={() => setRules((prev) => [...prev, emptyRule()])}
-                className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
-              >
-                <Plus size={12} /> Ajouter une règle
-              </button>
-            </div>
-            {rules.map((rule, i) => (
-              <RuleRow key={i} rule={rule} onChange={(r) => updateRule(i, r)} onRemove={() => removeRule(i)} />
-            ))}
-          </div>
+          )}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-800">
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-slate-400">Rules</label>
+            <button
+              onClick={() => setRules((prev) => [...prev, emptyRule()])}
+              className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
+            >
+              <Plus size={12} /> Add rule
+            </button>
+          </div>
+          {rules.map((rule, i) => (
+            <RuleRow key={i} rule={rule} onChange={(r) => updateRule(i, r)} onRemove={() => removeRule(i)} />
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button size="sm" onClick={handleSave} loading={loading} disabled={!name.trim() || rules.length === 0}>
-            {isEdit ? 'Enregistrer' : 'Créer'}
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

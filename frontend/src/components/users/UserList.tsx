@@ -29,6 +29,8 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
         <div key={user.name}>
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-slate-800/50 transition-colors">
             <button
+              aria-label={expanded.has(user.name) ? 'Collapse' : 'Expand'}
+              aria-expanded={expanded.has(user.name)}
               onClick={() => setExpanded(prev => {
                 const next = new Set(prev)
                 next.has(user.name) ? next.delete(user.name) : next.add(user.name)
@@ -60,7 +62,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
               <Button size="sm" variant="ghost" onClick={() => onKubeconfig(user)}>
                 <FileCode2 size={13} /> Kubeconfig
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => onDelete(user)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20">
+              <Button size="sm" variant="ghost" aria-label="Delete user" onClick={() => onDelete(user)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20">
                 <Trash2 size={13} />
               </Button>
             </div>

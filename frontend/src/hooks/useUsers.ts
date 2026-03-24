@@ -45,7 +45,7 @@ export const useImportUser = (onSuccess?: () => void) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', cluster] })
       qc.invalidateQueries({ queryKey: ['unmanaged-sa', cluster] })
-      toast.success('Utilisateur importé')
+      toast.success('User imported')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),

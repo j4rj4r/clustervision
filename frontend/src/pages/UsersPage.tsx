@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { User } from '../types/user'
 
 export default function UsersPage() {
-  const { data, isLoading } = useUsers()
+  const { data, isLoading, isError, refetch } = useUsers()
   const qc = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -30,10 +30,10 @@ export default function UsersPage() {
             <RefreshCw size={13} />
           </Button>
           <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <FileInput size={14} /> Importer
+            <FileInput size={14} /> Import
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={14} /> Créer
+            <Plus size={14} /> Create
           </Button>
         </div>
       </div>
@@ -41,6 +41,11 @@ export default function UsersPage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="py-16 text-center text-sm text-slate-500">Loading users...</div>
+        ) : isError ? (
+          <div className="py-16 text-center space-y-3">
+            <p className="text-sm text-red-400">Failed to load users.</p>
+            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:underline">Retry</button>
+          </div>
         ) : (
           <UserList
             users={data?.users ?? []}

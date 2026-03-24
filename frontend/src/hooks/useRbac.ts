@@ -45,7 +45,7 @@ export const useCreateClusterRole = (onSuccess?: () => void) => {
       rbacApi.createClusterRole(name, rules),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cluster-roles', cluster] })
-      toast.success('ClusterRole créé')
+      toast.success('ClusterRole created')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -60,7 +60,7 @@ export const useUpdateClusterRole = (onSuccess?: () => void) => {
       rbacApi.updateClusterRole(name, rules),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cluster-roles', cluster] })
-      toast.success('ClusterRole mis à jour')
+      toast.success('ClusterRole updated')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -74,7 +74,7 @@ export const useDeleteClusterRole = () => {
     mutationFn: (name: string) => rbacApi.deleteClusterRole(name),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cluster-roles', cluster] })
-      toast.success('ClusterRole supprimé')
+      toast.success('ClusterRole deleted')
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -88,7 +88,7 @@ export const useCreateRole = (onSuccess?: () => void) => {
       rbacApi.createRole(namespace, name, rules),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
-      toast.success('Role créé')
+      toast.success('Role created')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -103,7 +103,7 @@ export const useUpdateRole = (onSuccess?: () => void) => {
       rbacApi.updateRole(namespace, name, rules),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
-      toast.success('Role mis à jour')
+      toast.success('Role updated')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -118,7 +118,7 @@ export const useDeleteRole = () => {
       rbacApi.deleteRole(namespace, name),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
-      toast.success('Role supprimé')
+      toast.success('Role deleted')
     },
     onError: (err: Error) => toast.error(err.message),
   })
