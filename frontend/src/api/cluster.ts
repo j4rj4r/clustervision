@@ -31,4 +31,7 @@ export const clusterApi = {
 
   remove: (name: string): Promise<void> =>
     client.delete(`/cluster/clusters/${name}`).then(() => undefined),
+
+  bootstrapScript: (name: string): Promise<string> =>
+    client.get(`/cluster/bootstrap-script`, { params: { name }, responseType: 'text' }).then((r) => r.data),
 }
