@@ -160,9 +160,9 @@ CA=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o jsonpath='{
 API_URL=$(kubectl config view --minify -o jsonpath='{{.clusters[0].cluster.server}}')
 
 echo "→ Registering cluster '$CLUSTER_NAME' in ClusterVision..."
-curl -sf -X POST "$CLUSTERVISION_URL/api/cluster/clusters" \\
-  -H "Content-Type: application/json" \\
-  -d "{\\"name\\":\\"$CLUSTER_NAME\\",\\"api_url\\":\\"$API_URL\\",\\"ca_data\\":\\"$CA\\",\\"token\\":\\"$TOKEN\\"}"
+curl -sf -X POST "$CLUSTERVISION_URL/api/cluster/clusters" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"'"$CLUSTER_NAME"'","api_url":"'"$API_URL"'","ca_data":"'"$CA"'","token":"'"$TOKEN"'"}'
 
 echo ""
 echo "✓ Cluster '$CLUSTER_NAME' successfully registered in ClusterVision."
