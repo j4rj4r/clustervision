@@ -36,41 +36,45 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
                 aria-label={expanded.has(role.name) ? 'Collapse' : 'Expand'}
                 aria-expanded={expanded.has(role.name)}
                 onClick={() => toggle(role.name)}
-                className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 transition-colors shrink-0"
+                className="flex items-center gap-3 flex-1 min-w-0 text-left group"
               >
-                {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <span className="p-1 rounded text-slate-500 group-hover:text-slate-300 group-hover:bg-slate-700/50 transition-colors shrink-0">
+                  {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </span>
+                <Shield size={14} className="text-brand-400 shrink-0" />
+                <span className="font-mono text-sm text-slate-200 flex-1 truncate">{role.name}</span>
+                {role.is_system && <Badge>system</Badge>}
+                <span className="text-xs text-slate-500 shrink-0">{role.rules?.length ?? 0} rules</span>
               </button>
-              <Shield size={14} className="text-brand-400 shrink-0" />
-              <span className="font-mono text-sm text-slate-200 flex-1">{role.name}</span>
-              {role.is_system && <Badge>system</Badge>}
-              <span className="text-xs text-slate-500">{role.rules?.length ?? 0} rules</span>
-              {onCopy && (
-                <button
-                  aria-label="Copy role"
-                  onClick={() => onCopy(role)}
-                  className="text-slate-600 hover:text-slate-300 transition-colors"
-                >
-                  <Copy size={13} />
-                </button>
-              )}
-              {!role.is_system && onEdit && (
-                <button
-                  aria-label="Edit role"
-                  onClick={() => onEdit(role)}
-                  className="text-slate-600 hover:text-slate-300 transition-colors"
-                >
-                  <Pencil size={13} />
-                </button>
-              )}
-              {!role.is_system && onDelete && (
-                <button
-                  aria-label="Delete role"
-                  onClick={() => onDelete(role)}
-                  className="text-slate-600 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 size={13} />
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {onCopy && (
+                  <button
+                    aria-label="Copy role"
+                    onClick={() => onCopy(role)}
+                    className="p-1 text-slate-600 hover:text-slate-300 transition-colors"
+                  >
+                    <Copy size={13} />
+                  </button>
+                )}
+                {!role.is_system && onEdit && (
+                  <button
+                    aria-label="Edit role"
+                    onClick={() => onEdit(role)}
+                    className="p-1 text-slate-600 hover:text-slate-300 transition-colors"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
+                {!role.is_system && onDelete && (
+                  <button
+                    aria-label="Delete role"
+                    onClick={() => onDelete(role)}
+                    className="p-1 text-slate-600 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {expanded.has(role.name) && (
