@@ -20,17 +20,36 @@ def get_local_api_client() -> client.ApiClient:
 get_api_client = get_local_api_client
 
 
+# Sub-clients are cached per ApiClient instance (id-based key).
+# For the local client this means a single CoreV1Api/RbacV1Api/etc. object
+# is reused across all requests instead of being reconstructed each time.
+_sub_client_cache: dict[int, dict] = {}
+
+
+def _get_sub(api_client: client.ApiClient, key: str, factory):
+    cid = id(api_client)
+    if cid not in _sub_client_cache:
+        _sub_client_cache[cid] = {}
+    if key not in _sub_client_cache[cid]:
+        _sub_client_cache[cid][key] = factory(api_client)
+    return _sub_client_cache[cid][key]
+
+
 def get_core_v1(api_client: client.ApiClient = None) -> client.CoreV1Api:
-    return client.CoreV1Api(api_client or get_api_client())
+    c = api_client or get_api_client()
+    return _get_sub(c, "core_v1", client.CoreV1Api)
 
 
 def get_rbac_v1(api_client: client.ApiClient = None) -> client.RbacAuthorizationV1Api:
-    return client.RbacAuthorizationV1Api(api_client or get_api_client())
+    c = api_client or get_api_client()
+    return _get_sub(c, "rbac_v1", client.RbacAuthorizationV1Api)
 
 
 def get_certs_v1(api_client: client.ApiClient = None) -> client.CertificatesV1Api:
-    return client.CertificatesV1Api(api_client or get_api_client())
+    c = api_client or get_api_client()
+    return _get_sub(c, "certs_v1", client.CertificatesV1Api)
 
 
 def get_version_api(api_client: client.ApiClient = None) -> client.VersionApi:
-    return client.VersionApi(api_client or get_api_client())
+    c = api_client or get_api_client()
+    return _get_sub(c, "version", client.VersionApi)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download } from 'lucide-react'
 import Button from '../ui/Button'
 import Select from '../ui/Select'
@@ -22,6 +22,13 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
   const [privateKey, setPrivateKey] = useState('')
 
   const selectedUser = users.find((u) => u.name === selectedUsername)
+
+  // Auto-update namespace when the selected user changes
+  useEffect(() => {
+    if (selectedUser?.namespace) {
+      setNamespace(selectedUser.namespace)
+    }
+  }, [selectedUser?.name])
 
   const handleGenerate = () => {
     if (!selectedUser) return

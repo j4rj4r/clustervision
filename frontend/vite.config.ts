@@ -6,6 +6,17 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION ?? 'dev'),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query', 'zustand'],
+          'vendor-ui': ['lucide-react', 'react-hot-toast'],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {
