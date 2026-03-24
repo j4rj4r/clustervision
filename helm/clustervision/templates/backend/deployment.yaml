@@ -44,6 +44,8 @@ spec:
               value: {{ .Values.backend.env.registryNamespace | quote }}
             - name: CORS_ORIGINS
               value: {{ .Values.backend.env.corsOrigins | toJson | quote }}
+            - name: PUBLIC_URL
+              value: {{ .Values.backend.env.publicUrl | quote }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
           livenessProbe:
