@@ -100,58 +100,60 @@ export default function RbacPage() {
         </div>
       </div>
 
-      {showClusterRoles && (
-        <div className="space-y-2">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
-              <Plus size={13} /> Create ClusterRole
+      <div className={showClusterRoles ? 'grid grid-cols-2 gap-6 items-start' : undefined}>
+        {showClusterRoles && (
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
+                <Plus size={13} /> Create ClusterRole
+              </Button>
+            </div>
+            {loadingCR ? (
+              <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
+            ) : errorCR ? (
+              <div className="text-center py-8 space-y-2">
+                <p className="text-sm text-red-400">Failed to load ClusterRoles.</p>
+                <button onClick={() => refetchCR()} className="text-xs text-brand-400 hover:underline">Retry</button>
+              </div>
+            ) : (
+              <RoleList
+                roles={clusterRoles}
+                title="ClusterRoles"
+                onEdit={(role) => setModal({ open: true, isCluster: true, role })}
+                onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
+              />
+            )}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex items-end gap-3 justify-between">
+            <Select
+              label="Namespace"
+              value={namespace}
+              onChange={(e) => setNamespace(e.target.value)}
+              options={namespaces.map((n) => ({ value: n, label: n }))}
+            />
+            <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
+              <Plus size={13} /> Create Role
             </Button>
           </div>
-          {loadingCR ? (
+          {loadingR ? (
             <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
-          ) : errorCR ? (
+          ) : errorR ? (
             <div className="text-center py-8 space-y-2">
-              <p className="text-sm text-red-400">Failed to load ClusterRoles.</p>
-              <button onClick={() => refetchCR()} className="text-xs text-brand-400 hover:underline">Retry</button>
+              <p className="text-sm text-red-400">Failed to load Roles.</p>
+              <button onClick={() => refetchR()} className="text-xs text-brand-400 hover:underline">Retry</button>
             </div>
           ) : (
             <RoleList
-              roles={clusterRoles}
-              title="ClusterRoles"
-              onEdit={(role) => setModal({ open: true, isCluster: true, role })}
-              onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
+              roles={roles}
+              title={`Roles — ${namespace}`}
+              onEdit={(role) => setModal({ open: true, isCluster: false, role })}
+              onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
             />
           )}
         </div>
-      )}
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-3 justify-between">
-          <Select
-            label="Namespace"
-            value={namespace}
-            onChange={(e) => setNamespace(e.target.value)}
-            options={namespaces.map((n) => ({ value: n, label: n }))}
-          />
-          <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
-            <Plus size={13} /> Create Role
-          </Button>
-        </div>
-        {loadingR ? (
-          <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
-        ) : errorR ? (
-          <div className="text-center py-8 space-y-2">
-            <p className="text-sm text-red-400">Failed to load Roles.</p>
-            <button onClick={() => refetchR()} className="text-xs text-brand-400 hover:underline">Retry</button>
-          </div>
-        ) : (
-          <RoleList
-            roles={roles}
-            title={`Roles — ${namespace}`}
-            onEdit={(role) => setModal({ open: true, isCluster: false, role })}
-            onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
-          />
-        )}
       </div>
 
       {modal.open && (
