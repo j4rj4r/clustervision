@@ -73,11 +73,11 @@ export default function RbacPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">RBAC</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage roles and cluster-wide roles</p>
+          <h1 className="text-xl font-semibold text-surface-100">RBAC</h1>
+          <p className="text-sm text-surface-400 mt-0.5">Manage roles and cluster-wide roles</p>
         </div>
         <div className="flex gap-2 items-center">
-          <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs text-surface-300 cursor-pointer">
             <input
               type="checkbox"
               checked={showSystem}
@@ -96,27 +96,20 @@ export default function RbacPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg">
-        <button
-          onClick={() => setTab('roles')}
-          className={`flex-1 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-            tab === 'roles'
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Roles
-        </button>
-        <button
-          onClick={() => setTab('clusterroles')}
-          className={`flex-1 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-            tab === 'clusterroles'
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          ClusterRoles
-        </button>
+      <div className="flex border-b border-surface-600">
+        {(['roles', 'clusterroles'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              tab === t
+                ? 'border-brand-500 text-brand-400'
+                : 'border-transparent text-surface-400 hover:text-surface-200 hover:border-surface-500'
+            }`}
+          >
+            {t === 'roles' ? 'Roles' : 'ClusterRoles'}
+          </button>
+        ))}
       </div>
 
       {/* Roles tab */}
@@ -134,7 +127,7 @@ export default function RbacPage() {
             </Button>
           </div>
           {loadingR ? (
-            <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
+            <div className="text-sm text-surface-400 text-center py-8">Loading...</div>
           ) : errorR ? (
             <div className="text-center py-8 space-y-2">
               <p className="text-sm text-red-400">Failed to load Roles.</p>
@@ -161,7 +154,7 @@ export default function RbacPage() {
             </Button>
           </div>
           {loadingCR ? (
-            <div className="text-sm text-slate-500 text-center py-8">Loading...</div>
+            <div className="text-sm text-surface-400 text-center py-8">Loading...</div>
           ) : errorCR ? (
             <div className="text-center py-8 space-y-2">
               <p className="text-sm text-red-400">Failed to load ClusterRoles.</p>
@@ -197,7 +190,7 @@ export default function RbacPage() {
         title="Confirm deletion"
         size="sm"
       >
-        <p className="text-sm text-slate-300 mb-6">
+        <p className="text-sm text-surface-300 mb-6">
           Delete {deleteTarget?.isCluster ? 'ClusterRole' : 'Role'}{' '}
           <span className="font-mono text-white">{deleteTarget?.role.name}</span>?
           This action is irreversible and may affect all bound users.

@@ -34,21 +34,21 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
     }, { onSuccess: () => { setShowAssign(false); setSelectedRole('') } })
   }
 
-  if (isLoading) return <p className="text-xs text-slate-500 py-3">Loading permissions...</p>
+  if (isLoading) return <p className="text-xs text-surface-400 py-3">Loading permissions...</p>
 
   const allBindings = [...(perms?.cluster_bindings ?? []), ...(perms?.namespace_bindings ?? [])]
 
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Permissions</p>
+        <p className="text-xs font-medium text-surface-300 uppercase tracking-wider">Permissions</p>
         <Button size="sm" variant="ghost" onClick={() => setShowAssign(!showAssign)}>
           <Plus size={12} /> Assign role
         </Button>
       </div>
 
       {showAssign && (
-        <div className="flex items-end gap-2 p-3 bg-slate-800 rounded-lg">
+        <div className="flex items-end gap-2 p-3 bg-surface-800 rounded-lg">
           <Select
             label="Scope"
             value={scope}
@@ -76,16 +76,16 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
       )}
 
       {allBindings.length === 0 ? (
-        <p className="text-xs text-slate-600 py-1">No roles assigned</p>
+        <p className="text-xs text-surface-500 py-1">No roles assigned</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {allBindings.map((b) => (
-            <div key={b.name} className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-md px-2 py-1">
-              <span className="text-xs font-mono text-slate-300">{b.role_ref}</span>
+            <div key={b.name} className="flex items-center gap-1.5 bg-surface-800 border border-surface-600 rounded-md px-2 py-1">
+              <span className="text-xs font-mono text-surface-200">{b.role_ref}</span>
               {b.namespace && <Badge variant="default">{b.namespace}</Badge>}
               <button
                 onClick={() => revokeRole.mutate({ roleName: b.role_ref, namespace: b.namespace ?? undefined })}
-                className="text-slate-600 hover:text-red-400 transition-colors ml-0.5"
+                className="text-surface-500 hover:text-red-400 transition-colors ml-0.5"
               >
                 <X size={11} />
               </button>

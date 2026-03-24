@@ -8,15 +8,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<string, string> = {
-  primary: 'bg-brand-600 hover:bg-brand-700 text-white',
-  secondary: 'bg-slate-700 hover:bg-slate-600 text-slate-100',
-  danger: 'bg-red-600 hover:bg-red-700 text-white',
-  ghost: 'hover:bg-slate-800 text-slate-400 hover:text-slate-100',
+  primary:   'bg-brand-600 hover:bg-brand-700 text-white border border-brand-600 hover:border-brand-700',
+  secondary: 'bg-transparent hover:bg-surface-700 text-surface-200 border border-surface-500 hover:border-surface-400',
+  danger:    'bg-red-600 hover:bg-red-700 text-white border border-red-600 hover:border-red-700',
+  ghost:     'bg-transparent hover:bg-surface-700 text-surface-300 hover:text-surface-100 border border-transparent',
 }
 
 const sizes: Record<string, string> = {
-  sm: 'px-3 py-1.5 text-xs',
-  md: 'px-4 py-2 text-sm',
+  sm: 'px-3 py-1.5 text-xs gap-1.5',
+  md: 'px-4 py-2 text-sm gap-2',
 }
 
 export default function Button({
@@ -32,7 +32,7 @@ export default function Button({
     <button
       {...props}
       disabled={disabled || loading}
-      className={`inline-flex items-center gap-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {loading && <Loader2 size={14} className="animate-spin" />}
       {children}

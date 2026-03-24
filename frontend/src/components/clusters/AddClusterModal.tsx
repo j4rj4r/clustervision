@@ -56,13 +56,13 @@ export default function AddClusterModal({ onClose }: Props) {
   return (
     <Modal open onClose={onClose} title="Add cluster">
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg mb-4">
+      <div className="flex gap-1 p-1 bg-surface-800/60 rounded-lg mb-4">
         <button
           onClick={() => setTab('command')}
           className={`flex-1 flex items-center justify-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
             tab === 'command'
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-surface-700 text-surface-100'
+              : 'text-surface-300 hover:text-surface-100'
           }`}
         >
           <Terminal size={13} /> Via command
@@ -71,8 +71,8 @@ export default function AddClusterModal({ onClose }: Props) {
           onClick={() => setTab('manual')}
           className={`flex-1 flex items-center justify-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
             tab === 'manual'
-              ? 'bg-slate-700 text-slate-100'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-surface-700 text-surface-100'
+              : 'text-surface-300 hover:text-surface-100'
           }`}
         >
           <FormInput size={13} /> Manual
@@ -81,7 +81,7 @@ export default function AddClusterModal({ onClose }: Props) {
 
       {tab === 'command' && (
         <div className="space-y-3">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-surface-300">
             Run the generated script on the remote cluster. It creates a ServiceAccount with
             the required permissions and registers the cluster automatically.
           </p>
@@ -105,12 +105,12 @@ export default function AddClusterModal({ onClose }: Props) {
 
           {script && (
             <div className="relative">
-              <pre className="bg-slate-950 border border-slate-700 rounded-md p-3 text-xs font-mono text-slate-300 overflow-auto max-h-64 whitespace-pre">
+              <pre className="bg-surface-950 border border-surface-600 rounded-md p-3 text-xs font-mono text-surface-200 overflow-auto max-h-64 whitespace-pre">
                 {script}
               </pre>
               <button
                 onClick={handleCopy}
-                className="absolute top-2 right-2 p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                className="absolute top-2 right-2 p-1.5 rounded bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-surface-100 transition-colors"
                 title="Copy to clipboard"
               >
                 {copied ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
@@ -119,7 +119,7 @@ export default function AddClusterModal({ onClose }: Props) {
           )}
 
           {script && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-surface-400">
               After running the script, the cluster will appear automatically in the Clusters page.
             </p>
           )}
@@ -147,25 +147,25 @@ export default function AddClusterModal({ onClose }: Props) {
             required
           />
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-400">
-              CA Certificate <span className="text-slate-600">(base64)</span>
+            <label className="block text-xs font-medium text-surface-300">
+              CA Certificate <span className="text-surface-500">(base64)</span>
             </label>
             <textarea
-              className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              className="w-full bg-surface-800 border border-surface-600 rounded-md px-3 py-2 text-xs font-mono text-surface-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               rows={3}
               value={caData}
               onChange={(e) => setCaData(e.target.value)}
               placeholder="LS0tLS1CRUdJTi..."
               required
             />
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-surface-500">
               kubectl config view --raw -o jsonpath=&#39;&#123;.clusters[0].cluster.certificate-authority-data&#125;&#39;
             </p>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-400">ServiceAccount Token</label>
+            <label className="block text-xs font-medium text-surface-300">ServiceAccount Token</label>
             <textarea
-              className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              className="w-full bg-surface-800 border border-surface-600 rounded-md px-3 py-2 text-xs font-mono text-surface-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               rows={3}
               value={token}
               onChange={(e) => setToken(e.target.value)}

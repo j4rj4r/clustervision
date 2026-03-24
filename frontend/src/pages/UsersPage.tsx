@@ -20,8 +20,8 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Users</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-surface-100">Users</h1>
+          <p className="text-sm text-surface-400 mt-0.5">
             {data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : 'Loading...'}
           </p>
         </div>
@@ -38,9 +38,9 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500">Loading users...</div>
+          <div className="py-16 text-center text-sm text-surface-400">Loading users...</div>
         ) : isError ? (
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-red-400">Failed to load users.</p>
