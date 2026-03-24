@@ -14,5 +14,5 @@ spec:
     app.kubernetes.io/component: frontend
   ports:
     - port: {{ .Values.frontend.service.port }}
-      targetPort: 80
+      targetPort: 8080
       name: http
