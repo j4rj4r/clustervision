@@ -54,6 +54,7 @@ export default function ClustersPage() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    aria-label="Supprimer le cluster"
                     onClick={(e) => { e.stopPropagation(); remove.mutate(c.name) }}
                     className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                   >

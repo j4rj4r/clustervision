@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function KubeconfigPanel({ preselectedName, preselectedNamespace }: Props) {
-  const { data: usersData } = useUsers()
+  const { data: usersData, isError: usersError } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
   const generate = useGenerateKubeconfig()
 
@@ -32,6 +32,12 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
       private_key_pem: selectedUser.user_type === 'certificate' ? privateKey : undefined,
     })
   }
+
+  if (usersError) return (
+    <div className="text-center py-8 space-y-2">
+      <p className="text-sm text-red-400">Impossible de charger les utilisateurs.</p>
+    </div>
+  )
 
   return (
     <div className="space-y-4 max-w-lg">

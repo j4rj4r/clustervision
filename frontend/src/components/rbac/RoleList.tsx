@@ -13,7 +13,9 @@ interface Props {
 export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  if (roles.length === 0) return null
+  if (roles.length === 0) return (
+    <div className="text-center py-8 text-slate-600 text-sm">{title} — aucun rôle</div>
+  )
 
   const toggle = (name: string) =>
     setExpanded((prev) => {
@@ -29,7 +31,12 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
         {roles.map((role) => (
           <div key={role.name}>
             <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-800/50 transition-colors">
-              <button onClick={() => toggle(role.name)} className="text-slate-500 hover:text-slate-300">
+              <button
+                aria-label={expanded.has(role.name) ? 'Réduire' : 'Développer'}
+                aria-expanded={expanded.has(role.name)}
+                onClick={() => toggle(role.name)}
+                className="text-slate-500 hover:text-slate-300"
+              >
                 {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
               <Shield size={14} className="text-brand-400 shrink-0" />
@@ -38,6 +45,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
               <span className="text-xs text-slate-500">{role.rules?.length ?? 0} rules</span>
               {!role.is_system && onEdit && (
                 <button
+                  aria-label="Modifier le rôle"
                   onClick={() => onEdit(role)}
                   className="text-slate-600 hover:text-slate-300 transition-colors"
                 >
@@ -46,6 +54,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
               )}
               {!role.is_system && onDelete && (
                 <button
+                  aria-label="Supprimer le rôle"
                   onClick={() => onDelete(role)}
                   className="text-slate-600 hover:text-red-400 transition-colors"
                 >

@@ -18,7 +18,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
     return (
       <div className="text-center py-16 text-slate-500">
         <Shield size={36} className="mx-auto mb-3 opacity-30" />
-        <p className="text-sm">No users yet. Create one to get started.</p>
+        <p className="text-sm">Aucun utilisateur. Créez-en un pour commencer.</p>
       </div>
     )
   }
@@ -29,6 +29,8 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
         <div key={user.name}>
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-slate-800/50 transition-colors">
             <button
+              aria-label={expanded.has(user.name) ? 'Réduire' : 'Développer'}
+              aria-expanded={expanded.has(user.name)}
               onClick={() => setExpanded(prev => {
                 const next = new Set(prev)
                 next.has(user.name) ? next.delete(user.name) : next.add(user.name)
@@ -60,7 +62,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
               <Button size="sm" variant="ghost" onClick={() => onKubeconfig(user)}>
                 <FileCode2 size={13} /> Kubeconfig
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => onDelete(user)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20">
+              <Button size="sm" variant="ghost" aria-label="Supprimer l'utilisateur" onClick={() => onDelete(user)} className="text-red-400 hover:text-red-300 hover:bg-red-900/20">
                 <Trash2 size={13} />
               </Button>
             </div>

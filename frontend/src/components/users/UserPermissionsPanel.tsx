@@ -34,7 +34,7 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
     }, { onSuccess: () => { setShowAssign(false); setSelectedRole('') } })
   }
 
-  if (isLoading) return <p className="text-xs text-slate-500 py-3">Loading permissions...</p>
+  if (isLoading) return <p className="text-xs text-slate-500 py-3">Chargement des permissions...</p>
 
   const allBindings = [...(perms?.cluster_bindings ?? []), ...(perms?.namespace_bindings ?? [])]
 

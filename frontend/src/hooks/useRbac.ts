@@ -132,7 +132,7 @@ export const useAssignRole = (username: string) => {
       rbacApi.assignRole(username, payload, userKind),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-permissions', cluster, username] })
-      toast.success('Role assigned')
+      toast.success('Rôle assigné')
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -146,7 +146,7 @@ export const useRevokeRole = (username: string) => {
       rbacApi.revokeRole(username, roleName, namespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-permissions', cluster, username] })
-      toast.success('Role revoked')
+      toast.success('Rôle révoqué')
     },
     onError: (err: Error) => toast.error(err.message),
   })

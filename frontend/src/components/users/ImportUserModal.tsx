@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
@@ -116,7 +116,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
             Annuler
           </Button>
           <Button type="submit" loading={importUser.isPending} disabled={!name} className="flex-1">
-            <Download size={14} /> Importer
+            <LogIn size={14} /> Importer
           </Button>
         </div>
       </form>

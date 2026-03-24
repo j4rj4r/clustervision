@@ -60,7 +60,7 @@ export const useDeleteUser = () => {
       usersApi.delete(username, userType, namespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', cluster] })
-      toast.success('User deleted')
+      toast.success('Utilisateur supprimé')
     },
     onError: (err: Error) => toast.error(err.message),
   })

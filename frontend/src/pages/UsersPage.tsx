@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { User } from '../types/user'
 
 export default function UsersPage() {
-  const { data, isLoading } = useUsers()
+  const { data, isLoading, isError, refetch } = useUsers()
   const qc = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -22,7 +22,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-xl font-semibold text-slate-100">Users</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : 'Loading...'}
+            {data ? `${data.total} utilisateur${data.total !== 1 ? 's' : ''}` : 'Chargement...'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -40,7 +40,12 @@ export default function UsersPage() {
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500">Loading users...</div>
+          <div className="py-16 text-center text-sm text-slate-500">Chargement...</div>
+        ) : isError ? (
+          <div className="py-16 text-center space-y-3">
+            <p className="text-sm text-red-400">Impossible de charger les utilisateurs.</p>
+            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:underline">Réessayer</button>
+          </div>
         ) : (
           <UserList
             users={data?.users ?? []}
