@@ -40,7 +40,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-5 py-3 border-t border-slate-800">
-        <p className="text-xs text-slate-500">v1.0.0</p>
+        <p className="text-xs text-slate-500">{__APP_VERSION__}</p>
       </div>
     </aside>
   )

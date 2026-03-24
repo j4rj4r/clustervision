@@ -6,11 +6,12 @@ import type { AssignRolePayload, PolicyRule } from '../types/rbac'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
-export const useClusterRoles = (includeSystem = false) => {
+export const useClusterRoles = (includeSystem = false, enabled = true) => {
   const cluster = useCluster()
   return useQuery({
     queryKey: ['cluster-roles', cluster, includeSystem],
     queryFn: () => rbacApi.listClusterRoles(includeSystem),
+    enabled,
   })
 }
 

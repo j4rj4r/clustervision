@@ -26,7 +26,7 @@ export default function RoleList({ roles, title, onEdit, onDelete }: Props) {
 
   return (
     <div>
-      <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{title}</h3>
+      {title && <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">{title}</h3>}
       <div className="bg-slate-900 border border-slate-800 rounded-lg divide-y divide-slate-800">
         {roles.map((role) => (
           <div key={role.name}>
