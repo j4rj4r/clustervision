@@ -41,16 +41,15 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
         <tbody className="divide-y divide-surface-700">
           {roles.map((role) => (
             <>
-              <tr key={role.name} className="hover:bg-surface-700/40 transition-colors">
+              <tr
+                key={role.name}
+                className="hover:bg-surface-700/40 transition-colors cursor-pointer"
+                onClick={() => toggle(role.name)}
+              >
                 <td className="px-4 py-3 w-10">
-                  <button
-                    aria-label={expanded.has(role.name) ? 'Collapse' : 'Expand'}
-                    aria-expanded={expanded.has(role.name)}
-                    onClick={() => toggle(role.name)}
-                    className="p-1 rounded text-surface-400 hover:text-surface-200 hover:bg-surface-600/50 transition-colors"
-                  >
+                  <span className="p-1 rounded text-surface-400">
                     {expanded.has(role.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  </button>
+                  </span>
                 </td>
                 <td className="px-4 py-3 font-mono text-surface-100">{role.name}</td>
                 <td className="px-4 py-3 text-surface-400 text-xs">{role.rules?.length ?? 0}</td>
@@ -60,7 +59,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
                     : <Badge variant="success" dot>custom</Badge>
                   }
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     {onCopy && (
                       <button

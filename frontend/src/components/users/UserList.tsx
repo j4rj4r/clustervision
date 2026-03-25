@@ -45,16 +45,15 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
       <tbody className="divide-y divide-surface-700">
         {users.map((user) => (
           <>
-            <tr key={user.name} className="hover:bg-surface-700/40 transition-colors">
+            <tr
+              key={user.name}
+              className="hover:bg-surface-700/40 transition-colors cursor-pointer"
+              onClick={() => toggle(user.name)}
+            >
               <td className="px-4 py-3 w-10">
-                <button
-                  aria-label={expanded.has(user.name) ? 'Collapse' : 'Expand'}
-                  aria-expanded={expanded.has(user.name)}
-                  onClick={() => toggle(user.name)}
-                  className="p-1 rounded text-surface-400 hover:text-surface-200 hover:bg-surface-600/50 transition-colors"
-                >
+                <span className="p-1 rounded text-surface-400">
                   {expanded.has(user.name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </button>
+                </span>
               </td>
               <td className="px-4 py-3 font-mono text-surface-100 font-medium">{user.name}</td>
               <td className="px-4 py-3">
@@ -71,7 +70,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
                   <span className="text-surface-500 ml-1">· exp. {new Date(user.cert_expiry).toLocaleDateString()}</span>
                 )}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-end gap-2">
                   <Button size="sm" variant="secondary" onClick={() => onKubeconfig(user)}>
                     <FileCode2 size={12} /> Kubeconfig
