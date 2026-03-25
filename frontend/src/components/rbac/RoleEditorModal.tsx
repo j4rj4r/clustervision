@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
+import Select from '../ui/Select'
 import type { PolicyRule, RoleRead } from '../../types/rbac'
 
 const ALL_VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete', 'deletecollection']
@@ -10,6 +11,7 @@ interface Props {
   role?: RoleRead
   copyFrom?: RoleRead
   namespace?: string
+  namespaces?: string[]
   isCluster: boolean
   onSave: (name: string, rules: PolicyRule[], namespace?: string) => void
   onClose: () => void
@@ -81,7 +83,7 @@ function RuleRow({
   )
 }
 
-export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, isCluster, onSave, onClose, loading }: Props) {
+export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, namespaces = [], isCluster, onSave, onClose, loading }: Props) {
   const isEdit = !!role
   const isCopy = !!copyFrom
   const [name, setName] = useState(role?.name ?? (isCopy ? `copy-of-${copyFrom!.name}` : ''))
@@ -119,12 +121,12 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
           </div>
           {!isCluster && (
             <div className="w-40">
-              <label className="block text-xs text-surface-300 mb-1">Namespace</label>
-              <input
-                className="w-full bg-surface-800 border border-surface-600 rounded-lg px-3 py-2 text-sm font-mono text-surface-100 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+              <Select
+                label="Namespace"
                 value={namespace}
                 onChange={(e) => setNamespace(e.target.value)}
                 disabled={isEdit && !isCopy}
+                options={namespaces.map((n) => ({ value: n, label: n }))}
               />
             </div>
           )}

@@ -177,6 +177,7 @@ export default function RbacPage() {
           role={modal.role}
           copyFrom={modal.copyFrom}
           namespace={namespace}
+          namespaces={namespaces}
           isCluster={modal.isCluster}
           onSave={handleSave}
           onClose={closeModal}
