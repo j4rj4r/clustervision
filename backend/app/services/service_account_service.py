@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -7,49 +6,15 @@ from kubernetes.client.exceptions import ApiException
 
 from ..config import get_settings
 from ..core.exceptions import UserAlreadyExistsError, UserNotFoundError
+from ..core.registry import RegistryMixin
 
 logger = logging.getLogger(__name__)
 
 
-class ServiceAccountService:
+class ServiceAccountService(RegistryMixin):
     def __init__(self, api_client: client.ApiClient):
         self.core_v1 = client.CoreV1Api(api_client)
         self.settings = get_settings()
-
-    def _load_registry(self) -> list[dict]:
-        try:
-            cm = self.core_v1.read_namespaced_config_map(
-                self.settings.registry_configmap,
-                self.settings.registry_namespace,
-            )
-            return json.loads(cm.data.get("users.json", "[]"))
-        except ApiException as e:
-            if e.status == 404:
-                return []
-            raise
-
-    def _save_registry(self, users: list[dict]):
-        data = {"users.json": json.dumps(users, indent=2)}
-        try:
-            self.core_v1.patch_namespaced_config_map(
-                self.settings.registry_configmap,
-                self.settings.registry_namespace,
-                client.V1ConfigMap(data=data),
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.core_v1.create_namespaced_config_map(
-                    self.settings.registry_namespace,
-                    client.V1ConfigMap(
-                        metadata=client.V1ObjectMeta(
-                            name=self.settings.registry_configmap,
-                            namespace=self.settings.registry_namespace,
-                        ),
-                        data=data,
-                    ),
-                )
-            else:
-                raise
 
     def list_users(self) -> list[dict]:
         return [u for u in self._load_registry() if u.get("type") == "service_account"]

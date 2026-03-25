@@ -1,4 +1,3 @@
-import asyncio
 import re
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -9,9 +8,9 @@ from ..config import get_settings
 from ..core.kubernetes_client import get_local_api_client, get_version_api
 from ..services.cluster_service import get_cluster_service
 from ..dependencies import get_api_client
+from ..core.async_utils import run_sync
 
 _CLUSTER_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,63}$')
-
 
 router = APIRouter(prefix="/api/cluster", tags=["cluster"])
 
@@ -35,9 +34,8 @@ class ClusterInfo(BaseModel):
 
 @router.get("/info")
 async def cluster_info(api_client: client.ApiClient = Depends(get_api_client)):
-    loop = asyncio.get_event_loop()
     version_api = get_version_api(api_client)
-    version = await loop.run_in_executor(None, version_api.get_code)
+    version = await run_sync(version_api.get_code)
     return {
         "git_version": version.git_version,
         "platform": version.platform,
@@ -49,20 +47,16 @@ async def cluster_info(api_client: client.ApiClient = Depends(get_api_client)):
 
 @router.get("/clusters")
 async def list_clusters():
-    loop = asyncio.get_event_loop()
     svc = get_cluster_service()
-    remote = await loop.run_in_executor(None, svc.list_clusters)
+    remote = await run_sync(svc.list_clusters)
     return [{"name": "local", "api_url": "", "is_local": True}] + remote
 
 
 @router.post("/clusters", status_code=201)
 async def add_cluster(payload: ClusterAdd):
-    loop = asyncio.get_event_loop()
     svc = get_cluster_service()
     try:
-        return await loop.run_in_executor(
-            None, svc.add_cluster, payload.name, payload.api_url, payload.ca_data, payload.token
-        )
+        return await run_sync(svc.add_cluster, payload.name, payload.api_url, payload.ca_data, payload.token)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -182,9 +176,8 @@ echo "✓ Cluster '$CLUSTER_NAME' successfully registered in ClusterVision."
 
 @router.delete("/clusters/{name}", status_code=204)
 async def remove_cluster(name: str):
-    loop = asyncio.get_event_loop()
     svc = get_cluster_service()
     try:
-        await loop.run_in_executor(None, svc.remove_cluster, name)
+        await run_sync(svc.remove_cluster, name)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

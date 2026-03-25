@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
@@ -24,12 +24,15 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
 
   const { data: nsRoles = [] } = useRoles(scope === 'namespace' ? selectedNs : '')
 
-  const roleOptions = scope === 'namespace' && selectedNs
-    ? [
+  const roleOptions = useMemo(() => {
+    if (scope === 'namespace' && selectedNs) {
+      return [
         ...nsRoles.map((r) => ({ value: `Role::${r.name}`, label: `${r.name} (Role)` })),
         ...clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: `${r.name} (ClusterRole)` })),
       ]
-    : clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: r.name }))
+    }
+    return clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: r.name }))
+  }, [scope, selectedNs, nsRoles, clusterRoles])
 
   const handleAssign = () => {
     if (!selectedRole) return

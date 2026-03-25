@@ -11,6 +11,7 @@ export const useClusterRoles = (includeSystem = false, enabled = true) => {
   return useQuery({
     queryKey: ['cluster-roles', cluster, includeSystem],
     queryFn: () => rbacApi.listClusterRoles(includeSystem),
+    staleTime: 60_000,
     enabled,
   })
 }
@@ -20,6 +21,7 @@ export const useRoles = (namespace: string) => {
   return useQuery({
     queryKey: ['roles', cluster, namespace],
     queryFn: () => rbacApi.listRoles(namespace),
+    staleTime: 60_000,
     enabled: !!namespace,
   })
 }
@@ -29,13 +31,18 @@ export const useUserPermissions = (username: string) => {
   return useQuery({
     queryKey: ['user-permissions', cluster, username],
     queryFn: () => rbacApi.getUserPermissions(username),
+    staleTime: 30_000,
     enabled: !!username,
   })
 }
 
 export const useNamespaces = () => {
   const cluster = useCluster()
-  return useQuery({ queryKey: ['namespaces', cluster], queryFn: rbacApi.listNamespaces })
+  return useQuery({
+    queryKey: ['namespaces', cluster],
+    queryFn: rbacApi.listNamespaces,
+    staleTime: 120_000,
+  })
 }
 
 export const useCreateClusterRole = (onSuccess?: () => void) => {

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, RefreshCw, FileInput } from 'lucide-react'
 import Button from '../components/ui/Button'
 import UserList from '../components/users/UserList'
@@ -10,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { User } from '../types/user'
 
 export default function UsersPage() {
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useUsers()
   const qc = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
@@ -51,8 +53,9 @@ export default function UsersPage() {
             users={data?.users ?? []}
             onDelete={setToDelete}
             onKubeconfig={(user) => {
-              const ns = user.namespace && user.namespace !== 'default' ? `&namespace=${user.namespace}` : ''
-              window.location.href = `/kubeconfig?user=${user.name}${ns}`
+              const params = new URLSearchParams({ user: user.name })
+              if (user.namespace && user.namespace !== 'default') params.set('namespace', user.namespace)
+              navigate(`/kubeconfig?${params.toString()}`)
             }}
           />
         )}
