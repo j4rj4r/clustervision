@@ -10,37 +10,37 @@ const links = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 bg-slate-900 border-r border-slate-800 flex flex-col">
-      <div className="px-5 py-4 border-b border-slate-800">
+    <aside className="w-56 bg-surface-900 border-r border-surface-600 flex flex-col">
+      <div className="px-5 py-4 border-b border-surface-600">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-brand-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
             <span className="text-white text-xs font-bold">CV</span>
           </div>
-          <span className="font-semibold text-slate-100 text-sm">ClusterVision</span>
+          <span className="font-semibold text-surface-100 text-sm">ClusterVision</span>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-4 space-y-0.5">
         {links.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium border-l-2 transition-colors ${
                 isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
+                  ? 'border-brand-500 bg-surface-700 text-brand-400'
+                  : 'border-transparent text-surface-300 hover:text-surface-100 hover:bg-surface-700'
               }`
             }
           >
-            <Icon size={16} />
+            <Icon size={17} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="px-5 py-3 border-t border-slate-800">
-        <p className="text-xs text-slate-500">{__APP_VERSION__}</p>
+      <div className="px-5 py-3 border-t border-surface-600">
+        <p className="text-xs text-surface-400">{__APP_VERSION__}</p>
       </div>
     </aside>
   )

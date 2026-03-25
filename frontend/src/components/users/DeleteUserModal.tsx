@@ -23,8 +23,8 @@ export default function DeleteUserModal({ user, onClose }: Props) {
   return (
     <Modal open={!!user} onClose={onClose} title="Delete user" size="sm">
       <div className="space-y-4">
-        <p className="text-sm text-slate-300">
-          Are you sure you want to delete <span className="font-mono font-semibold text-slate-100">{user?.name}</span>?
+        <p className="text-sm text-surface-200">
+          Are you sure you want to delete <span className="font-mono font-semibold text-surface-100">{user?.name}</span>?
           This will remove the CSR/ServiceAccount and all ClusterVision-managed bindings.
         </p>
         <div className="flex gap-3">

@@ -58,10 +58,10 @@ export default function ImportUserModal({ open, onClose }: Props) {
 
         {userType === 'service_account' && unmanagedSAs.length > 0 && (
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-400">
+            <label className="block text-xs font-medium text-surface-300">
               Unmanaged ServiceAccounts ({unmanagedSAs.length})
             </label>
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-slate-700 rounded-md p-2 bg-slate-950">
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-surface-600 rounded-md p-2 bg-surface-950">
               {unmanagedSAs.map((sa) => (
                 <button
                   key={`${sa.namespace}/${sa.name}`}
@@ -70,7 +70,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
                   className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm text-left transition-colors ${
                     selectedSA?.name === sa.name && selectedSA?.namespace === sa.namespace
                       ? 'bg-brand-600 text-white'
-                      : 'hover:bg-slate-800 text-slate-300'
+                      : 'hover:bg-surface-700 text-surface-200'
                   }`}
                 >
                   <span className="font-mono">{sa.name}</span>
@@ -107,7 +107,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
           />
         )}
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-surface-400">
           Import registers the user in ClusterVision without modifying existing Kubernetes resources.
         </p>
 

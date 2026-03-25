@@ -35,32 +35,32 @@ function RuleRow({
   }
 
   return (
-    <div className="border border-slate-700 rounded-lg p-3 space-y-2 bg-slate-900">
+    <div className="border border-surface-600 rounded-lg p-3 space-y-2 bg-surface-900">
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="block text-xs text-slate-500 mb-1">API Groups <span className="text-slate-600">(comma, empty = core)</span></label>
+          <label className="block text-xs text-surface-400 mb-1">API Groups <span className="text-surface-500">(comma, empty = core)</span></label>
           <input
-            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-brand-500"
+            className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1 text-xs font-mono text-surface-100 focus:outline-none focus:border-brand-500"
             value={rule.api_groups.join(', ')}
             onChange={(e) => onChange({ ...rule, api_groups: e.target.value.split(',').map((s) => s.trim()) })}
             placeholder='apps, rbac.authorization.k8s.io'
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs text-slate-500 mb-1">Resources <span className="text-slate-600">(comma-separated)</span></label>
+          <label className="block text-xs text-surface-400 mb-1">Resources <span className="text-surface-500">(comma-separated)</span></label>
           <input
-            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-brand-500"
+            className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1 text-xs font-mono text-surface-100 focus:outline-none focus:border-brand-500"
             value={rule.resources.join(', ')}
             onChange={(e) => onChange({ ...rule, resources: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
             placeholder='pods, deployments'
           />
         </div>
-        <button aria-label="Remove rule" onClick={onRemove} className="self-end text-slate-600 hover:text-red-400 transition-colors pb-1">
+        <button aria-label="Remove rule" onClick={onRemove} className="self-end text-surface-500 hover:text-red-400 transition-colors pb-1">
           <Trash2 size={14} />
         </button>
       </div>
       <div>
-        <label className="block text-xs text-slate-500 mb-1">Verbs</label>
+        <label className="block text-xs text-surface-400 mb-1">Verbs</label>
         <div className="flex flex-wrap gap-1">
           {ALL_VERBS.map((v) => (
             <button
@@ -69,7 +69,7 @@ function RuleRow({
               className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
                 rule.verbs.includes(v)
                   ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40'
-                  : 'bg-slate-800 text-slate-500 border border-slate-700 hover:border-slate-500'
+                  : 'bg-surface-800 text-surface-400 border border-surface-600 hover:border-surface-400'
               }`}
             >
               {v}
@@ -108,9 +108,9 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
       <div className="space-y-4">
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-xs text-slate-400 mb-1">Name</label>
+            <label className="block text-xs text-surface-300 mb-1">Name</label>
             <input
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+              className="w-full bg-surface-800 border border-surface-600 rounded-lg px-3 py-2 text-sm font-mono text-surface-100 focus:outline-none focus:border-brand-500 disabled:opacity-50"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isEdit && !isCopy}
@@ -119,9 +119,9 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
           </div>
           {!isCluster && (
             <div className="w-40">
-              <label className="block text-xs text-slate-400 mb-1">Namespace</label>
+              <label className="block text-xs text-surface-300 mb-1">Namespace</label>
               <input
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-200 focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                className="w-full bg-surface-800 border border-surface-600 rounded-lg px-3 py-2 text-sm font-mono text-surface-100 focus:outline-none focus:border-brand-500 disabled:opacity-50"
                 value={namespace}
                 onChange={(e) => setNamespace(e.target.value)}
                 disabled={isEdit && !isCopy}
@@ -132,7 +132,7 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-slate-400">Rules</label>
+            <label className="text-xs text-surface-300">Rules</label>
             <button
               onClick={() => setRules((prev) => [...prev, emptyRule()])}
               className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"

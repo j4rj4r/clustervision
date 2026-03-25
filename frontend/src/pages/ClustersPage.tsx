@@ -16,38 +16,38 @@ export default function ClustersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Clusters</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage connected clusters</p>
+          <h1 className="text-xl font-semibold text-surface-100">Clusters</h1>
+          <p className="text-sm text-surface-400 mt-0.5">Manage connected clusters</p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
           <Plus size={14} /> Add
         </Button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500">Loading...</div>
+          <div className="py-16 text-center text-sm text-surface-400">Loading...</div>
         ) : clusters.length === 0 ? (
-          <div className="py-16 text-center text-sm text-slate-500">No clusters</div>
+          <div className="py-16 text-center text-sm text-surface-400">No clusters</div>
         ) : (
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-surface-700">
             {clusters.map((c) => (
               <div
                 key={c.name}
-                className={`flex items-center gap-4 px-4 py-3 transition-colors cursor-pointer hover:bg-slate-800/50 ${
+                className={`flex items-center gap-4 px-4 py-3 transition-colors cursor-pointer hover:bg-surface-700/40 ${
                   activeCluster === c.name ? 'bg-brand-600/10 border-l-2 border-brand-500' : ''
                 }`}
                 onClick={() => setActiveCluster(c.name)}
               >
-                <Server size={16} className={activeCluster === c.name ? 'text-brand-400' : 'text-slate-500'} />
+                <Server size={16} className={activeCluster === c.name ? 'text-brand-400' : 'text-surface-400'} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-slate-100">{c.name}</span>
+                    <span className="font-mono text-sm font-medium text-surface-100">{c.name}</span>
                     {c.is_local && <Badge variant="success">local</Badge>}
                     {activeCluster === c.name && <Badge variant="info">active</Badge>}
                   </div>
                   {!c.is_local && (
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{c.api_url}</p>
+                    <p className="text-xs text-surface-400 truncate mt-0.5">{c.api_url}</p>
                   )}
                 </div>
                 {!c.is_local && (

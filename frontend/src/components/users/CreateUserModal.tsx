@@ -103,19 +103,19 @@ export default function CreateUserModal({ open, onClose }: Props) {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-slate-400">Private Key</label>
+              <label className="text-xs font-medium text-surface-300">Private Key</label>
               <button onClick={copyKey} className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300">
                 <Copy size={12} /> Copy
               </button>
             </div>
-            <pre className="bg-slate-950 border border-slate-700 rounded-md p-3 text-xs text-slate-300 overflow-x-auto max-h-36 overflow-y-auto font-mono">
+            <pre className="bg-surface-950 border border-surface-600 rounded-md p-3 text-xs text-surface-200 overflow-x-auto max-h-36 overflow-y-auto font-mono">
               {credentials.private_key_pem}
             </pre>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-2">Certificate</label>
-            <pre className="bg-slate-950 border border-slate-700 rounded-md p-3 text-xs text-slate-300 overflow-x-auto max-h-24 overflow-y-auto font-mono">
+            <label className="block text-xs font-medium text-surface-300 mb-2">Certificate</label>
+            <pre className="bg-surface-950 border border-surface-600 rounded-md p-3 text-xs text-surface-200 overflow-x-auto max-h-24 overflow-y-auto font-mono">
               {credentials.certificate_pem}
             </pre>
           </div>
@@ -131,7 +131,7 @@ export default function CreateUserModal({ open, onClose }: Props) {
               onChange={(e) => setConfirmed(e.target.checked)}
               className="mt-0.5 accent-brand-500"
             />
-            <span className="text-sm text-slate-300">
+            <span className="text-sm text-surface-200">
               I have saved my private key. I understand it cannot be recovered.
             </span>
           </label>

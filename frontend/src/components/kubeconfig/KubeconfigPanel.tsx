@@ -67,7 +67,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
       {selectedUser?.user_type === 'certificate' && (
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-400">
+          <label className="block text-xs font-medium text-surface-300">
             Private Key PEM
           </label>
           <textarea
@@ -75,9 +75,9 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
             onChange={(e) => setPrivateKey(e.target.value)}
             placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
             rows={6}
-            className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-xs text-slate-300 font-mono placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+            className="w-full bg-surface-800 border border-surface-600 rounded-md px-3 py-2 text-xs text-surface-200 font-mono placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
           />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-surface-400">
             Paste the private key saved at user creation time.
           </p>
         </div>
