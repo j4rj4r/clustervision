@@ -3,7 +3,7 @@ import { Plus, X } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import Select from '../ui/Select'
-import { useUserPermissions, useAssignRole, useRevokeRole, useClusterRoles, useNamespaces } from '../../hooks/useRbac'
+import { useUserPermissions, useAssignRole, useRevokeRole, useClusterRoles, useRoles, useNamespaces } from '../../hooks/useRbac'
 
 interface Props {
   username: string
@@ -22,12 +22,22 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
   const [selectedNs, setSelectedNs] = useState('')
   const [scope, setScope] = useState<'cluster' | 'namespace'>('cluster')
 
+  const { data: nsRoles = [] } = useRoles(scope === 'namespace' ? selectedNs : '')
+
+  const roleOptions = scope === 'namespace' && selectedNs
+    ? [
+        ...nsRoles.map((r) => ({ value: `Role::${r.name}`, label: `${r.name} (Role)` })),
+        ...clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: `${r.name} (ClusterRole)` })),
+      ]
+    : clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: r.name }))
+
   const handleAssign = () => {
     if (!selectedRole) return
+    const [kind, name] = selectedRole.split('::') as ['Role' | 'ClusterRole', string]
     assignRole.mutate({
       payload: {
-        role_name: selectedRole,
-        role_kind: 'ClusterRole',
+        role_name: name,
+        role_kind: kind,
         namespace: scope === 'namespace' ? selectedNs : undefined,
       },
       userKind: userType === 'service_account' ? 'ServiceAccount' : 'User',
@@ -52,22 +62,22 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
           <Select
             label="Scope"
             value={scope}
-            onChange={(e) => setScope(e.target.value as 'cluster' | 'namespace')}
+            onChange={(e) => { setScope(e.target.value as 'cluster' | 'namespace'); setSelectedRole(''); setSelectedNs('') }}
             options={[{ value: 'cluster', label: 'Cluster-wide' }, { value: 'namespace', label: 'Namespace' }]}
           />
           {scope === 'namespace' && (
             <Select
               label="Namespace"
               value={selectedNs}
-              onChange={(e) => setSelectedNs(e.target.value)}
-              options={namespaces.map((ns) => ({ value: ns, label: ns }))}
+              onChange={(e) => { setSelectedNs(e.target.value); setSelectedRole('') }}
+              options={[{ value: '', label: 'Select...' }, ...namespaces.map((ns) => ({ value: ns, label: ns }))]}
             />
           )}
           <Select
-            label="ClusterRole"
+            label="Role"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            options={[{ value: '', label: 'Select...' }, ...clusterRoles.map((r) => ({ value: r.name, label: r.name }))]}
+            options={[{ value: '', label: 'Select...' }, ...roleOptions]}
           />
           <Button size="sm" onClick={handleAssign} loading={assignRole.isPending} disabled={!selectedRole}>
             Add
