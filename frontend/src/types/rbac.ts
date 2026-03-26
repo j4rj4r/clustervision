@@ -39,3 +39,27 @@ export interface AssignRolePayload {
   role_kind: 'ClusterRole' | 'Role'
   namespace?: string
 }
+
+export interface NamespaceAccessEntry {
+  subject: string
+  subject_kind: 'User' | 'Group' | 'ServiceAccount'
+  subject_namespace?: string
+  role: string
+  role_kind: 'Role' | 'ClusterRole'
+  binding: string
+  scope: 'namespace' | 'cluster'
+}
+
+export interface CheckAccessRequest {
+  user: string
+  verb: string
+  resource: string
+  namespace?: string
+  api_group?: string
+}
+
+export interface CheckAccessResult {
+  allowed: boolean
+  denied: boolean
+  reason: string
+}

@@ -43,6 +43,7 @@ class RbacService:
     def __init__(self, api_client: client.ApiClient):
         self.rbac_v1 = client.RbacAuthorizationV1Api(api_client)
         self.core_v1 = client.CoreV1Api(api_client)
+        self.auth_v1 = client.AuthorizationV1Api(api_client)
 
     # ── ClusterRoles ────────────────────────────────────────────────────────
 
@@ -319,3 +320,67 @@ class RbacService:
 
     def list_namespaces(self) -> list[str]:
         return [ns.metadata.name for ns in self.core_v1.list_namespace().items]
+
+    # ── Namespace access view ────────────────────────────────────────────────
+
+    def get_namespace_access(self, namespace: str) -> list[dict]:
+        results = []
+
+        # RoleBindings scoped to this namespace
+        rbs = self.rbac_v1.list_namespaced_role_binding(namespace)
+        for rb in rbs.items:
+            for subject in (rb.subjects or []):
+                results.append({
+                    "subject": subject.name,
+                    "subject_kind": subject.kind,
+                    "subject_namespace": subject.namespace,
+                    "role": rb.role_ref.name,
+                    "role_kind": rb.role_ref.kind,
+                    "binding": rb.metadata.name,
+                    "scope": "namespace",
+                })
+
+        # ClusterRoleBindings apply cluster-wide (include this namespace)
+        crbs = self.rbac_v1.list_cluster_role_binding()
+        for crb in crbs.items:
+            for subject in (crb.subjects or []):
+                results.append({
+                    "subject": subject.name,
+                    "subject_kind": subject.kind,
+                    "subject_namespace": subject.namespace,
+                    "role": crb.role_ref.name,
+                    "role_kind": crb.role_ref.kind,
+                    "binding": crb.metadata.name,
+                    "scope": "cluster",
+                })
+
+        return results
+
+    # ── Access simulator (SubjectAccessReview) ───────────────────────────────
+
+    def check_access(
+        self,
+        user: str,
+        verb: str,
+        resource: str,
+        namespace: Optional[str],
+        api_group: str = "",
+    ) -> dict:
+        sar = self.auth_v1.create_subject_access_review(
+            client.V1SubjectAccessReview(
+                spec=client.V1SubjectAccessReviewSpec(
+                    user=user,
+                    resource_attributes=client.V1ResourceAttributes(
+                        verb=verb,
+                        resource=resource,
+                        namespace=namespace,
+                        group=api_group,
+                    ),
+                )
+            )
+        )
+        return {
+            "allowed": sar.status.allowed,
+            "denied": sar.status.denied or False,
+            "reason": sar.status.reason or "",
+        }

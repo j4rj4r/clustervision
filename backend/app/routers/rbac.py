@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from ..models.rbac import (
     ClusterRoleCreate, RoleCreate, BindingCreate,
     AssignRoleRequest, UserPermissionSummary, PolicyRule,
+    CheckAccessRequest,
 )
 from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
@@ -156,3 +157,24 @@ async def revoke_role(
 @router.get("/namespaces")
 async def list_namespaces(svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.list_namespaces)
+
+
+# ── Namespace access view ─────────────────────────────────────────────────────
+
+@router.get("/namespace/{namespace}/access")
+async def get_namespace_access(namespace: str, svc: RbacService = Depends(get_rbac_service)):
+    return await run_sync(svc.get_namespace_access, namespace)
+
+
+# ── Access simulator ──────────────────────────────────────────────────────────
+
+@router.post("/check-access")
+async def check_access(payload: CheckAccessRequest, svc: RbacService = Depends(get_rbac_service)):
+    return await run_sync(
+        svc.check_access,
+        payload.user,
+        payload.verb,
+        payload.resource,
+        payload.namespace,
+        payload.api_group,
+    )

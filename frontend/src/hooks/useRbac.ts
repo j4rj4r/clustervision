@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { rbacApi } from '../api/rbac'
 import { useClusterStore } from '../store/clusterStore'
-import type { AssignRolePayload, PolicyRule } from '../types/rbac'
+import type { AssignRolePayload, CheckAccessRequest, PolicyRule } from '../types/rbac'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
@@ -44,6 +44,19 @@ export const useNamespaces = () => {
     staleTime: 120_000,
   })
 }
+
+export const useNamespaceAccess = (namespace: string) => {
+  const cluster = useCluster()
+  return useQuery({
+    queryKey: ['namespace-access', cluster, namespace],
+    queryFn: () => rbacApi.getNamespaceAccess(namespace),
+    staleTime: 30_000,
+    enabled: !!namespace,
+  })
+}
+
+export const useCheckAccess = () =>
+  useMutation({ mutationFn: (req: CheckAccessRequest) => rbacApi.checkAccess(req) })
 
 export const useCreateClusterRole = (onSuccess?: () => void) => {
   const qc = useQueryClient()

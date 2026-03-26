@@ -1,5 +1,5 @@
 import client from './client'
-import type { AssignRolePayload, BindingRead, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
+import type { AssignRolePayload, BindingRead, CheckAccessRequest, CheckAccessResult, NamespaceAccessEntry, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
 
 export const rbacApi = {
   listClusterRoles: (includeSystem = false): Promise<RoleRead[]> =>
@@ -47,4 +47,10 @@ export const rbacApi = {
 
   listNamespaces: (): Promise<string[]> =>
     client.get('/rbac/namespaces').then((r) => r.data),
+
+  getNamespaceAccess: (namespace: string): Promise<NamespaceAccessEntry[]> =>
+    client.get(`/rbac/namespace/${namespace}/access`).then((r) => r.data),
+
+  checkAccess: (req: CheckAccessRequest): Promise<CheckAccessResult> =>
+    client.post('/rbac/check-access', req).then((r) => r.data),
 }

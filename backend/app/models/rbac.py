@@ -66,3 +66,27 @@ class UserPermissionSummary(BaseModel):
     username: str
     cluster_bindings: list[BindingRead]
     namespace_bindings: list[BindingRead]
+
+
+class NamespaceAccessEntry(BaseModel):
+    subject: str
+    subject_kind: str
+    subject_namespace: Optional[str] = None
+    role: str
+    role_kind: str
+    binding: str
+    scope: str  # 'namespace' | 'cluster'
+
+
+class CheckAccessRequest(BaseModel):
+    user: str
+    verb: str
+    resource: str
+    namespace: Optional[str] = None
+    api_group: str = ""
+
+
+class CheckAccessResult(BaseModel):
+    allowed: bool
+    denied: bool
+    reason: str

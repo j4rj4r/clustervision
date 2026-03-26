@@ -5,6 +5,8 @@ import Select from '../components/ui/Select'
 import Modal from '../components/ui/Modal'
 import RoleList from '../components/rbac/RoleList'
 import RoleEditorModal from '../components/rbac/RoleEditorModal'
+import NamespaceAccessPanel from '../components/rbac/NamespaceAccessPanel'
+import AccessSimulatorPanel from '../components/rbac/AccessSimulatorPanel'
 import {
   useClusterRoles, useRoles, useNamespaces,
   useCreateClusterRole, useUpdateClusterRole, useDeleteClusterRole,
@@ -13,7 +15,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import type { PolicyRule, RoleRead } from '../types/rbac'
 
-type Tab = 'roles' | 'clusterroles'
+type Tab = 'roles' | 'clusterroles' | 'access' | 'simulator'
 
 export default function RbacPage() {
   const qc = useQueryClient()
@@ -97,17 +99,22 @@ export default function RbacPage() {
 
       {/* Tabs */}
       <div className="flex border-b border-surface-600">
-        {(['roles', 'clusterroles'] as Tab[]).map((t) => (
+        {([
+          { key: 'roles', label: 'Roles' },
+          { key: 'clusterroles', label: 'ClusterRoles' },
+          { key: 'access', label: 'Namespace Access' },
+          { key: 'simulator', label: 'Access Simulator' },
+        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={key}
+            onClick={() => setTab(key)}
             className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              tab === t
+              tab === key
                 ? 'border-brand-500 text-brand-400'
                 : 'border-transparent text-surface-400 hover:text-surface-200 hover:border-surface-500'
             }`}
           >
-            {t === 'roles' ? 'Roles' : 'ClusterRoles'}
+            {label}
           </button>
         ))}
       </div>
@@ -171,6 +178,12 @@ export default function RbacPage() {
           )}
         </div>
       )}
+
+      {/* Namespace Access tab */}
+      {tab === 'access' && <NamespaceAccessPanel />}
+
+      {/* Access Simulator tab */}
+      {tab === 'simulator' && <AccessSimulatorPanel />}
 
       {modal.open && (
         <RoleEditorModal
