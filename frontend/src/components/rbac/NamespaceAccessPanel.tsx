@@ -5,7 +5,6 @@ import Select from '../ui/Select'
 import { useNamespaceAccess, useNamespaces } from '../../hooks/useRbac'
 import { useQueryClient } from '@tanstack/react-query'
 import { useClusterStore } from '../../store/clusterStore'
-import type { NamespaceAccessEntry } from '../../types/rbac'
 
 const KIND_VARIANT: Record<string, 'info' | 'default' | 'warning'> = {
   User: 'info',
