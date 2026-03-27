@@ -90,7 +90,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
             {expanded.has(user.name) && (
               <tr key={`${user.name}-panel`}>
                 <td colSpan={6} className="bg-surface-950/60 px-12 py-4 border-b border-surface-600">
-                  <UserPermissionsPanel username={user.name} userType={user.user_type} />
+                  <UserPermissionsPanel username={user.name} userType={user.user_type} userNamespace={user.namespace} />
                 </td>
               </tr>
             )}

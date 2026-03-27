@@ -8,9 +8,10 @@ import { useUserPermissions, useAssignRole, useRevokeRole, useClusterRoles, useR
 interface Props {
   username: string
   userType: string
+  userNamespace?: string
 }
 
-export default function UserPermissionsPanel({ username, userType }: Props) {
+export default function UserPermissionsPanel({ username, userType, userNamespace }: Props) {
   const { data: perms, isLoading } = useUserPermissions(username)
   const { data: clusterRoles = [] } = useClusterRoles()
   const { data: namespaces = [] } = useNamespaces()
@@ -44,6 +45,7 @@ export default function UserPermissionsPanel({ username, userType }: Props) {
         namespace: scope === 'namespace' ? selectedNs : undefined,
       },
       userKind: userType === 'service_account' ? 'ServiceAccount' : 'User',
+      saNamespace: userType === 'service_account' ? (userNamespace ?? 'default') : undefined,
     }, { onSuccess: () => { setShowAssign(false); setSelectedRole('') } })
   }
 

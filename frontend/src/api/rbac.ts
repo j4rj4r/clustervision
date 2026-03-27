@@ -35,9 +35,9 @@ export const rbacApi = {
   getUserPermissions: (username: string): Promise<UserPermissionSummary> =>
     client.get(`/rbac/users/${username}/permissions`).then((r) => r.data),
 
-  assignRole: (username: string, payload: AssignRolePayload, userKind = 'User'): Promise<void> =>
+  assignRole: (username: string, payload: AssignRolePayload, userKind = 'User', saNamespace?: string): Promise<void> =>
     client
-      .post(`/rbac/users/${username}/assign`, payload, { params: { user_kind: userKind } })
+      .post(`/rbac/users/${username}/assign`, payload, { params: { user_kind: userKind, sa_namespace: saNamespace } })
       .then(() => undefined),
 
   revokeRole: (username: string, roleName: string, namespace?: string): Promise<void> =>

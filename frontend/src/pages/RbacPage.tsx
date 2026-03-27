@@ -101,9 +101,9 @@ export default function RbacPage() {
       <div className="flex border-b border-surface-600">
         {([
           { key: 'roles', label: 'Roles' },
-          { key: 'clusterroles', label: 'ClusterRoles' },
-          { key: 'access', label: 'Namespace Access' },
-          { key: 'simulator', label: 'Access Simulator' },
+          { key: 'clusterroles', label: 'Cluster Roles' },
+          { key: 'access', label: 'Who has access' },
+          { key: 'simulator', label: 'Test permissions' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
