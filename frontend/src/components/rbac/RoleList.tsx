@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Copy, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Badge from '../ui/Badge'
 import type { RoleRead } from '../../types/rbac'
 
@@ -11,8 +11,33 @@ interface Props {
   onDelete?: (role: RoleRead) => void
 }
 
+type SortCol = 'name' | 'rules' | 'status'
+type SortDir = 'asc' | 'desc'
+
+function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; sortDir: SortDir }) {
+  if (col !== sortCol) return <ChevronsUpDown size={12} className="opacity-30 ml-1 inline" />
+  return sortDir === 'asc'
+    ? <ArrowUp size={12} className="ml-1 inline text-brand-400" />
+    : <ArrowDown size={12} className="ml-1 inline text-brand-400" />
+}
+
 export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [sortCol, setSortCol] = useState<SortCol>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  const sorted = [...roles].sort((a, b) => {
+    let cmp = 0
+    if (sortCol === 'name') cmp = a.name.localeCompare(b.name)
+    else if (sortCol === 'rules') cmp = (a.rules?.length ?? 0) - (b.rules?.length ?? 0)
+    else if (sortCol === 'status') cmp = Number(a.is_system) - Number(b.is_system)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   if (roles.length === 0) return (
     <div className="text-center py-8 text-surface-500 text-sm">{title ? `${title} — ` : ''}No roles</div>
@@ -25,6 +50,8 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
       return next
     })
 
+  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider cursor-pointer select-none hover:text-surface-200 transition-colors'
+
   return (
     <div>
       {title && <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-3 px-1">{title}</h3>}
@@ -32,14 +59,20 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
         <thead>
           <tr className="border-b border-surface-600 bg-surface-900/50">
             <th className="w-10 px-4 py-3" />
-            <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Rules</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Status</th>
+            <th className={thClass} onClick={() => toggleSort('name')}>
+              Name <SortIcon col="name" sortCol={sortCol} sortDir={sortDir} />
+            </th>
+            <th className={thClass} onClick={() => toggleSort('rules')}>
+              Rules <SortIcon col="rules" sortCol={sortCol} sortDir={sortDir} />
+            </th>
+            <th className={thClass} onClick={() => toggleSort('status')}>
+              Status <SortIcon col="status" sortCol={sortCol} sortDir={sortDir} />
+            </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-700">
-          {roles.map((role) => (
+          {sorted.map((role) => (
             <>
               <tr
                 key={role.name}

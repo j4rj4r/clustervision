@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import UserPermissionsPanel from './UserPermissionsPanel'
@@ -11,8 +11,33 @@ interface Props {
   onKubeconfig: (user: User) => void
 }
 
+type SortCol = 'name' | 'type' | 'created_at'
+type SortDir = 'asc' | 'desc'
+
+function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; sortDir: SortDir }) {
+  if (col !== sortCol) return <ChevronsUpDown size={12} className="opacity-30 ml-1 inline" />
+  return sortDir === 'asc'
+    ? <ArrowUp size={12} className="ml-1 inline text-brand-400" />
+    : <ArrowDown size={12} className="ml-1 inline text-brand-400" />
+}
+
 export default function UserList({ users, onDelete, onKubeconfig }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [sortCol, setSortCol] = useState<SortCol>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  const sorted = [...users].sort((a, b) => {
+    let cmp = 0
+    if (sortCol === 'name') cmp = a.name.localeCompare(b.name)
+    else if (sortCol === 'type') cmp = a.user_type.localeCompare(b.user_type)
+    else if (sortCol === 'created_at') cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   if (users.length === 0) {
     return (
@@ -30,20 +55,28 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
       return next
     })
 
+  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider cursor-pointer select-none hover:text-surface-200 transition-colors'
+
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-surface-600 bg-surface-900/60">
           <th className="w-10 px-4 py-3" />
-          <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Name</th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Type</th>
+          <th className={thClass} onClick={() => toggleSort('name')}>
+            Name <SortIcon col="name" sortCol={sortCol} sortDir={sortDir} />
+          </th>
+          <th className={thClass} onClick={() => toggleSort('type')}>
+            Type <SortIcon col="type" sortCol={sortCol} sortDir={sortDir} />
+          </th>
           <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Groups</th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Created</th>
+          <th className={thClass} onClick={() => toggleSort('created_at')}>
+            Created <SortIcon col="created_at" sortCol={sortCol} sortDir={sortDir} />
+          </th>
           <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-surface-700">
-        {users.map((user) => (
+        {sorted.map((user) => (
           <>
             <tr
               key={user.name}

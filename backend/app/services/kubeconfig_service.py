@@ -46,7 +46,7 @@ class KubeconfigService:
                     "context": {
                         "cluster": cluster_name,
                         "user": username,
-                        "namespace": namespace,
+                        **({"namespace": namespace} if namespace else {}),
                     },
                 }
             ],
@@ -97,7 +97,7 @@ class KubeconfigService:
                     "context": {
                         "cluster": cluster_name,
                         "user": sa_name,
-                        "namespace": target_namespace,
+                        **({"namespace": target_namespace} if target_namespace else {}),
                     },
                 }
             ],
