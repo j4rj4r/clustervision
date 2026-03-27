@@ -149,8 +149,8 @@ export const useAssignRole = (username: string) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ payload, userKind }: { payload: AssignRolePayload; userKind?: string }) =>
-      rbacApi.assignRole(username, payload, userKind),
+    mutationFn: ({ payload, userKind, saNamespace }: { payload: AssignRolePayload; userKind?: string; saNamespace?: string }) =>
+      rbacApi.assignRole(username, payload, userKind, saNamespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-permissions', cluster, username] })
       toast.success('Role assigned')

@@ -5,9 +5,9 @@ import { useClusterStore } from '../../store/clusterStore'
 
 const routeLabels: Record<string, string> = {
   '/users':      'Users',
-  '/rbac':       'RBAC',
+  '/rbac':       'Permissions',
   '/kubeconfig': 'Kubeconfig',
-  '/tokens':     'Tokens',
+  '/tokens':     'History',
   '/clusters':   'Clusters',
 }
 
