@@ -7,6 +7,7 @@ from .services.certificate_service import CertificateService
 from .services.service_account_service import ServiceAccountService
 from .services.rbac_service import RbacService
 from .services.kubeconfig_service import KubeconfigService
+from .services.token_service import TokenService
 
 
 def get_api_client(cluster: str = Query("local")) -> client.ApiClient:
@@ -29,3 +30,7 @@ def get_rbac_service(api_client: client.ApiClient = Depends(get_api_client)) -> 
 
 def get_kubeconfig_service(api_client: client.ApiClient = Depends(get_api_client)) -> KubeconfigService:
     return KubeconfigService(api_client)
+
+
+def get_token_service(api_client: client.ApiClient = Depends(get_api_client)) -> TokenService:
+    return TokenService(api_client)

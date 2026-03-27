@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Shield, FileCode2, Server } from 'lucide-react'
+import { Users, Shield, FileCode2, Server, Key } from 'lucide-react'
 
 const links = [
   { to: '/users', icon: Users, label: 'Users' },
   { to: '/rbac', icon: Shield, label: 'RBAC' },
   { to: '/kubeconfig', icon: FileCode2, label: 'Kubeconfig' },
+  { to: '/tokens', icon: Key, label: 'Tokens' },
   { to: '/clusters', icon: Server, label: 'Clusters' },
 ]
 

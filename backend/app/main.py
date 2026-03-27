@@ -14,7 +14,7 @@ from .core.exceptions import (
 )
 from .config import get_settings
 from .core.kubernetes_client import get_api_client
-from .routers import users, rbac, kubeconfig, cluster
+from .routers import users, rbac, kubeconfig, cluster, tokens
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -55,6 +55,7 @@ app.include_router(users.router)
 app.include_router(rbac.router)
 app.include_router(kubeconfig.router)
 app.include_router(cluster.router)
+app.include_router(tokens.router)
 
 
 @app.get("/health")

@@ -6,7 +6,8 @@ from ..models.user import UserType
 from ..services.certificate_service import CertificateService
 from ..services.service_account_service import ServiceAccountService
 from ..services.kubeconfig_service import KubeconfigService
-from ..dependencies import get_cert_service, get_sa_service, get_kubeconfig_service
+from ..dependencies import get_cert_service, get_sa_service, get_kubeconfig_service, get_token_service
+from ..services.token_service import TokenService
 from ..core.async_utils import run_sync
 
 router = APIRouter(prefix="/api/kubeconfig", tags=["kubeconfig"])
@@ -18,6 +19,7 @@ async def generate_kubeconfig(
     cert_svc: CertificateService = Depends(get_cert_service),
     sa_svc: ServiceAccountService = Depends(get_sa_service),
     kc_svc: KubeconfigService = Depends(get_kubeconfig_service),
+    token_svc: TokenService = Depends(get_token_service),
 ):
     if payload.user_type == UserType.certificate:
         if not payload.private_key_pem:
@@ -33,15 +35,21 @@ async def generate_kubeconfig(
             payload.private_key_pem,
             payload.namespace,
         )
+        effective_namespace = payload.namespace or "default"
     else:
         user = await run_sync(sa_svc.get_user, payload.username, "default")
-        namespace = user.get("namespace", "default")
+        effective_namespace = user.get("namespace", "default")
         kubeconfig_yaml = await run_sync(
             kc_svc.generate_for_service_account,
             payload.username,
-            namespace,
+            effective_namespace,
             payload.namespace,
         )
+
+    try:
+        await run_sync(token_svc.record_generation, payload.username, payload.user_type.value, effective_namespace)
+    except Exception:
+        pass  # history recording must not fail the generation
 
     return Response(
         content=kubeconfig_yaml,

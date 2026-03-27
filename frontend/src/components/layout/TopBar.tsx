@@ -7,6 +7,7 @@ const routeLabels: Record<string, string> = {
   '/users':      'Users',
   '/rbac':       'RBAC',
   '/kubeconfig': 'Kubeconfig',
+  '/tokens':     'Tokens',
   '/clusters':   'Clusters',
 }
 
