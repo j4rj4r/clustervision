@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, RefreshCw, FileInput } from 'lucide-react'
 import Button from '../components/ui/Button'
 import UserList from '../components/users/UserList'
-import CreateUserModal from '../components/users/CreateUserModal'
+import CreateUserWizard from '../components/users/CreateUserWizard'
 import DeleteUserModal from '../components/users/DeleteUserModal'
 import ImportUserModal from '../components/users/ImportUserModal'
 import { useUsers } from '../hooks/useUsers'
@@ -61,7 +61,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateUserWizard open={createOpen} onClose={() => setCreateOpen(false)} />
       <ImportUserModal open={importOpen} onClose={() => setImportOpen(false)} />
       <DeleteUserModal user={toDelete} onClose={() => setToDelete(null)} />
     </div>
