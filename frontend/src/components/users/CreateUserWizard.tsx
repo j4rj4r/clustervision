@@ -63,6 +63,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const [nameError, setNameError] = useState('')
   const [userType, setUserType] = useState<'certificate' | 'service_account'>('service_account')
   const [saNamespace, setSaNamespace] = useState('default')
+  const [newNamespace, setNewNamespace] = useState('')
   const [groups, setGroups] = useState('')
 
   // Step 2
@@ -88,7 +89,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       setAssigning(true)
       try {
         const userKind = userType === 'service_account' ? 'ServiceAccount' : 'User'
-        const saNs = userType === 'service_account' ? saNamespace : undefined
+        const saNs = userType === 'service_account' ? data.namespace : undefined
 
         if (scope === 'cluster') {
           await rbacApi.assignRole(data.name, { role_name: selectedPreset.role, role_kind: 'ClusterRole' }, userKind, saNs)
@@ -110,7 +111,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
     generateKubeconfig.mutate({
       username: data.name,
       user_type: data.user_type,
-      namespace: userType === 'service_account' ? saNamespace : '',
+      namespace: data.namespace ?? '',
       private_key_pem: data.private_key_pem ?? undefined,
     })
 
@@ -120,7 +121,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const handleClose = () => {
     setStep(1)
     setName(''); setNameError(''); setUserType('service_account')
-    setSaNamespace('default'); setGroups('')
+    setSaNamespace('default'); setNewNamespace(''); setGroups('')
     setPreset('readonly'); setScope('namespace'); setSelectedNs(new Set())
     setCredentials(null); setConfirmed(false); setCopied(false)
     generateKubeconfig.reset()
@@ -142,11 +143,12 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   }
 
   const handleCreate = () => {
+    const effectiveNamespace = saNamespace === '__new__' ? newNamespace.trim() : saNamespace
     createUser.mutate({
       name,
       user_type: userType,
       groups: groups.split(',').map((g) => g.trim()).filter(Boolean),
-      namespace: userType === 'service_account' ? saNamespace : '',
+      namespace: userType === 'service_account' ? effectiveNamespace : '',
     })
   }
 
@@ -240,8 +242,21 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 <Select
                   label="Namespace"
                   value={saNamespace}
-                  onChange={(e) => setSaNamespace(e.target.value)}
-                  options={namespaces.length ? namespaces.map((n) => ({ value: n, label: n })) : [{ value: 'default', label: 'default' }]}
+                  onChange={(e) => { setSaNamespace(e.target.value); setNewNamespace('') }}
+                  options={[
+                    ...(namespaces.length ? namespaces.map((n) => ({ value: n, label: n })) : [{ value: 'default', label: 'default' }]),
+                    { value: '__new__', label: '＋ New namespace…' },
+                  ]}
+                />
+              )}
+
+              {userType === 'service_account' && saNamespace === '__new__' && (
+                <Input
+                  label="New namespace name"
+                  value={newNamespace}
+                  onChange={(e) => setNewNamespace(e.target.value)}
+                  placeholder="my-namespace"
+                  hint="Will be created automatically"
                 />
               )}
 
@@ -326,7 +341,10 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 <Button
                   onClick={handleCreate}
                   loading={createUser.isPending || assigning}
-                  disabled={preset !== 'none' && scope === 'namespace' && selectedNs.size === 0}
+                  disabled={
+                    (preset !== 'none' && scope === 'namespace' && selectedNs.size === 0) ||
+                    (userType === 'service_account' && saNamespace === '__new__' && !newNamespace.trim())
+                  }
                   className="flex-1"
                 >
                   Create user

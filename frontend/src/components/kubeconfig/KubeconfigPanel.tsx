@@ -47,7 +47,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
       })
     }, 500)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [selectedUsername, namespace, privateKey])
+  }, [selectedUsername, namespace, privateKey, users])
 
   const handleCopy = () => {
     if (!generate.data) return

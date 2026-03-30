@@ -25,10 +25,30 @@ class ServiceAccountService(RegistryMixin):
                 return u
         raise UserNotFoundError(username)
 
+    def _ensure_namespace(self, namespace: str):
+        try:
+            self.core_v1.read_namespace(namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+            try:
+                self.core_v1.create_namespace(client.V1Namespace(
+                    metadata=client.V1ObjectMeta(
+                        name=namespace,
+                        labels={"managed-by": "clustervision"},
+                    )
+                ))
+                logger.info(f"Created namespace: {namespace}")
+            except ApiException as create_err:
+                if create_err.status != 409:
+                    raise
+
     def create_user(self, name: str, namespace: str = "default") -> dict:
         users = self._load_registry()
         if any(u["name"] == name and u.get("namespace") == namespace for u in users):
             raise UserAlreadyExistsError(name)
+
+        self._ensure_namespace(namespace)
 
         # Create the ServiceAccount
         sa = client.V1ServiceAccount(
@@ -133,10 +153,13 @@ class ServiceAccountService(RegistryMixin):
             if u.get("type") == "service_account"
         }
         # 1 call for all SAs across all namespaces (instead of 1 per namespace)
+        system_namespaces = {"kube-system", "kube-public", "kube-node-lease"}
         all_sas = self.core_v1.list_service_account_for_all_namespaces()
         result = []
         for sa in all_sas.items:
-            if sa.metadata.name in ("default",) or sa.metadata.name.startswith("system:"):
+            if sa.metadata.namespace in system_namespaces:
+                continue
+            if sa.metadata.name == "default":
                 continue
             if (sa.metadata.name, sa.metadata.namespace) not in registry:
                 result.append({

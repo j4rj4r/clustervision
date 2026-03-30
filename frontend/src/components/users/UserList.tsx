@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Fragment } from 'react'
 import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
@@ -77,9 +78,8 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
       </thead>
       <tbody className="divide-y divide-surface-700">
         {sorted.map((user) => (
-          <>
+          <Fragment key={user.name}>
             <tr
-              key={user.name}
               className="hover:bg-surface-700/40 transition-colors cursor-pointer"
               onClick={() => toggle(user.name)}
             >
@@ -127,7 +127,7 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
                 </td>
               </tr>
             )}
-          </>
+          </Fragment>
         ))}
       </tbody>
     </table>

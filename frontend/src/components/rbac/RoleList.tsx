@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Badge from '../ui/Badge'
 import type { RoleRead } from '../../types/rbac'
@@ -73,9 +73,8 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
         </thead>
         <tbody className="divide-y divide-surface-700">
           {sorted.map((role) => (
-            <>
+            <Fragment key={role.name}>
               <tr
-                key={role.name}
                 className="hover:bg-surface-700/40 transition-colors cursor-pointer"
                 onClick={() => toggle(role.name)}
               >
@@ -142,7 +141,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
                   </td>
                 </tr>
               )}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

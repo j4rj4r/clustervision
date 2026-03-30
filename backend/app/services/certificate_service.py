@@ -77,7 +77,11 @@ class CertificateService(RegistryMixin):
                 raise
 
         # Step 4: Approve the CSR
+        # The kubernetes client requires spec to be present in the approval patch
+        existing_csr = self.certs_api.read_certificate_signing_request(csr_name)
         approval = client.V1CertificateSigningRequest(
+            metadata=existing_csr.metadata,
+            spec=existing_csr.spec,
             status=client.V1CertificateSigningRequestStatus(
                 conditions=[
                     client.V1CertificateSigningRequestCondition(
