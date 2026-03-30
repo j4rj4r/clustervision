@@ -25,7 +25,7 @@ class ServiceAccountService(RegistryMixin):
                 return u
         raise UserNotFoundError(username)
 
-    def _ensure_namespace(self, namespace: str):
+    def _ensure_target_namespace(self, namespace: str):
         try:
             self.core_v1.read_namespace(namespace)
         except ApiException as e:
@@ -48,7 +48,7 @@ class ServiceAccountService(RegistryMixin):
         if any(u["name"] == name and u.get("namespace") == namespace for u in users):
             raise UserAlreadyExistsError(name)
 
-        self._ensure_namespace(namespace)
+        self._ensure_target_namespace(namespace)
 
         # Create the ServiceAccount
         sa = client.V1ServiceAccount(
