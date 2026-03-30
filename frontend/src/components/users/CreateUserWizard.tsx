@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { AlertTriangle, Check, CheckCircle, Clipboard, Download, FileCode2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
@@ -7,7 +7,7 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
 import { useCreateUser } from '../../hooks/useUsers'
-import { useNamespaces, useClusterRoles } from '../../hooks/useRbac'
+import { useNamespaces } from '../../hooks/useRbac'
 import { useGenerateKubeconfig, downloadKubeconfig } from '../../hooks/useKubeconfig'
 import { rbacApi } from '../../api/rbac'
 import type { UserWithCredentials } from '../../types/user'
@@ -146,7 +146,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       name,
       user_type: userType,
       groups: groups.split(',').map((g) => g.trim()).filter(Boolean),
-      namespace: userType === 'service_account' ? saNamespace : undefined,
+      namespace: userType === 'service_account' ? saNamespace : '',
     })
   }
 
