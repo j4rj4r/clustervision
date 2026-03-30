@@ -168,6 +168,11 @@ class CertificateService(RegistryMixin):
 
     def get_certificate_pem(self, username: str) -> str:
         user = self.get_user(username)
+        if user.get("imported") or not user.get("csr_name"):
+            raise ValueError(
+                f"User '{username}' was imported and has no managed CSR. "
+                "Provide the certificate PEM directly."
+            )
         csr = self.certs_api.read_certificate_signing_request(user["csr_name"])
         if not csr.status.certificate:
             raise ValueError(f"No signed certificate found for user {username}")

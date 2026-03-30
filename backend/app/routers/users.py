@@ -6,6 +6,7 @@ from ..services.certificate_service import CertificateService
 from ..services.service_account_service import ServiceAccountService
 from ..dependencies import get_cert_service, get_sa_service
 from ..core.async_utils import run_sync
+from ..core.exceptions import UserNotFoundError
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -60,11 +61,11 @@ async def get_user(
 ):
     try:
         return await run_sync(cert_svc.get_user, username)
-    except Exception:
+    except UserNotFoundError:
         pass
     try:
-        return await run_sync(sa_svc.get_user, username, "default")
-    except Exception:
+        return await run_sync(sa_svc.get_user, username)
+    except UserNotFoundError:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
 
 

@@ -19,7 +19,7 @@ class ServiceAccountService(RegistryMixin):
     def list_users(self) -> list[dict]:
         return [u for u in self._load_registry() if u.get("type") == "service_account"]
 
-    def get_user(self, username: str, namespace: str = "default") -> dict:
+    def get_user(self, username: str) -> dict:
         for u in self._load_registry():
             if u["name"] == username and u.get("type") == "service_account":
                 return u

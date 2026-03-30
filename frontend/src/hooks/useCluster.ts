@@ -24,7 +24,7 @@ export const useAddCluster = (onSuccess?: () => void) => {
     mutationFn: (payload: AddClusterPayload) => clusterApi.add(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clusters'] })
-      toast.success('Cluster ajouté')
+      toast.success('Cluster added')
       onSuccess?.()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -39,7 +39,7 @@ export const useRemoveCluster = () => {
     onSuccess: (_data, name) => {
       qc.invalidateQueries({ queryKey: ['clusters'] })
       if (activeCluster === name) setActiveCluster('local')
-      toast.success('Cluster supprimé')
+      toast.success('Cluster removed')
     },
     onError: (err: Error) => toast.error(err.message),
   })
