@@ -76,28 +76,20 @@ class CertificateService(RegistryMixin):
             else:
                 raise
 
-        # Step 4: Approve the CSR
+        # Step 4: Approve the CSR — mutate the existing object and PUT it back
         existing_csr = self.certs_api.read_certificate_signing_request(csr_name)
-        now = datetime.now(timezone.utc)
-        approval = client.V1CertificateSigningRequest(
-            metadata=client.V1ObjectMeta(
-                name=csr_name,
-                resource_version=existing_csr.metadata.resource_version,
-            ),
-            spec=existing_csr.spec,
-            status=client.V1CertificateSigningRequestStatus(
-                conditions=[
-                    client.V1CertificateSigningRequestCondition(
-                        type="Approved",
-                        status="True",
-                        reason="ClusterVisionApproval",
-                        message=f"Approved by ClusterVision for user {username}",
-                        last_update_time=now,
-                    )
-                ]
-            )
+        existing_csr.status = client.V1CertificateSigningRequestStatus(
+            conditions=[
+                client.V1CertificateSigningRequestCondition(
+                    type="Approved",
+                    status="True",
+                    reason="ClusterVisionApproval",
+                    message=f"Approved by ClusterVision for user {username}",
+                    last_update_time=datetime.now(timezone.utc),
+                )
+            ]
         )
-        self.certs_api.patch_certificate_signing_request_approval(csr_name, approval)
+        self.certs_api.replace_certificate_signing_request_approval(csr_name, existing_csr)
 
         # Step 5: Wait for signed certificate
         signed_cert_b64 = self._wait_for_certificate(csr_name)

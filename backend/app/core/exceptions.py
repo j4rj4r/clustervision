@@ -1,6 +1,9 @@
+import logging
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from kubernetes.client.exceptions import ApiException
+
+logger = logging.getLogger(__name__)
 
 
 class UserNotFoundError(Exception):
@@ -31,6 +34,7 @@ def k8s_exception_to_http(exc: ApiException) -> HTTPException:
 
 
 async def kubernetes_exception_handler(request: Request, exc: ApiException) -> JSONResponse:
+    logger.error("Kubernetes API error %s %s: %s", exc.status, exc.reason, exc.body)
     http_exc = k8s_exception_to_http(exc)
     return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
 
