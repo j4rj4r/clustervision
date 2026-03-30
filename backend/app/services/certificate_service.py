@@ -2,7 +2,6 @@ import base64
 import time
 import logging
 from datetime import datetime, timezone, timedelta
-from kubernetes.client import V1Time
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -79,7 +78,7 @@ class CertificateService(RegistryMixin):
 
         # Step 4: Approve the CSR
         existing_csr = self.certs_api.read_certificate_signing_request(csr_name)
-        now = V1Time(datetime.now(timezone.utc))
+        now = datetime.now(timezone.utc)
         approval = client.V1CertificateSigningRequest(
             metadata=client.V1ObjectMeta(
                 name=csr_name,
