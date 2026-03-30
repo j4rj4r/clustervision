@@ -2,6 +2,7 @@ import base64
 import time
 import logging
 from datetime import datetime, timezone, timedelta
+from kubernetes.client import V1Time
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -77,10 +78,13 @@ class CertificateService(RegistryMixin):
                 raise
 
         # Step 4: Approve the CSR
-        # The kubernetes client requires spec to be present in the approval patch
         existing_csr = self.certs_api.read_certificate_signing_request(csr_name)
+        now = V1Time(datetime.now(timezone.utc))
         approval = client.V1CertificateSigningRequest(
-            metadata=existing_csr.metadata,
+            metadata=client.V1ObjectMeta(
+                name=csr_name,
+                resource_version=existing_csr.metadata.resource_version,
+            ),
             spec=existing_csr.spec,
             status=client.V1CertificateSigningRequestStatus(
                 conditions=[
@@ -89,6 +93,7 @@ class CertificateService(RegistryMixin):
                         status="True",
                         reason="ClusterVisionApproval",
                         message=f"Approved by ClusterVision for user {username}",
+                        last_update_time=now,
                     )
                 ]
             )
