@@ -31,7 +31,7 @@ export const useUserPermissions = (username: string) => {
   return useQuery({
     queryKey: ['user-permissions', cluster, username],
     queryFn: () => rbacApi.getUserPermissions(username),
-    staleTime: 30_000,
+    staleTime: 120_000,
     enabled: !!username,
   })
 }
@@ -50,7 +50,7 @@ export const useNamespaceAccess = (namespace: string) => {
   return useQuery({
     queryKey: ['namespace-access', cluster, namespace],
     queryFn: () => rbacApi.getNamespaceAccess(namespace),
-    staleTime: 30_000,
+    staleTime: 120_000,
     enabled: !!namespace,
   })
 }

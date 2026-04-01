@@ -15,6 +15,8 @@ class KubeconfigService:
         self.core_v1 = client.CoreV1Api(api_client)
         self.version_api = client.VersionApi(api_client)
         self.settings = get_settings()
+        self._ca_cache: str | None = None
+        self._api_url_cache: str | None = None
 
     def generate_for_cert_user(
         self,
@@ -112,44 +114,49 @@ class KubeconfigService:
         return yaml.dump(kubeconfig, default_flow_style=False, allow_unicode=True)
 
     def _get_cluster_ca(self) -> str:
+        if self._ca_cache is not None:
+            return self._ca_cache
         try:
             cm = self.core_v1.read_namespaced_config_map("kube-root-ca.crt", "kube-system")
             ca_pem = cm.data.get("ca.crt", "")
-            return base64.b64encode(ca_pem.encode()).decode()
+            self._ca_cache = base64.b64encode(ca_pem.encode()).decode()
         except ApiException:
-            # Fallback: read from service account mounted secret
             try:
                 with open("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "rb") as f:
-                    return base64.b64encode(f.read()).decode()
+                    self._ca_cache = base64.b64encode(f.read()).decode()
             except FileNotFoundError:
-                return ""
+                self._ca_cache = ""
+        return self._ca_cache
 
     def _get_api_server_url(self) -> str:
+        if self._api_url_cache is not None:
+            return self._api_url_cache
         if self.settings.cluster_api_url:
-            return self.settings.cluster_api_url
-        # Auto-detect from in-cluster environment
-        try:
-            with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace"):
-                return "https://kubernetes.default.svc"
-        except FileNotFoundError:
-            # Local dev: parse from kubeconfig
-            from kubernetes import config as k8s_config
-            cfg = k8s_config.kube_config.list_kube_config_contexts()
-            for ctx in cfg[0]:
-                if ctx.get("name") == cfg[1].get("name"):
-                    cluster_name = ctx.get("context", {}).get("cluster")
-                    # This is approximate; CLUSTER_API_URL env var is preferred
-                    return f"https://{cluster_name}"
-            return "https://kubernetes.default.svc"
+            self._api_url_cache = self.settings.cluster_api_url
+        else:
+            try:
+                with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace"):
+                    self._api_url_cache = "https://kubernetes.default.svc"
+            except FileNotFoundError:
+                from kubernetes import config as k8s_config
+                cfg = k8s_config.kube_config.list_kube_config_contexts()
+                for ctx in cfg[0]:
+                    if ctx.get("name") == cfg[1].get("name"):
+                        cluster_name = ctx.get("context", {}).get("cluster")
+                        self._api_url_cache = f"https://{cluster_name}"
+                        break
+                else:
+                    self._api_url_cache = "https://kubernetes.default.svc"
+        return self._api_url_cache
 
     def _get_sa_token(self, sa_name: str, namespace: str) -> str:
         # Prefer a long-lived service-account-token secret if one exists
-        secrets = self.core_v1.list_namespaced_secret(namespace)
+        secrets = self.core_v1.list_namespaced_secret(
+            namespace,
+            label_selector=f"kubernetes.io/service-account.name={sa_name}",
+        )
         for secret in secrets.items:
             if secret.type != "kubernetes.io/service-account-token":
-                continue
-            annotations = (secret.metadata.annotations or {})
-            if annotations.get("kubernetes.io/service-account.name") != sa_name:
                 continue
             token_bytes = (secret.data or {}).get("token")
             if token_bytes:
