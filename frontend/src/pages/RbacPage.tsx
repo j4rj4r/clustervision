@@ -147,6 +147,7 @@ export default function RbacPage() {
               onEdit={(role) => setModal({ open: true, isCluster: false, role })}
               onCopy={(role) => setModal({ open: true, isCluster: false, copyFrom: role })}
               onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
+              onCreateClick={() => setModal({ open: true, isCluster: false, role: undefined })}
             />
           )}
         </div>
@@ -174,6 +175,7 @@ export default function RbacPage() {
               onEdit={(role) => setModal({ open: true, isCluster: true, role })}
               onCopy={(role) => setModal({ open: true, isCluster: true, copyFrom: role })}
               onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
+              onCreateClick={() => setModal({ open: true, isCluster: true, role: undefined })}
             />
           )}
         </div>

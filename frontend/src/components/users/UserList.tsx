@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Fragment } from 'react'
-import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import UserPermissionsPanel from './UserPermissionsPanel'
@@ -10,6 +10,15 @@ interface Props {
   users: User[]
   onDelete: (user: User) => void
   onKubeconfig: (user: User) => void
+  onCreateClick?: () => void
+}
+
+function ExpiryBadge({ expiry }: { expiry: string }) {
+  const days = Math.floor((new Date(expiry).getTime() - Date.now()) / 86_400_000)
+  if (days < 0) return <Badge variant="danger">Expired</Badge>
+  if (days < 30) return <Badge variant="danger">{days}d left</Badge>
+  if (days < 90) return <Badge variant="warning">{days}d left</Badge>
+  return <Badge variant="success">{days}d left</Badge>
 }
 
 type SortCol = 'name' | 'type' | 'created_at'
@@ -22,7 +31,7 @@ function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; s
     : <ArrowDown size={12} className="ml-1 inline text-brand-400" />
 }
 
-export default function UserList({ users, onDelete, onKubeconfig }: Props) {
+export default function UserList({ users, onDelete, onKubeconfig, onCreateClick }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sortCol, setSortCol] = useState<SortCol>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -42,9 +51,17 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
 
   if (users.length === 0) {
     return (
-      <div className="text-center py-16 text-surface-400">
-        <Shield size={36} className="mx-auto mb-3 opacity-30" />
-        <p className="text-sm">No users yet. Create one to get started.</p>
+      <div className="text-center py-16 text-surface-400 space-y-4">
+        <Shield size={36} className="mx-auto opacity-30" />
+        <div>
+          <p className="text-sm font-medium text-surface-300">No users yet</p>
+          <p className="text-xs text-surface-500 mt-1">Create a ServiceAccount or certificate user to get started.</p>
+        </div>
+        {onCreateClick && (
+          <Button size="sm" onClick={onCreateClick}>
+            <Plus size={13} /> Create user
+          </Button>
+        )}
       </div>
     )
   }
@@ -98,9 +115,9 @@ export default function UserList({ users, onDelete, onKubeconfig }: Props) {
                 {user.groups?.length > 0 ? user.groups.join(', ') : <span className="text-surface-500">—</span>}
               </td>
               <td className="px-4 py-3 text-surface-400 text-xs">
-                {new Date(user.created_at).toLocaleDateString()}
+                <div>{new Date(user.created_at).toLocaleDateString()}</div>
                 {user.cert_expiry && (
-                  <span className="text-surface-500 ml-1">· exp. {new Date(user.cert_expiry).toLocaleDateString()}</span>
+                  <div className="mt-1"><ExpiryBadge expiry={user.cert_expiry} /></div>
                 )}
               </td>
               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
