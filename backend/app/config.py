@@ -4,6 +4,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
+    app_version: str = "dev"
     cluster_name: str = "kubernetes"
     cluster_api_url: str = ""
     registry_namespace: str = "clustervision"

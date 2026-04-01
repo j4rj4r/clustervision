@@ -94,7 +94,7 @@ network layer (ingress, NetworkPolicy) or via a reverse-proxy.
 ClusterVision names every binding it creates `clustervision-{username}-{role}`.
 This prefix is used to identify and clean up bindings on user deletion.
 """,
-    version="1.0.0",
+    version=get_settings().app_version,
     openapi_tags=openapi_tags,
     lifespan=lifespan,
     license_info={"name": "MIT"},
