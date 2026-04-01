@@ -316,6 +316,32 @@ class RbacService:
                 if e.status != 404:
                     raise
 
+    def delete_user_bindings(self, username: str):
+        """Delete all ClusterVision-managed bindings that reference this user."""
+        prefix = f"clustervision-{username}-"
+
+        crbs = self.rbac_v1.list_cluster_role_binding()
+        for crb in crbs.items:
+            if not crb.metadata.name.startswith(prefix):
+                continue
+            try:
+                self.rbac_v1.delete_cluster_role_binding(crb.metadata.name)
+                logger.info("Deleted ClusterRoleBinding %s", crb.metadata.name)
+            except ApiException as e:
+                if e.status != 404:
+                    raise
+
+        rbs = self.rbac_v1.list_role_binding_for_all_namespaces()
+        for rb in rbs.items:
+            if not rb.metadata.name.startswith(prefix):
+                continue
+            try:
+                self.rbac_v1.delete_namespaced_role_binding(rb.metadata.name, rb.metadata.namespace)
+                logger.info("Deleted RoleBinding %s/%s", rb.metadata.namespace, rb.metadata.name)
+            except ApiException as e:
+                if e.status != 404:
+                    raise
+
     # ── Namespaces ──────────────────────────────────────────────────────────
 
     def list_namespaces(self) -> list[str]:
