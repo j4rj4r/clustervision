@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 
 from ..models.rbac import (
     ClusterRoleCreate, RoleCreate, BindingCreate,
-    AssignRoleRequest, UserPermissionSummary, PolicyRule,
-    CheckAccessRequest,
+    AssignRoleRequest, RoleRead, BindingRead, UserPermissionSummary,
+    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult, PolicyRule,
 )
 from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
@@ -11,10 +11,21 @@ from ..core.async_utils import run_sync
 
 router = APIRouter(prefix="/api/rbac", tags=["rbac"])
 
+_404 = {404: {"description": "Resource not found"}}
+_403 = {403: {"description": "Insufficient Kubernetes permissions"}}
+
 
 # ── ClusterRoles ─────────────────────────────────────────────────────────────
 
-@router.get("/cluster-roles")
+@router.get(
+    "/cluster-roles",
+    response_model=list[RoleRead],
+    summary="List ClusterRoles",
+    description=(
+        "Returns all ClusterRoles. Set `include_system=true` to include Kubernetes built-in roles "
+        "(those starting with `system:` or `kubernetes-`). Excluded by default."
+    ),
+)
 async def list_cluster_roles(
     include_system: bool = False,
     svc: RbacService = Depends(get_rbac_service),
@@ -22,7 +33,14 @@ async def list_cluster_roles(
     return await run_sync(svc.list_cluster_roles, include_system)
 
 
-@router.post("/cluster-roles", status_code=201)
+@router.post(
+    "/cluster-roles",
+    response_model=RoleRead,
+    status_code=201,
+    summary="Create a ClusterRole",
+    description="Create a new ClusterRole with the given policy rules.",
+    responses={**_403},
+)
 async def create_cluster_role(
     payload: ClusterRoleCreate,
     svc: RbacService = Depends(get_rbac_service),
@@ -30,7 +48,13 @@ async def create_cluster_role(
     return await run_sync(svc.create_cluster_role, payload.name, payload.rules)
 
 
-@router.put("/cluster-roles/{name}")
+@router.put(
+    "/cluster-roles/{name}",
+    response_model=RoleRead,
+    summary="Update a ClusterRole",
+    description="Replace the policy rules of an existing ClusterRole.",
+    responses={**_404, **_403},
+)
 async def update_cluster_role(
     name: str,
     rules: list[PolicyRule],
@@ -39,24 +63,48 @@ async def update_cluster_role(
     return await run_sync(svc.update_cluster_role, name, rules)
 
 
-@router.delete("/cluster-roles/{name}", status_code=204)
+@router.delete(
+    "/cluster-roles/{name}",
+    status_code=204,
+    summary="Delete a ClusterRole",
+    description="Delete a ClusterRole by name. System roles cannot be deleted via this API.",
+    responses={**_404, **_403},
+)
 async def delete_cluster_role(name: str, svc: RbacService = Depends(get_rbac_service)):
     await run_sync(svc.delete_cluster_role, name)
 
 
 # ── Namespaced Roles ──────────────────────────────────────────────────────────
 
-@router.get("/roles/{namespace}")
+@router.get(
+    "/roles/{namespace}",
+    response_model=list[RoleRead],
+    summary="List Roles in a namespace",
+    description="Returns all Roles in the given namespace.",
+)
 async def list_roles(namespace: str, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.list_roles, namespace)
 
 
-@router.post("/roles", status_code=201)
+@router.post(
+    "/roles",
+    response_model=RoleRead,
+    status_code=201,
+    summary="Create a Role",
+    description="Create a new namespaced Role.",
+    responses={**_403},
+)
 async def create_role(payload: RoleCreate, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.create_role, payload.namespace, payload.name, payload.rules)
 
 
-@router.put("/roles/{namespace}/{name}")
+@router.put(
+    "/roles/{namespace}/{name}",
+    response_model=RoleRead,
+    summary="Update a Role",
+    description="Replace the policy rules of an existing namespaced Role.",
+    responses={**_404, **_403},
+)
 async def update_role(
     namespace: str,
     name: str,
@@ -66,36 +114,68 @@ async def update_role(
     return await run_sync(svc.update_role, namespace, name, rules)
 
 
-@router.delete("/roles/{namespace}/{name}", status_code=204)
+@router.delete(
+    "/roles/{namespace}/{name}",
+    status_code=204,
+    summary="Delete a Role",
+    description="Delete a namespaced Role.",
+    responses={**_404, **_403},
+)
 async def delete_role(namespace: str, name: str, svc: RbacService = Depends(get_rbac_service)):
     await run_sync(svc.delete_role, namespace, name)
 
 
 # ── ClusterRoleBindings ───────────────────────────────────────────────────────
 
-@router.get("/bindings/cluster")
+@router.get(
+    "/bindings/cluster",
+    response_model=list[BindingRead],
+    summary="List ClusterRoleBindings",
+    description="Returns all ClusterRoleBindings in the cluster.",
+)
 async def list_cluster_bindings(svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.list_cluster_role_bindings)
 
 
-@router.post("/bindings/cluster", status_code=201)
+@router.post(
+    "/bindings/cluster",
+    response_model=BindingRead,
+    status_code=201,
+    summary="Create a ClusterRoleBinding",
+    responses={**_403},
+)
 async def create_cluster_binding(payload: BindingCreate, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.create_cluster_role_binding, payload.name, payload.role_name, payload.subjects)
 
 
-@router.delete("/bindings/cluster/{name}", status_code=204)
+@router.delete(
+    "/bindings/cluster/{name}",
+    status_code=204,
+    summary="Delete a ClusterRoleBinding",
+    responses={**_404, **_403},
+)
 async def delete_cluster_binding(name: str, svc: RbacService = Depends(get_rbac_service)):
     await run_sync(svc.delete_cluster_role_binding, name)
 
 
 # ── RoleBindings ──────────────────────────────────────────────────────────────
 
-@router.get("/bindings/namespace/{namespace}")
+@router.get(
+    "/bindings/namespace/{namespace}",
+    response_model=list[BindingRead],
+    summary="List RoleBindings in a namespace",
+)
 async def list_namespace_bindings(namespace: str, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.list_role_bindings, namespace)
 
 
-@router.post("/bindings/namespace/{namespace}", status_code=201)
+@router.post(
+    "/bindings/namespace/{namespace}",
+    response_model=BindingRead,
+    status_code=201,
+    summary="Create a RoleBinding",
+    responses={**_403},
+)
 async def create_namespace_binding(
     namespace: str, payload: BindingCreate, svc: RbacService = Depends(get_rbac_service)
 ):
@@ -109,7 +189,12 @@ async def create_namespace_binding(
     )
 
 
-@router.delete("/bindings/namespace/{namespace}/{name}", status_code=204)
+@router.delete(
+    "/bindings/namespace/{namespace}/{name}",
+    status_code=204,
+    summary="Delete a RoleBinding",
+    responses={**_404, **_403},
+)
 async def delete_namespace_binding(
     namespace: str, name: str, svc: RbacService = Depends(get_rbac_service)
 ):
@@ -118,12 +203,32 @@ async def delete_namespace_binding(
 
 # ── User-centric endpoints ────────────────────────────────────────────────────
 
-@router.get("/users/{username}/permissions")
+@router.get(
+    "/users/{username}/permissions",
+    response_model=UserPermissionSummary,
+    summary="Get user permissions",
+    description=(
+        "Returns all ClusterRoleBindings and RoleBindings that reference this user. "
+        "Makes two Kubernetes API calls (one for CRBs, one for all RoleBindings)."
+    ),
+    responses={**_404},
+)
 async def get_user_permissions(username: str, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.get_user_permissions, username)
 
 
-@router.post("/users/{username}/assign", status_code=204)
+@router.post(
+    "/users/{username}/assign",
+    status_code=204,
+    summary="Assign a role to a user",
+    description=(
+        "Create or update a binding to grant `role_name` to `username`. "
+        "If `namespace` is omitted and `role_kind` is `ClusterRole`, a ClusterRoleBinding is created. "
+        "Otherwise a namespaced RoleBinding is created. "
+        "For ServiceAccount subjects, supply `sa_namespace` (the SA's namespace)."
+    ),
+    responses={**_403},
+)
 async def assign_role(
     username: str,
     payload: AssignRoleRequest,
@@ -142,7 +247,16 @@ async def assign_role(
     )
 
 
-@router.delete("/users/{username}/revoke", status_code=204)
+@router.delete(
+    "/users/{username}/revoke",
+    status_code=204,
+    summary="Revoke a role from a user",
+    description=(
+        "Delete the binding `clustervision-{username}-{role_name}`. "
+        "If `namespace` is omitted, looks for a ClusterRoleBinding; otherwise a namespaced RoleBinding."
+    ),
+    responses={**_404},
+)
 async def revoke_role(
     username: str,
     role_name: str,
@@ -154,21 +268,43 @@ async def revoke_role(
 
 # ── Namespaces ────────────────────────────────────────────────────────────────
 
-@router.get("/namespaces")
+@router.get(
+    "/namespaces",
+    response_model=list[str],
+    summary="List namespaces",
+    description="Returns the names of all namespaces in the cluster.",
+)
 async def list_namespaces(svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.list_namespaces)
 
 
 # ── Namespace access view ─────────────────────────────────────────────────────
 
-@router.get("/namespace/{namespace}/access")
+@router.get(
+    "/namespace/{namespace}/access",
+    response_model=list[NamespaceAccessEntry],
+    summary="Who has access to a namespace",
+    description=(
+        "Returns all subjects (users, groups, service accounts) that have access to the namespace, "
+        "from both namespaced RoleBindings and cluster-wide ClusterRoleBindings."
+    ),
+)
 async def get_namespace_access(namespace: str, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(svc.get_namespace_access, namespace)
 
 
 # ── Access simulator ──────────────────────────────────────────────────────────
 
-@router.post("/check-access")
+@router.post(
+    "/check-access",
+    response_model=CheckAccessResult,
+    summary="Check if a user can perform an action",
+    description=(
+        "Uses the Kubernetes SubjectAccessReview API to test whether `user` can perform `verb` "
+        "on `resource` (optionally scoped to a `namespace` and `api_group`). "
+        "Equivalent to `kubectl auth can-i <verb> <resource> --as <user>`."
+    ),
+)
 async def check_access(payload: CheckAccessRequest, svc: RbacService = Depends(get_rbac_service)):
     return await run_sync(
         svc.check_access,

@@ -32,7 +32,11 @@ class ClusterInfo(BaseModel):
 
 # ── Current cluster info ──────────────────────────────────────────────────────
 
-@router.get("/info")
+@router.get(
+    "/info",
+    summary="Get active cluster info",
+    description="Returns the Kubernetes server version of the currently active cluster.",
+)
 async def cluster_info(api_client: client.ApiClient = Depends(get_api_client)):
     version_api = get_version_api(api_client)
     version = await run_sync(version_api.get_code)
@@ -45,14 +49,19 @@ async def cluster_info(api_client: client.ApiClient = Depends(get_api_client)):
 
 # ── Multi-cluster registry ────────────────────────────────────────────────────
 
-@router.get("/clusters")
+@router.get("/clusters", summary="List registered clusters")
 async def list_clusters():
     svc = get_cluster_service()
     remote = await run_sync(svc.list_clusters)
     return [{"name": "local", "api_url": "", "is_local": True}] + remote
 
 
-@router.post("/clusters", status_code=201)
+@router.post(
+    "/clusters",
+    status_code=201,
+    summary="Register a remote cluster",
+    description="Add a remote cluster by providing its API URL, CA certificate (base64 PEM) and a ServiceAccount bearer token.",
+)
 async def add_cluster(payload: ClusterAdd):
     svc = get_cluster_service()
     try:
@@ -61,7 +70,16 @@ async def add_cluster(payload: ClusterAdd):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.get("/bootstrap-script", response_class=PlainTextResponse)
+@router.get(
+    "/bootstrap-script",
+    response_class=PlainTextResponse,
+    summary="Get bootstrap shell script",
+    description=(
+        "Returns a shell script that, when run against a remote cluster with `kubectl`, "
+        "creates the ClusterVision ServiceAccount with the required RBAC permissions and "
+        "registers the cluster automatically via the API."
+    ),
+)
 async def bootstrap_script(request: Request, name: str = Query(..., description="Name to give this cluster in ClusterVision")):
     if not _CLUSTER_NAME_RE.match(name):
         raise HTTPException(
@@ -174,7 +192,7 @@ echo "✓ Cluster '$CLUSTER_NAME' successfully registered in ClusterVision."
     return script
 
 
-@router.delete("/clusters/{name}", status_code=204)
+@router.delete("/clusters/{name}", status_code=204, summary="Remove a registered cluster")
 async def remove_cluster(name: str):
     svc = get_cluster_service()
     try:

@@ -13,7 +13,28 @@ from ..core.async_utils import run_sync
 router = APIRouter(prefix="/api/kubeconfig", tags=["kubeconfig"])
 
 
-@router.post("/generate")
+@router.post(
+    "/generate",
+    summary="Generate a kubeconfig",
+    description=(
+        "Generate a kubeconfig YAML file for the given user.\n\n"
+        "**Certificate users** — `private_key_pem` is required (the private key returned at creation time "
+        "and never stored server-side). The signed certificate is fetched from the Kubernetes CSR.\n\n"
+        "**ServiceAccount users** — no private key needed. A long-lived token Secret is used if available; "
+        "otherwise a one-year TokenRequest is issued.\n\n"
+        "The optional `namespace` sets the default namespace in the kubeconfig context. "
+        "Leave empty to omit it."
+    ),
+    response_description="kubeconfig file in YAML format, ready to use with `kubectl`",
+    responses={
+        200: {
+            "content": {"application/x-yaml": {}},
+            "description": "kubeconfig YAML",
+        },
+        400: {"description": "private_key_pem required for certificate users"},
+        404: {"description": "User not found"},
+    },
+)
 async def generate_kubeconfig(
     payload: KubeconfigRequest,
     cert_svc: CertificateService = Depends(get_cert_service),

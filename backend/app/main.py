@@ -31,11 +31,74 @@ async def lifespan(app: FastAPI):
     yield
 
 
+openapi_tags = [
+    {
+        "name": "users",
+        "description": (
+            "Manage ClusterVision users. Two types are supported: "
+            "**certificate** (X.509 client cert, identity in CN/O fields) and "
+            "**service_account** (Kubernetes ServiceAccount with a long-lived token). "
+            "Deleting a user also removes all managed role bindings."
+        ),
+    },
+    {
+        "name": "rbac",
+        "description": (
+            "Manage Kubernetes RBAC objects: ClusterRoles, namespaced Roles, "
+            "ClusterRoleBindings, RoleBindings. Also exposes user-centric helpers "
+            "to assign/revoke roles and simulate access checks."
+        ),
+    },
+    {
+        "name": "kubeconfig",
+        "description": (
+            "Generate kubeconfig files ready to use with `kubectl`. "
+            "For certificate users the private key PEM must be supplied at generation time "
+            "(it is never stored server-side). For ServiceAccounts the token is fetched automatically."
+        ),
+    },
+    {
+        "name": "tokens",
+        "description": (
+            "Kubeconfig generation history and ServiceAccount token management "
+            "(list, revoke, rotate)."
+        ),
+    },
+    {
+        "name": "cluster",
+        "description": (
+            "Multi-cluster registry. Register remote clusters via a bootstrap script, "
+            "list connected clusters, and query the active cluster version."
+        ),
+    },
+]
+
 app = FastAPI(
     title="ClusterVision",
-    description="Kubernetes user and RBAC management API",
+    summary="Kubernetes user & RBAC management API",
+    description="""
+ClusterVision lets you **create, manage and delete** Kubernetes users (X.509 certificates
+and ServiceAccounts) and their RBAC permissions through a single REST API.
+
+## Authentication
+No authentication is built into the API itself — access should be restricted at the
+network layer (ingress, NetworkPolicy) or via a reverse-proxy.
+
+## User types
+| Type | Auth method | Revocation |
+|------|-------------|------------|
+| `certificate` | TLS client certificate (X.509) | Soft — remove bindings; cert valid until expiry |
+| `service_account` | Bearer token | Immediate — delete the token Secret |
+
+## Managed naming convention
+ClusterVision names every binding it creates `clustervision-{username}-{role}`.
+This prefix is used to identify and clean up bindings on user deletion.
+""",
     version="1.0.0",
+    openapi_tags=openapi_tags,
     lifespan=lifespan,
+    license_info={"name": "MIT"},
+    contact={"name": "ClusterVision", "url": "https://github.com/j4rj4r/clustervision"},
 )
 
 _settings = get_settings()
