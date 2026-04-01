@@ -52,6 +52,7 @@ export default function UsersPage() {
           <UserList
             users={data?.users ?? []}
             onDelete={setToDelete}
+            onCreateClick={() => setCreateOpen(true)}
             onKubeconfig={(user) => {
               const params = new URLSearchParams({ user: user.name })
               if (user.namespace && user.namespace !== 'default') params.set('namespace', user.namespace)

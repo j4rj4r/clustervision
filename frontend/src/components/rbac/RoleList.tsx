@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
-import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown, ShieldOff, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import type { RoleRead } from '../../types/rbac'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   onEdit?: (role: RoleRead) => void
   onCopy?: (role: RoleRead) => void
   onDelete?: (role: RoleRead) => void
+  onCreateClick?: () => void
 }
 
 type SortCol = 'name' | 'rules' | 'status'
@@ -21,7 +23,7 @@ function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; s
     : <ArrowDown size={12} className="ml-1 inline text-brand-400" />
 }
 
-export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Props) {
+export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCreateClick }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sortCol, setSortCol] = useState<SortCol>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -40,7 +42,18 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete }: Pro
   })
 
   if (roles.length === 0) return (
-    <div className="text-center py-8 text-surface-500 text-sm">{title ? `${title} — ` : ''}No roles</div>
+    <div className="text-center py-14 space-y-4">
+      <ShieldOff size={32} className="mx-auto text-surface-600" />
+      <div>
+        <p className="text-sm font-medium text-surface-400">No roles in {title || 'this namespace'}</p>
+        <p className="text-xs text-surface-500 mt-1">Create a role to start assigning permissions.</p>
+      </div>
+      {onCreateClick && (
+        <Button size="sm" onClick={onCreateClick}>
+          <Plus size={13} /> Create role
+        </Button>
+      )}
+    </div>
   )
 
   const toggle = (name: string) =>

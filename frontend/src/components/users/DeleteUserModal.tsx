@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { TriangleAlert, Trash2 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { useDeleteUser } from '../../hooks/useUsers'
@@ -22,11 +22,14 @@ export default function DeleteUserModal({ user, onClose }: Props) {
 
   return (
     <Modal open={!!user} onClose={onClose} title="Delete user" size="sm">
-      <div className="space-y-4">
-        <p className="text-sm text-surface-200">
-          Are you sure you want to delete <span className="font-mono font-semibold text-surface-100">{user?.name}</span>?
-          This will remove the CSR/ServiceAccount and all ClusterVision-managed bindings.
-        </p>
+      <div className="space-y-5">
+        <div className="flex gap-3 p-3 rounded-lg bg-red-950/40 border border-red-500/20">
+          <TriangleAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-surface-200">
+            Delete <span className="font-mono font-semibold text-surface-100">{user?.name}</span>?
+            This will remove the {user?.user_type === 'certificate' ? 'CSR' : 'ServiceAccount'} and all managed role bindings. This cannot be undone.
+          </p>
+        </div>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
           <Button variant="danger" onClick={handleDelete} loading={deleteUser.isPending} className="flex-1">
