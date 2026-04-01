@@ -5,6 +5,7 @@ import RbacPage from './pages/RbacPage'
 import KubeconfigPage from './pages/KubeconfigPage'
 import ClustersPage from './pages/ClustersPage'
 import TokensPage from './pages/TokensPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="kubeconfig" element={<KubeconfigPage />} />
           <Route path="tokens" element={<TokensPage />} />
           <Route path="clusters" element={<ClustersPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
