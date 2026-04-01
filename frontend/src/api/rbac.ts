@@ -37,12 +37,12 @@ export const rbacApi = {
 
   assignRole: (username: string, payload: AssignRolePayload, userKind = 'User', saNamespace?: string): Promise<void> =>
     client
-      .post(`/rbac/users/${username}/assign`, payload, { params: { user_kind: userKind, sa_namespace: saNamespace } })
+      .post(`/rbac/users/${username}/roles`, payload, { params: { user_kind: userKind, sa_namespace: saNamespace } })
       .then(() => undefined),
 
   revokeRole: (username: string, roleName: string, namespace?: string): Promise<void> =>
     client
-      .delete(`/rbac/users/${username}/revoke`, { params: { role_name: roleName, namespace } })
+      .delete(`/rbac/users/${username}/roles/${roleName}`, { params: { namespace } })
       .then(() => undefined),
 
   listNamespaces: (): Promise<string[]> =>

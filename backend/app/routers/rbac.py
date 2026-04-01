@@ -218,7 +218,7 @@ async def get_user_permissions(username: str, svc: RbacService = Depends(get_rba
 
 
 @router.post(
-    "/users/{username}/assign",
+    "/users/{username}/roles",
     status_code=204,
     summary="Assign a role to a user",
     description=(
@@ -248,7 +248,7 @@ async def assign_role(
 
 
 @router.delete(
-    "/users/{username}/revoke",
+    "/users/{username}/roles/{role_name}",
     status_code=204,
     summary="Revoke a role from a user",
     description=(
