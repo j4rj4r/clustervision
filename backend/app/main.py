@@ -76,9 +76,9 @@ openapi_tags = [
 app = FastAPI(
     title="ClusterVision",
     summary="Kubernetes user & RBAC management API",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
     description="""
 ClusterVision lets you **create, manage and delete** Kubernetes users (X.509 certificates
 and ServiceAccounts) and their RBAC permissions through a single REST API.

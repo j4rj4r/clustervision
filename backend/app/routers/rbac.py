@@ -9,7 +9,7 @@ from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
 from ..core.async_utils import run_sync
 
-router = APIRouter(prefix="/api/rbac", tags=["rbac"])
+router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
 
 _404 = {404: {"description": "Resource not found"}}
 _403 = {403: {"description": "Insufficient Kubernetes permissions"}}

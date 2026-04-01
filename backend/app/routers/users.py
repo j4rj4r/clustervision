@@ -9,7 +9,7 @@ from ..dependencies import get_cert_service, get_sa_service, get_rbac_service
 from ..core.async_utils import run_sync
 from ..core.exceptions import UserNotFoundError
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 _404 = {404: {"description": "User not found"}}
 _409 = {409: {"description": "User already exists"}}

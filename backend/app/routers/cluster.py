@@ -12,7 +12,7 @@ from ..core.async_utils import run_sync
 
 _CLUSTER_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,63}$')
 
-router = APIRouter(prefix="/api/cluster", tags=["cluster"])
+router = APIRouter(prefix="/api/v1/cluster", tags=["cluster"])
 
 
 # ── Models ───────────────────────────────────────────────────────────────────

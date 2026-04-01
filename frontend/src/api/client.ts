@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useClusterStore } from '../store/clusterStore'
 
 const client = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 

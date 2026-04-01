@@ -10,7 +10,7 @@ from ..dependencies import get_cert_service, get_sa_service, get_kubeconfig_serv
 from ..services.token_service import TokenService
 from ..core.async_utils import run_sync
 
-router = APIRouter(prefix="/api/kubeconfig", tags=["kubeconfig"])
+router = APIRouter(prefix="/api/v1/kubeconfig", tags=["kubeconfig"])
 
 
 @router.post(

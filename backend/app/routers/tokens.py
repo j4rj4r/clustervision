@@ -5,7 +5,7 @@ from ..services.token_service import TokenService
 from ..dependencies import get_token_service
 from ..core.async_utils import run_sync
 
-router = APIRouter(prefix="/api/tokens", tags=["tokens"])
+router = APIRouter(prefix="/api/v1/tokens", tags=["tokens"])
 
 _404 = {404: {"description": "Entry not found"}}
 
