@@ -21,15 +21,15 @@ export const rbacApi = {
     client.post('/rbac/roles', { namespace, name, rules }).then((r) => r.data),
 
   updateRole: (namespace: string, name: string, rules: PolicyRule[]): Promise<RoleRead> =>
-    client.put(`/rbac/roles/${namespace}/${name}`, { rules }).then((r) => r.data),
+    client.patch(`/rbac/roles/${namespace}/${name}`, { rules }).then((r) => r.data),
 
   deleteRole: (namespace: string, name: string): Promise<void> =>
     client.delete(`/rbac/roles/${namespace}/${name}`).then(),
 
-  listClusterBindings: (): Promise<BindingRead[]> =>
+  listClusterBindings: (): Promise<PaginatedList<BindingRead>> =>
     client.get('/rbac/bindings/cluster').then((r) => r.data),
 
-  listNamespaceBindings: (namespace: string): Promise<BindingRead[]> =>
+  listNamespaceBindings: (namespace: string): Promise<PaginatedList<BindingRead>> =>
     client.get(`/rbac/bindings/namespace/${namespace}`).then((r) => r.data),
 
   getUserPermissions: (username: string): Promise<UserPermissionSummary> =>

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Any
+from typing import Optional
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
@@ -248,13 +248,39 @@ class RbacService:
     def delete_role_binding(self, namespace: str, name: str):
         self.rbac_v1.delete_namespaced_role_binding(name, namespace)
 
+    # ── Internal pagination helpers ─────────────────────────────────────────
+
+    def _iter_all_crbs(self, page_size: int = 500):
+        """Yield every ClusterRoleBinding, following continuation tokens."""
+        cursor = None
+        while True:
+            kwargs: dict = {"limit": page_size}
+            if cursor:
+                kwargs["_continue"] = cursor
+            result = self.rbac_v1.list_cluster_role_binding(**kwargs)
+            yield from result.items
+            cursor = result.metadata._continue
+            if not cursor:
+                break
+
+    def _iter_all_rbs(self, page_size: int = 500):
+        """Yield every RoleBinding across all namespaces, following continuation tokens."""
+        cursor = None
+        while True:
+            kwargs: dict = {"limit": page_size}
+            if cursor:
+                kwargs["_continue"] = cursor
+            result = self.rbac_v1.list_role_binding_for_all_namespaces(**kwargs)
+            yield from result.items
+            cursor = result.metadata._continue
+            if not cursor:
+                break
+
     # ── User-centric convenience methods ────────────────────────────────────
 
     def get_user_permissions(self, username: str) -> dict:
-        # 1 call for all CRBs
-        crbs = self.rbac_v1.list_cluster_role_binding()
         cluster_bindings = []
-        for crb in crbs.items:
+        for crb in self._iter_all_crbs():
             subjects = crb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
                 cluster_bindings.append({
@@ -265,10 +291,8 @@ class RbacService:
                     "subjects": [_subject_from_k8s(s) for s in subjects],
                 })
 
-        # 1 call for all RoleBindings across all namespaces (instead of 1 per namespace)
-        rbs = self.rbac_v1.list_role_binding_for_all_namespaces()
         namespace_bindings = []
-        for rb in rbs.items:
+        for rb in self._iter_all_rbs():
             subjects = rb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
                 namespace_bindings.append({
@@ -351,8 +375,7 @@ class RbacService:
         """Delete all ClusterVision-managed bindings that reference this user."""
         prefix = f"clustervision-{username}-"
 
-        crbs = self.rbac_v1.list_cluster_role_binding()
-        for crb in crbs.items:
+        for crb in self._iter_all_crbs():
             if not crb.metadata.name.startswith(prefix):
                 continue
             try:
@@ -362,8 +385,7 @@ class RbacService:
                 if e.status != 404:
                     raise
 
-        rbs = self.rbac_v1.list_role_binding_for_all_namespaces()
-        for rb in rbs.items:
+        for rb in self._iter_all_rbs():
             if not rb.metadata.name.startswith(prefix):
                 continue
             try:
@@ -398,8 +420,7 @@ class RbacService:
                 })
 
         # ClusterRoleBindings apply cluster-wide (include this namespace)
-        crbs = self.rbac_v1.list_cluster_role_binding()
-        for crb in crbs.items:
+        for crb in self._iter_all_crbs():
             for subject in (crb.subjects or []):
                 results.append({
                     "subject": subject.name,
