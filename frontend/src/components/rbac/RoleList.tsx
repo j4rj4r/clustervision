@@ -2,7 +2,10 @@ import { Fragment, useState } from 'react'
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown, ShieldOff, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
+import Pagination from '../ui/Pagination'
 import type { RoleRead } from '../../types/rbac'
+
+const PAGE_SIZE = 25
 
 interface Props {
   roles: RoleRead[]
@@ -27,10 +30,12 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sortCol, setSortCol] = useState<SortCol>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [page, setPage] = useState(0)
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortCol(col); setSortDir('asc') }
+    setPage(0)
   }
 
   const sorted = [...roles].sort((a, b) => {
@@ -40,6 +45,8 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
     else if (sortCol === 'status') cmp = Number(a.is_system) - Number(b.is_system)
     return sortDir === 'asc' ? cmp : -cmp
   })
+
+  const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   if (roles.length === 0) return (
     <div className="text-center py-14 space-y-4">
@@ -85,7 +92,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-700">
-          {sorted.map((role) => (
+          {paginated.map((role) => (
             <Fragment key={role.name}>
               <tr
                 className="hover:bg-surface-700/40 transition-colors cursor-pointer"
@@ -158,6 +165,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
           ))}
         </tbody>
       </table>
+      <Pagination page={page} pageSize={PAGE_SIZE} total={sorted.length} onChange={setPage} />
     </div>
   )
 }

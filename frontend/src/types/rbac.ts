@@ -1,3 +1,9 @@
+export interface PaginatedList<T> {
+  items: T[]
+  total: number
+  next_continue?: string | null
+}
+
 export interface PolicyRule {
   api_groups: string[]
   resources: string[]

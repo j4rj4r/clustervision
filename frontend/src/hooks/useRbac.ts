@@ -22,6 +22,7 @@ export const useClusterRoles = (includeSystem = false, enabled = true) => {
     queryFn: () => rbacApi.listClusterRoles(includeSystem),
     staleTime: 60_000,
     enabled,
+    select: (data) => data.items,
   })
 }
 
@@ -32,6 +33,7 @@ export const useRoles = (namespace: string) => {
     queryFn: () => rbacApi.listRoles(namespace),
     staleTime: 60_000,
     enabled: !!namespace,
+    select: (data) => data.items,
   })
 }
 

@@ -1,6 +1,14 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 from enum import Enum
+
+T = TypeVar("T")
+
+
+class PaginatedList(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    next_continue: Optional[str] = None
 
 
 class PolicyRule(BaseModel):

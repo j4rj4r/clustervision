@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
@@ -47,19 +47,31 @@ class RbacService:
 
     # ── ClusterRoles ────────────────────────────────────────────────────────
 
-    def list_cluster_roles(self, include_system: bool = False) -> list[dict]:
-        roles = self.rbac_v1.list_cluster_role()
-        result = []
-        for r in roles.items:
+    def list_cluster_roles(
+        self,
+        include_system: bool = False,
+        limit: int = 500,
+        _continue: Optional[str] = None,
+    ) -> dict:
+        kwargs: dict = {"limit": limit}
+        if _continue:
+            kwargs["_continue"] = _continue
+        result = self.rbac_v1.list_cluster_role(**kwargs)
+        items = []
+        for r in result.items:
             is_system = r.metadata.name.startswith("system:") or r.metadata.name.startswith("kubeadm:")
             if not include_system and is_system:
                 continue
-            result.append({
+            items.append({
                 "name": r.metadata.name,
                 "rules": [_rule_from_k8s(rule) for rule in (r.rules or [])],
                 "is_system": is_system,
             })
-        return result
+        return {
+            "items": items,
+            "total": len(items),
+            "next_continue": result.metadata._continue,
+        }
 
     def get_cluster_role(self, name: str) -> dict:
         r = self.rbac_v1.read_cluster_role(name)
@@ -95,17 +107,30 @@ class RbacService:
 
     # ── Namespaced Roles ────────────────────────────────────────────────────
 
-    def list_roles(self, namespace: str) -> list[dict]:
-        roles = self.rbac_v1.list_namespaced_role(namespace)
-        return [
+    def list_roles(
+        self,
+        namespace: str,
+        limit: int = 500,
+        _continue: Optional[str] = None,
+    ) -> dict:
+        kwargs: dict = {"limit": limit}
+        if _continue:
+            kwargs["_continue"] = _continue
+        result = self.rbac_v1.list_namespaced_role(namespace, **kwargs)
+        items = [
             {
                 "name": r.metadata.name,
                 "namespace": r.metadata.namespace,
                 "rules": [_rule_from_k8s(rule) for rule in (r.rules or [])],
                 "is_system": False,
             }
-            for r in roles.items
+            for r in result.items
         ]
+        return {
+            "items": items,
+            "total": len(items),
+            "next_continue": result.metadata._continue,
+        }
 
     def create_role(self, namespace: str, name: str, rules: list[PolicyRule]) -> dict:
         role = client.V1Role(
@@ -135,9 +160,16 @@ class RbacService:
 
     # ── ClusterRoleBindings ─────────────────────────────────────────────────
 
-    def list_cluster_role_bindings(self) -> list[dict]:
-        crbs = self.rbac_v1.list_cluster_role_binding()
-        return [
+    def list_cluster_role_bindings(
+        self,
+        limit: int = 500,
+        _continue: Optional[str] = None,
+    ) -> dict:
+        kwargs: dict = {"limit": limit}
+        if _continue:
+            kwargs["_continue"] = _continue
+        result = self.rbac_v1.list_cluster_role_binding(**kwargs)
+        items = [
             {
                 "name": crb.metadata.name,
                 "namespace": None,
@@ -145,8 +177,13 @@ class RbacService:
                 "role_kind": crb.role_ref.kind,
                 "subjects": [_subject_from_k8s(s) for s in (crb.subjects or [])],
             }
-            for crb in crbs.items
+            for crb in result.items
         ]
+        return {
+            "items": items,
+            "total": len(items),
+            "next_continue": result.metadata._continue,
+        }
 
     def create_cluster_role_binding(
         self, name: str, role_name: str, subjects: list[Subject]

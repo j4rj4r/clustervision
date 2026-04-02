@@ -3,8 +3,11 @@ import { Fragment } from 'react'
 import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
+import Pagination from '../ui/Pagination'
 import UserPermissionsPanel from './UserPermissionsPanel'
 import type { User } from '../../types/user'
+
+const PAGE_SIZE = 20
 
 interface Props {
   users: User[]
@@ -35,10 +38,12 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sortCol, setSortCol] = useState<SortCol>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [page, setPage] = useState(0)
 
   const toggleSort = (col: SortCol) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortCol(col); setSortDir('asc') }
+    setPage(0)
   }
 
   const sorted = [...users].sort((a, b) => {
@@ -48,6 +53,8 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
     else if (sortCol === 'created_at') cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     return sortDir === 'asc' ? cmp : -cmp
   })
+
+  const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   if (users.length === 0) {
     return (
@@ -94,7 +101,7 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
         </tr>
       </thead>
       <tbody className="divide-y divide-surface-700">
-        {sorted.map((user) => (
+        {paginated.map((user) => (
           <Fragment key={user.name}>
             <tr
               className="hover:bg-surface-700/40 transition-colors cursor-pointer"
@@ -148,5 +155,6 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
         ))}
       </tbody>
     </table>
+    <Pagination page={page} pageSize={PAGE_SIZE} total={sorted.length} onChange={setPage} />
   )
 }

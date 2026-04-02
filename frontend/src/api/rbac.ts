@@ -1,9 +1,9 @@
 import client from './client'
-import type { AssignRolePayload, BindingRead, CheckAccessRequest, CheckAccessResult, NamespaceAccessEntry, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
+import type { AssignRolePayload, BindingRead, CheckAccessRequest, CheckAccessResult, NamespaceAccessEntry, PaginatedList, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
 
 export const rbacApi = {
-  listClusterRoles: (includeSystem = false): Promise<RoleRead[]> =>
-    client.get('/rbac/cluster-roles', { params: { include_system: includeSystem } }).then((r) => r.data),
+  listClusterRoles: (includeSystem = false, limit = 500, cursor?: string): Promise<PaginatedList<RoleRead>> =>
+    client.get('/rbac/cluster-roles', { params: { include_system: includeSystem, limit, ...(cursor ? { continue: cursor } : {}) } }).then((r) => r.data),
 
   createClusterRole: (name: string, rules: PolicyRule[]): Promise<RoleRead> =>
     client.post('/rbac/cluster-roles', { name, rules }).then((r) => r.data),
@@ -14,8 +14,8 @@ export const rbacApi = {
   deleteClusterRole: (name: string): Promise<void> =>
     client.delete(`/rbac/cluster-roles/${name}`).then(),
 
-  listRoles: (namespace: string): Promise<RoleRead[]> =>
-    client.get(`/rbac/roles/${namespace}`).then((r) => r.data),
+  listRoles: (namespace: string, limit = 500, cursor?: string): Promise<PaginatedList<RoleRead>> =>
+    client.get(`/rbac/roles/${namespace}`, { params: { limit, ...(cursor ? { continue: cursor } : {}) } }).then((r) => r.data),
 
   createRole: (namespace: string, name: string, rules: PolicyRule[]): Promise<RoleRead> =>
     client.post('/rbac/roles', { namespace, name, rules }).then((r) => r.data),

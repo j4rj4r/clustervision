@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from ..models.rbac import (
     ClusterRoleCreate, RoleCreate, RoleUpdate, BindingCreate,
     AssignRoleRequest, RoleRead, BindingRead, UserPermissionSummary,
-    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult,
+    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult, PaginatedList,
 )
 from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
+from typing import Optional
 from ..core.async_utils import run_sync
 
 router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
@@ -19,18 +20,20 @@ _403 = {403: {"description": "Insufficient Kubernetes permissions"}}
 
 @router.get(
     "/cluster-roles",
-    response_model=list[RoleRead],
+    response_model=PaginatedList[RoleRead],
     summary="List ClusterRoles",
     description=(
-        "Returns all ClusterRoles. Set `include_system=true` to include Kubernetes built-in roles "
-        "(those starting with `system:` or `kubernetes-`). Excluded by default."
+        "Returns ClusterRoles up to `limit`. Set `include_system=true` to include Kubernetes built-in roles. "
+        "Use `continue` (from a previous response's `next_continue`) to fetch the next page."
     ),
 )
 async def list_cluster_roles(
     include_system: bool = False,
+    limit: int = Query(default=500, ge=1, le=1000),
+    cursor: Optional[str] = Query(default=None, alias="continue"),
     svc: RbacService = Depends(get_rbac_service),
 ):
-    return await run_sync(svc.list_cluster_roles, include_system)
+    return await run_sync(svc.list_cluster_roles, include_system, limit, cursor)
 
 
 @router.post(
@@ -78,12 +81,17 @@ async def delete_cluster_role(name: str, svc: RbacService = Depends(get_rbac_ser
 
 @router.get(
     "/roles/{namespace}",
-    response_model=list[RoleRead],
+    response_model=PaginatedList[RoleRead],
     summary="List Roles in a namespace",
-    description="Returns all Roles in the given namespace.",
+    description="Returns Roles in the given namespace up to `limit`. Use `continue` for the next page.",
 )
-async def list_roles(namespace: str, svc: RbacService = Depends(get_rbac_service)):
-    return await run_sync(svc.list_roles, namespace)
+async def list_roles(
+    namespace: str,
+    limit: int = Query(default=500, ge=1, le=1000),
+    cursor: Optional[str] = Query(default=None, alias="continue"),
+    svc: RbacService = Depends(get_rbac_service),
+):
+    return await run_sync(svc.list_roles, namespace, limit, cursor)
 
 
 @router.post(
@@ -129,12 +137,16 @@ async def delete_role(namespace: str, name: str, svc: RbacService = Depends(get_
 
 @router.get(
     "/bindings/cluster",
-    response_model=list[BindingRead],
+    response_model=PaginatedList[BindingRead],
     summary="List ClusterRoleBindings",
-    description="Returns all ClusterRoleBindings in the cluster.",
+    description="Returns ClusterRoleBindings up to `limit`. Use `continue` for the next page.",
 )
-async def list_cluster_bindings(svc: RbacService = Depends(get_rbac_service)):
-    return await run_sync(svc.list_cluster_role_bindings)
+async def list_cluster_bindings(
+    limit: int = Query(default=500, ge=1, le=1000),
+    cursor: Optional[str] = Query(default=None, alias="continue"),
+    svc: RbacService = Depends(get_rbac_service),
+):
+    return await run_sync(svc.list_cluster_role_bindings, limit, cursor)
 
 
 @router.post(
