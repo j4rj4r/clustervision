@@ -83,6 +83,7 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
   const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider cursor-pointer select-none hover:text-surface-200 transition-colors'
 
   return (
+    <>
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-surface-600 bg-surface-900/60">
@@ -156,5 +157,6 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
       </tbody>
     </table>
     <Pagination page={page} pageSize={PAGE_SIZE} total={sorted.length} onChange={setPage} />
+    </>
   )
 }
