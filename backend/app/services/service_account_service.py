@@ -167,16 +167,3 @@ class ServiceAccountService(RegistryMixin):
                     "namespace": sa.metadata.namespace,
                 })
         return result
-
-    def get_token(self, sa_name: str, namespace: str) -> str:
-        """Get the token for a ServiceAccount using the TokenRequest API."""
-        token_request = client.AuthenticationV1TokenRequest(
-            spec=client.V1TokenRequestSpec(
-                audiences=["https://kubernetes.default.svc"],
-                expiration_seconds=86400 * 365,
-            )
-        )
-        resp = self.core_v1.create_namespaced_service_account_token(
-            sa_name, namespace, token_request
-        )
-        return resp.status.token

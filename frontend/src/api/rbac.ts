@@ -1,5 +1,5 @@
 import client from './client'
-import type { AssignRolePayload, BindingRead, CheckAccessRequest, CheckAccessResult, NamespaceAccessEntry, PaginatedList, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
+import type { AssignRolePayload, CheckAccessRequest, CheckAccessResult, NamespaceAccessEntry, PaginatedList, PolicyRule, RoleRead, UserPermissionSummary } from '../types/rbac'
 
 export const rbacApi = {
   listClusterRoles: (includeSystem = false, limit = 500, cursor?: string): Promise<PaginatedList<RoleRead>> =>
@@ -25,12 +25,6 @@ export const rbacApi = {
 
   deleteRole: (namespace: string, name: string): Promise<void> =>
     client.delete(`/rbac/roles/${namespace}/${name}`).then(),
-
-  listClusterBindings: (): Promise<PaginatedList<BindingRead>> =>
-    client.get('/rbac/bindings/cluster').then((r) => r.data),
-
-  listNamespaceBindings: (namespace: string): Promise<PaginatedList<BindingRead>> =>
-    client.get(`/rbac/bindings/namespace/${namespace}`).then((r) => r.data),
 
   getUserPermissions: (username: string): Promise<UserPermissionSummary> =>
     client.get(`/rbac/users/${username}/permissions`).then((r) => r.data),
