@@ -3,6 +3,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from kubernetes.client.exceptions import ApiException
 
 from .core.exceptions import (
@@ -105,6 +106,8 @@ This prefix is used to identify and clean up bindings on user deletion.
     license_info={"name": "MIT"},
     contact={"name": "ClusterVision", "url": "https://github.com/j4rj4r/clustervision"},
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 _settings = get_settings()
 app.add_middleware(

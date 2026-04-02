@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Check, Clipboard, Download, FileCode2 } from 'lucide-react'
+import { Check, Clipboard, Download, FileCode2, RefreshCw } from 'lucide-react'
 import Select from '../ui/Select'
 import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
@@ -33,21 +33,25 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     setPrivateKey('')
   }, [selectedUsername])
 
-  // Debounced auto-generate
+  const handleGenerate = () => {
+    if (!canGenerate) return
+    generate.mutate({
+      username: selectedUser!.name,
+      user_type: selectedUser!.user_type,
+      namespace,
+      private_key_pem: isCert ? privateKey : undefined,
+    })
+  }
+
+  // Auto-generate for SA users (no sensitive input involved)
+  // Cert users must click Generate explicitly to avoid firing on every keystroke
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!canGenerate) return
+    if (!canGenerate || isCert) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      generate.mutate({
-        username: selectedUser!.name,
-        user_type: selectedUser!.user_type,
-        namespace,
-        private_key_pem: isCert ? privateKey : undefined,
-      })
-    }, 500)
+    debounceRef.current = setTimeout(handleGenerate, 1500)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [selectedUsername, namespace, privateKey, users])
+  }, [selectedUsername, namespace, users])
 
   const handleCopy = () => {
     if (!generate.data) return
@@ -100,6 +104,17 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
             />
             <p className="text-xs text-surface-400">Paste the private key saved at user creation time.</p>
           </div>
+        )}
+
+        {isCert && (
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate || generate.isPending}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+          >
+            <RefreshCw size={13} className={generate.isPending ? 'animate-spin' : ''} />
+            {generate.isPending ? 'Generating…' : 'Generate kubeconfig'}
+          </button>
         )}
       </div>
 

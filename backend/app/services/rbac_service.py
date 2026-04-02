@@ -257,38 +257,32 @@ class RbacService:
         namespace: Optional[str] = None,
         sa_namespace: Optional[str] = None,
     ):
-        """Assign a role to a user. Creates or updates the appropriate binding."""
+        """Assign a role to a user. Creates or patches the appropriate binding.
+
+        Uses PATCH (strategic merge) instead of read+replace to avoid the race
+        condition where two concurrent requests overwrite each other's subjects.
+        Kubernetes merges subjects by name, so sending only the new subject is safe.
+        """
         subject = Subject(
             kind=SubjectKind(user_kind),
             name=username,
             namespace=sa_namespace,
         )
         binding_name = f"clustervision-{username}-{role_name}"
+        patch_body = {"subjects": [_subject_to_k8s(subject)]}
 
         if namespace is None and role_kind == "ClusterRole":
-            # ClusterRoleBinding
             try:
-                existing = self.rbac_v1.read_cluster_role_binding(binding_name)
-                current_subjects = [_subject_from_k8s(s) for s in (existing.subjects or [])]
-                if not any(s["name"] == username for s in current_subjects):
-                    current_subjects.append(subject.model_dump())
-                    existing.subjects = [_subject_to_k8s(Subject(**s)) for s in current_subjects]
-                    self.rbac_v1.replace_cluster_role_binding(binding_name, existing)
+                self.rbac_v1.patch_cluster_role_binding(binding_name, patch_body)
             except ApiException as e:
                 if e.status == 404:
                     self.create_cluster_role_binding(binding_name, role_name, [subject])
                 else:
                     raise
         else:
-            # RoleBinding in namespace
             ns = namespace or "default"
             try:
-                existing = self.rbac_v1.read_namespaced_role_binding(binding_name, ns)
-                current_subjects = [_subject_from_k8s(s) for s in (existing.subjects or [])]
-                if not any(s["name"] == username for s in current_subjects):
-                    current_subjects.append(subject.model_dump())
-                    existing.subjects = [_subject_to_k8s(Subject(**s)) for s in current_subjects]
-                    self.rbac_v1.replace_namespaced_role_binding(binding_name, ns, existing)
+                self.rbac_v1.patch_namespaced_role_binding(binding_name, ns, patch_body)
             except ApiException as e:
                 if e.status == 404:
                     self.create_role_binding(ns, binding_name, role_name, role_kind, [subject])

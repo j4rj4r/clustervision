@@ -64,6 +64,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const [userType, setUserType] = useState<'certificate' | 'service_account'>('service_account')
   const [saNamespace, setSaNamespace] = useState('default')
   const [newNamespace, setNewNamespace] = useState('')
+  const [newNamespaceError, setNewNamespaceError] = useState('')
   const [groups, setGroups] = useState('')
 
   // Step 2
@@ -121,7 +122,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const handleClose = () => {
     setStep(1)
     setName(''); setNameError(''); setUserType('service_account')
-    setSaNamespace('default'); setNewNamespace(''); setGroups('')
+    setSaNamespace('default'); setNewNamespace(''); setNewNamespaceError(''); setGroups('')
     setPreset('readonly'); setScope('namespace'); setSelectedNs(new Set())
     setCredentials(null); setConfirmed(false); setCopied(false)
     generateKubeconfig.reset()
@@ -135,6 +136,18 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       return false
     }
     setNameError('')
+
+    if (userType === 'service_account' && saNamespace === '__new__') {
+      if (!newNamespace.trim()) {
+        setNewNamespaceError('Required')
+        return false
+      }
+      if (!/^[a-z0-9][a-z0-9\-]*$/.test(newNamespace.trim())) {
+        setNewNamespaceError('Lowercase alphanumeric and hyphens only (e.g. my-namespace)')
+        return false
+      }
+    }
+    setNewNamespaceError('')
     return true
   }
 
@@ -254,9 +267,10 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 <Input
                   label="New namespace name"
                   value={newNamespace}
-                  onChange={(e) => setNewNamespace(e.target.value)}
+                  onChange={(e) => { setNewNamespace(e.target.value); setNewNamespaceError('') }}
                   placeholder="my-namespace"
-                  hint="Will be created automatically"
+                  hint="Lowercase alphanumeric and hyphens only"
+                  error={newNamespaceError}
                 />
               )}
 
