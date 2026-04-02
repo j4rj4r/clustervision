@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { usersApi, type ImportUserPayload } from '../api/users'
 import { useClusterStore } from '../store/clusterStore'
-import type { CreateUserPayload } from '../types/user'
+import type { CreateUserPayload, DeleteUserPayload } from '../types/user'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
@@ -56,7 +56,7 @@ export const useDeleteUser = () => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ username, userType, namespace }: { username: string; userType: string; namespace?: string }) =>
+    mutationFn: ({ username, userType, namespace }: DeleteUserPayload) =>
       usersApi.delete(username, userType, namespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users', cluster] })

@@ -63,3 +63,41 @@ export interface CheckAccessResult {
   denied: boolean
   reason: string
 }
+
+export interface CreateClusterRolePayload {
+  name: string
+  rules: PolicyRule[]
+}
+
+export interface UpdateClusterRolePayload {
+  name: string
+  rules: PolicyRule[]
+}
+
+export interface CreateRolePayload {
+  namespace: string
+  name: string
+  rules: PolicyRule[]
+}
+
+export interface UpdateRolePayload {
+  namespace: string
+  name: string
+  rules: PolicyRule[]
+}
+
+export interface DeleteRolePayload {
+  namespace: string
+  name: string
+}
+
+export interface AssignRoleMutationPayload {
+  payload: AssignRolePayload
+  userKind?: string
+  saNamespace?: string
+}
+
+export interface RevokeRoleMutationPayload {
+  roleName: string
+  namespace?: string
+}

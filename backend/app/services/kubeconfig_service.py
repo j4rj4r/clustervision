@@ -150,17 +150,30 @@ class KubeconfigService:
         return self._api_url_cache
 
     def _get_sa_token(self, sa_name: str, namespace: str) -> str:
-        # Prefer a long-lived service-account-token secret if one exists
-        secrets = self.core_v1.list_namespaced_secret(
-            namespace,
-            label_selector=f"kubernetes.io/service-account.name={sa_name}",
-        )
+        # Try the ClusterVision-managed secret first (known name)
+        try:
+            secret = self.core_v1.read_namespaced_secret(
+                f"clustervision-{sa_name}-token", namespace
+            )
+            if secret.type == "kubernetes.io/service-account-token":
+                token_bytes = (secret.data or {}).get("token")
+                if token_bytes:
+                    return base64.b64decode(token_bytes).decode()
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+        # For imported SAs: scan all secrets and match by annotation
+        # (kubernetes.io/service-account.name is an annotation, not a label)
+        secrets = self.core_v1.list_namespaced_secret(namespace)
         for secret in secrets.items:
             if secret.type != "kubernetes.io/service-account-token":
                 continue
-            token_bytes = (secret.data or {}).get("token")
-            if token_bytes:
-                return base64.b64decode(token_bytes).decode()
+            annotations = secret.metadata.annotations or {}
+            if annotations.get("kubernetes.io/service-account.name") == sa_name:
+                token_bytes = (secret.data or {}).get("token")
+                if token_bytes:
+                    return base64.b64decode(token_bytes).decode()
 
         # Fallback: generate an ephemeral token via TokenRequest API
         token_request = client.AuthenticationV1TokenRequest(

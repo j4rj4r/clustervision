@@ -71,7 +71,7 @@ class ClusterService:
             raise ValueError(f"Cluster '{name}' already exists")
         configs.append({"name": name, "api_url": api_url, "ca_data": ca_data, "token": token})
         self._save_configs(configs)
-        logger.info(f"Registered remote cluster: {name}")
+        logger.info("Registered remote cluster: %s", name)
         return {"name": name, "api_url": api_url, "is_local": False}
 
     def remove_cluster(self, name: str):
@@ -83,7 +83,7 @@ class ClusterService:
         ca_file = self._ca_files.pop(name, None)
         if ca_file and os.path.exists(ca_file):
             os.unlink(ca_file)
-        logger.info(f"Removed remote cluster: {name}")
+        logger.info("Removed remote cluster: %s", name)
 
     # ── API client factory ──────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ class ClusterService:
 
         api_client = client.ApiClient(configuration)
         self._clients[name] = api_client
-        logger.info(f"Created API client for remote cluster: {name}")
+        logger.info("Created API client for remote cluster: %s", name)
         return api_client
 
 

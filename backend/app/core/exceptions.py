@@ -23,6 +23,11 @@ class CertificateTimeoutError(Exception):
         super().__init__(f"CSR '{csr_name}' was not signed within timeout")
 
 
+class ImportedUserError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 def k8s_exception_to_http(exc: ApiException) -> HTTPException:
     if exc.status == 404:
         return HTTPException(status_code=404, detail=exc.reason)
@@ -45,3 +50,7 @@ async def user_not_found_handler(request: Request, exc: UserNotFoundError) -> JS
 
 async def user_exists_handler(request: Request, exc: UserAlreadyExistsError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def imported_user_handler(request: Request, exc: ImportedUserError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})

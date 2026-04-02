@@ -21,6 +21,10 @@ class ClusterRoleCreate(BaseModel):
     rules: list[PolicyRule]
 
 
+class RoleUpdate(BaseModel):
+    rules: list[PolicyRule]
+
+
 class RoleRead(BaseModel):
     name: str
     namespace: Optional[str] = None

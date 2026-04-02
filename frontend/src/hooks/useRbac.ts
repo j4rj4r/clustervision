@@ -2,7 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { rbacApi } from '../api/rbac'
 import { useClusterStore } from '../store/clusterStore'
-import type { AssignRolePayload, CheckAccessRequest, PolicyRule } from '../types/rbac'
+import type {
+  AssignRoleMutationPayload,
+  CheckAccessRequest,
+  CreateClusterRolePayload,
+  CreateRolePayload,
+  DeleteRolePayload,
+  RevokeRoleMutationPayload,
+  UpdateClusterRolePayload,
+  UpdateRolePayload,
+} from '../types/rbac'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
@@ -62,7 +71,7 @@ export const useCreateClusterRole = (onSuccess?: () => void) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ name, rules }: { name: string; rules: PolicyRule[] }) =>
+    mutationFn: ({ name, rules }: CreateClusterRolePayload) =>
       rbacApi.createClusterRole(name, rules),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cluster-roles', cluster] })
@@ -77,7 +86,7 @@ export const useUpdateClusterRole = (onSuccess?: () => void) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ name, rules }: { name: string; rules: PolicyRule[] }) =>
+    mutationFn: ({ name, rules }: UpdateClusterRolePayload) =>
       rbacApi.updateClusterRole(name, rules),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cluster-roles', cluster] })
@@ -105,7 +114,7 @@ export const useCreateRole = (onSuccess?: () => void) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ namespace, name, rules }: { namespace: string; name: string; rules: PolicyRule[] }) =>
+    mutationFn: ({ namespace, name, rules }: CreateRolePayload) =>
       rbacApi.createRole(namespace, name, rules),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
@@ -120,7 +129,7 @@ export const useUpdateRole = (onSuccess?: () => void) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ namespace, name, rules }: { namespace: string; name: string; rules: PolicyRule[] }) =>
+    mutationFn: ({ namespace, name, rules }: UpdateRolePayload) =>
       rbacApi.updateRole(namespace, name, rules),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
@@ -135,7 +144,7 @@ export const useDeleteRole = () => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ namespace, name }: { namespace: string; name: string }) =>
+    mutationFn: ({ namespace, name }: DeleteRolePayload) =>
       rbacApi.deleteRole(namespace, name),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['roles', cluster, vars.namespace] })
@@ -149,7 +158,7 @@ export const useAssignRole = (username: string) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ payload, userKind, saNamespace }: { payload: AssignRolePayload; userKind?: string; saNamespace?: string }) =>
+    mutationFn: ({ payload, userKind, saNamespace }: AssignRoleMutationPayload) =>
       rbacApi.assignRole(username, payload, userKind, saNamespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-permissions', cluster, username] })
@@ -163,7 +172,7 @@ export const useRevokeRole = (username: string) => {
   const qc = useQueryClient()
   const cluster = useCluster()
   return useMutation({
-    mutationFn: ({ roleName, namespace }: { roleName: string; namespace?: string }) =>
+    mutationFn: ({ roleName, namespace }: RevokeRoleMutationPayload) =>
       rbacApi.revokeRole(username, roleName, namespace),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['user-permissions', cluster, username] })

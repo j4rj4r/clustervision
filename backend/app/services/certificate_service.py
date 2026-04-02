@@ -11,7 +11,7 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from ..config import get_settings
-from ..core.exceptions import CertificateTimeoutError, UserAlreadyExistsError, UserNotFoundError
+from ..core.exceptions import CertificateTimeoutError, ImportedUserError, UserAlreadyExistsError, UserNotFoundError
 from ..core.registry import RegistryMixin
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ class CertificateService(RegistryMixin):
         }
         users.append(user_record)
         self._save_registry(users)
-        logger.info(f"Created certificate user: {username}")
+        logger.info("Created certificate user: %s", username)
 
         return {**user_record, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
 
@@ -135,7 +135,7 @@ class CertificateService(RegistryMixin):
         # Remove from registry
         updated = [u for u in users if not (u["name"] == username and u.get("type") == "certificate")]
         self._save_registry(updated)
-        logger.info(f"Deleted certificate user: {username}")
+        logger.info("Deleted certificate user: %s", username)
 
     def import_user(self, username: str, groups: list[str]) -> dict:
         """Register an existing certificate user in the registry (no CSR created)."""
@@ -154,19 +154,19 @@ class CertificateService(RegistryMixin):
         }
         users.append(user_record)
         self._save_registry(users)
-        logger.info(f"Imported certificate user: {username}")
+        logger.info("Imported certificate user: %s", username)
         return user_record
 
     def get_certificate_pem(self, username: str) -> str:
         user = self.get_user(username)
         if user.get("imported") or not user.get("csr_name"):
-            raise ValueError(
+            raise ImportedUserError(
                 f"User '{username}' was imported and has no managed CSR. "
                 "Provide the certificate PEM directly."
             )
         csr = self.certs_api.read_certificate_signing_request(user["csr_name"])
         if not csr.status.certificate:
-            raise ValueError(f"No signed certificate found for user {username}")
+            raise ImportedUserError(f"No signed certificate found for user {username}")
         return base64.b64decode(csr.status.certificate).decode()
 
     def _wait_for_certificate(self, csr_name: str, timeout: int = 30) -> str:

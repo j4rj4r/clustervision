@@ -26,3 +26,9 @@ export interface CreateUserPayload {
   groups: string[]
   namespace: string
 }
+
+export interface DeleteUserPayload {
+  username: string
+  userType: UserType
+  namespace?: string
+}

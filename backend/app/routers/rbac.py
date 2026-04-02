@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
 from ..models.rbac import (
-    ClusterRoleCreate, RoleCreate, BindingCreate,
+    ClusterRoleCreate, RoleCreate, RoleUpdate, BindingCreate,
     AssignRoleRequest, RoleRead, BindingRead, UserPermissionSummary,
-    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult, PolicyRule,
+    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult,
 )
 from ..services.rbac_service import RbacService
 from ..dependencies import get_rbac_service
@@ -48,7 +48,7 @@ async def create_cluster_role(
     return await run_sync(svc.create_cluster_role, payload.name, payload.rules)
 
 
-@router.put(
+@router.patch(
     "/cluster-roles/{name}",
     response_model=RoleRead,
     summary="Update a ClusterRole",
@@ -57,10 +57,10 @@ async def create_cluster_role(
 )
 async def update_cluster_role(
     name: str,
-    rules: list[PolicyRule],
+    payload: RoleUpdate,
     svc: RbacService = Depends(get_rbac_service),
 ):
-    return await run_sync(svc.update_cluster_role, name, rules)
+    return await run_sync(svc.update_cluster_role, name, payload.rules)
 
 
 @router.delete(
@@ -98,7 +98,7 @@ async def create_role(payload: RoleCreate, svc: RbacService = Depends(get_rbac_s
     return await run_sync(svc.create_role, payload.namespace, payload.name, payload.rules)
 
 
-@router.put(
+@router.patch(
     "/roles/{namespace}/{name}",
     response_model=RoleRead,
     summary="Update a Role",
@@ -108,10 +108,10 @@ async def create_role(payload: RoleCreate, svc: RbacService = Depends(get_rbac_s
 async def update_role(
     namespace: str,
     name: str,
-    rules: list[PolicyRule],
+    payload: RoleUpdate,
     svc: RbacService = Depends(get_rbac_service),
 ):
-    return await run_sync(svc.update_role, namespace, name, rules)
+    return await run_sync(svc.update_role, namespace, name, payload.rules)
 
 
 @router.delete(

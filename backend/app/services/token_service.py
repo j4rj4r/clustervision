@@ -100,7 +100,7 @@ class TokenService:
 
     def revoke_sa_token(self, secret_name: str, namespace: str):
         self.core_v1.delete_namespaced_secret(secret_name, namespace)
-        logger.info(f"Revoked SA token secret {secret_name} in {namespace}")
+        logger.info("Revoked SA token secret %s in %s", secret_name, namespace)
 
     def rotate_sa_token(self, secret_name: str, sa_name: str, namespace: str):
         try:
@@ -120,4 +120,4 @@ class TokenService:
                 type="kubernetes.io/service-account-token",
             ),
         )
-        logger.info(f"Rotated SA token secret {secret_name} in {namespace}")
+        logger.info("Rotated SA token secret %s in %s", secret_name, namespace)

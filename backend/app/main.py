@@ -9,8 +9,10 @@ from .core.exceptions import (
     kubernetes_exception_handler,
     user_not_found_handler,
     user_exists_handler,
+    imported_user_handler,
     UserNotFoundError,
     UserAlreadyExistsError,
+    ImportedUserError,
 )
 from .config import get_settings
 from .core.kubernetes_client import get_api_client
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
         get_api_client()
         logger.info("Kubernetes client initialized successfully")
     except Exception as e:
-        logger.warning(f"Could not initialize Kubernetes client: {e}")
+        logger.warning("Could not initialize Kubernetes client: %s", e)
     yield
 
 
@@ -116,6 +118,7 @@ app.add_middleware(
 app.add_exception_handler(ApiException, kubernetes_exception_handler)
 app.add_exception_handler(UserNotFoundError, user_not_found_handler)
 app.add_exception_handler(UserAlreadyExistsError, user_exists_handler)
+app.add_exception_handler(ImportedUserError, imported_user_handler)
 
 app.include_router(users.router)
 app.include_router(rbac.router)

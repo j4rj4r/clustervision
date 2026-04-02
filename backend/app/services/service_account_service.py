@@ -38,7 +38,7 @@ class ServiceAccountService(RegistryMixin):
                         labels={"managed-by": "clustervision"},
                     )
                 ))
-                logger.info(f"Created namespace: {namespace}")
+                logger.info("Created namespace: %s", namespace)
             except ApiException as create_err:
                 if create_err.status != 409:
                     raise
@@ -90,7 +90,7 @@ class ServiceAccountService(RegistryMixin):
         }
         users.append(user_record)
         self._save_registry(users)
-        logger.info(f"Created service account user: {name} in {namespace}")
+        logger.info("Created service account user: %s in %s", name, namespace)
         return user_record
 
     def delete_user(self, username: str, namespace: str = "default"):
@@ -120,7 +120,7 @@ class ServiceAccountService(RegistryMixin):
             if not (u["name"] == username and u.get("type") == "service_account")
         ]
         self._save_registry(updated)
-        logger.info(f"Deleted service account user: {username}")
+        logger.info("Deleted service account user: %s", username)
 
     def import_user(self, name: str, namespace: str = "default") -> dict:
         """Register an existing ServiceAccount in the ClusterVision registry."""
@@ -142,7 +142,7 @@ class ServiceAccountService(RegistryMixin):
         }
         users.append(user_record)
         self._save_registry(users)
-        logger.info(f"Imported service account user: {name} from {namespace}")
+        logger.info("Imported service account user: %s from %s", name, namespace)
         return user_record
 
     def list_unmanaged(self) -> list[dict]:
