@@ -1,4 +1,6 @@
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from kubernetes import client
@@ -276,11 +278,46 @@ class RbacService:
             if not cursor:
                 break
 
+    # ── Binding cache (TTL 60s) ──────────────────────────────────────────────
+
+    _crb_cache: list = []
+    _crb_cache_at: float = 0.0
+    _rb_cache: list = []
+    _rb_cache_at: float = 0.0
+    _CACHE_TTL = 60.0
+
+    def _get_all_crbs(self) -> list:
+        if time.monotonic() - self._crb_cache_at < self._CACHE_TTL:
+            return self._crb_cache
+        items = list(self._iter_all_crbs())
+        self.__class__._crb_cache = items
+        self.__class__._crb_cache_at = time.monotonic()
+        return items
+
+    def _get_all_rbs(self) -> list:
+        if time.monotonic() - self._rb_cache_at < self._CACHE_TTL:
+            return self._rb_cache
+        items = list(self._iter_all_rbs())
+        self.__class__._rb_cache = items
+        self.__class__._rb_cache_at = time.monotonic()
+        return items
+
+    def _invalidate_binding_cache(self):
+        self.__class__._crb_cache_at = 0.0
+        self.__class__._rb_cache_at = 0.0
+
     # ── User-centric convenience methods ────────────────────────────────────
 
     def get_user_permissions(self, username: str) -> dict:
+        # Fetch CRBs and RoleBindings in parallel — they are independent K8s calls
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_crbs = pool.submit(self._get_all_crbs)
+            fut_rbs = pool.submit(self._get_all_rbs)
+            all_crbs = fut_crbs.result()
+            all_rbs = fut_rbs.result()
+
         cluster_bindings = []
-        for crb in self._iter_all_crbs():
+        for crb in all_crbs:
             subjects = crb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
                 cluster_bindings.append({
@@ -292,7 +329,7 @@ class RbacService:
                 })
 
         namespace_bindings = []
-        for rb in self._iter_all_rbs():
+        for rb in all_rbs:
             subjects = rb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
                 namespace_bindings.append({
@@ -349,6 +386,7 @@ class RbacService:
                     self.create_role_binding(ns, binding_name, role_name, role_kind, [subject])
                 else:
                     raise
+        self._invalidate_binding_cache()
 
     def revoke_role(
         self,
@@ -370,6 +408,7 @@ class RbacService:
             except ApiException as e:
                 if e.status != 404:
                     raise
+        self._invalidate_binding_cache()
 
     def delete_user_bindings(self, username: str):
         """Delete all ClusterVision-managed bindings that reference this user."""
@@ -394,6 +433,7 @@ class RbacService:
             except ApiException as e:
                 if e.status != 404:
                     raise
+        self._invalidate_binding_cache()
 
     # ── Namespaces ──────────────────────────────────────────────────────────
 
@@ -420,7 +460,7 @@ class RbacService:
                 })
 
         # ClusterRoleBindings apply cluster-wide (include this namespace)
-        for crb in self._iter_all_crbs():
+        for crb in self._get_all_crbs():
             for subject in (crb.subjects or []):
                 results.append({
                     "subject": subject.name,
