@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, RefreshCw, FileInput } from 'lucide-react'
 import Button from '../components/ui/Button'
@@ -8,12 +8,27 @@ import DeleteUserModal from '../components/users/DeleteUserModal'
 import ImportUserModal from '../components/users/ImportUserModal'
 import { useUsers } from '../hooks/useUsers'
 import { useQueryClient } from '@tanstack/react-query'
+import { useClusterStore } from '../store/clusterStore'
+import { rbacApi } from '../api/rbac'
 import type { User } from '../types/user'
 
 export default function UsersPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useUsers()
   const qc = useQueryClient()
+  const cluster = useClusterStore((s) => s.activeCluster)
+
+  // Prefetch permissions for all users as soon as the list loads
+  useEffect(() => {
+    if (!data?.users) return
+    data.users.forEach((user) => {
+      qc.prefetchQuery({
+        queryKey: ['user-permissions', cluster, user.name],
+        queryFn: () => rbacApi.getUserPermissions(user.name),
+        staleTime: 120_000,
+      })
+    })
+  }, [data?.users, cluster])
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [toDelete, setToDelete] = useState<User | null>(null)
