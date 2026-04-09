@@ -1,7 +1,10 @@
+import base64
 import re
+from urllib.parse import urlparse
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from kubernetes import client
 
 from ..config import get_settings
@@ -22,6 +25,35 @@ class ClusterAdd(BaseModel):
     api_url: str
     ca_data: str   # base64-encoded PEM CA certificate
     token: str     # ServiceAccount bearer token
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not _CLUSTER_NAME_RE.match(v):
+            raise ValueError("name must be 1–63 alphanumeric characters, hyphens or underscores")
+        return v
+
+    @field_validator("api_url")
+    @classmethod
+    def validate_api_url(cls, v: str) -> str:
+        try:
+            parsed = urlparse(v)
+        except Exception:
+            raise ValueError("api_url must be a valid URL")
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("api_url must use http or https scheme")
+        if not parsed.netloc:
+            raise ValueError("api_url must include a host")
+        return v
+
+    @field_validator("ca_data")
+    @classmethod
+    def validate_ca_data(cls, v: str) -> str:
+        try:
+            base64.b64decode(v, validate=True)
+        except Exception:
+            raise ValueError("ca_data must be valid base64")
+        return v
 
 
 class ClusterInfo(BaseModel):
