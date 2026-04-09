@@ -278,35 +278,39 @@ class RbacService:
 
     # ── User-centric convenience methods ────────────────────────────────────
 
-    def get_user_permissions(self, username: str) -> dict:
-        cluster_bindings = []
+    def _cluster_bindings_for(self, username: str) -> list[dict]:
+        result = []
         for crb in self._iter_all_crbs():
             subjects = crb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
-                cluster_bindings.append({
+                result.append({
                     "name": crb.metadata.name,
                     "namespace": None,
                     "role_ref": crb.role_ref.name,
                     "role_kind": crb.role_ref.kind,
                     "subjects": [_subject_from_k8s(s) for s in subjects],
                 })
+        return result
 
-        namespace_bindings = []
+    def _namespace_bindings_for(self, username: str) -> list[dict]:
+        result = []
         for rb in self._iter_all_rbs():
             subjects = rb.subjects or []
             if any(s.name == username and s.kind in ("User", "ServiceAccount") for s in subjects):
-                namespace_bindings.append({
+                result.append({
                     "name": rb.metadata.name,
                     "namespace": rb.metadata.namespace,
                     "role_ref": rb.role_ref.name,
                     "role_kind": rb.role_ref.kind,
                     "subjects": [_subject_from_k8s(s) for s in subjects],
                 })
+        return result
 
+    def get_user_permissions(self, username: str) -> dict:
         return {
             "username": username,
-            "cluster_bindings": cluster_bindings,
-            "namespace_bindings": namespace_bindings,
+            "cluster_bindings": self._cluster_bindings_for(username),
+            "namespace_bindings": self._namespace_bindings_for(username),
         }
 
     def assign_role(

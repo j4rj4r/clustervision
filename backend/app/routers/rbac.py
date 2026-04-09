@@ -226,7 +226,16 @@ async def delete_namespace_binding(
     responses={**_404},
 )
 async def get_user_permissions(username: str, svc: RbacService = Depends(get_rbac_service)):
-    return await run_sync(svc.get_user_permissions, username)
+    import asyncio
+    cluster_bindings, namespace_bindings = await asyncio.gather(
+        run_sync(svc._cluster_bindings_for, username),
+        run_sync(svc._namespace_bindings_for, username),
+    )
+    return {
+        "username": username,
+        "cluster_bindings": cluster_bindings,
+        "namespace_bindings": namespace_bindings,
+    }
 
 
 @router.post(
