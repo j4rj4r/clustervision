@@ -1,5 +1,9 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+
+logger = logging.getLogger(__name__)
 
 from ..models.kubeconfig import KubeconfigRequest
 from ..models.user import UserType
@@ -70,7 +74,7 @@ async def generate_kubeconfig(
     try:
         await run_sync(token_svc.record_generation, payload.username, payload.user_type.value, effective_namespace)
     except Exception:
-        pass  # history recording must not fail the generation
+        logger.warning("Failed to record kubeconfig generation for %s", payload.username, exc_info=True)
 
     return Response(
         content=kubeconfig_yaml,
