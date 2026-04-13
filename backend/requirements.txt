@@ -1,6 +1,6 @@
 fastapi==0.135.3
 uvicorn[standard]==0.44.0
-gunicorn==23.0.0
+gunicorn==25.3.0
 pydantic==2.12.5
 pydantic-settings==2.13.1
 kubernetes==35.0.0
