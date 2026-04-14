@@ -99,6 +99,13 @@ jobs:
             --version ${{ steps.chart_version.outputs.version }} \
             --destination /tmp/helm-packages
 
+      - name: Upload chart artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: helm-chart-${{ steps.chart_version.outputs.version }}
+          path: /tmp/helm-packages/clustervision-${{ steps.chart_version.outputs.version }}.tgz
+          retention-days: 1
+
       - name: Push chart to GHCR OCI registry
         run: |
           helm push \
@@ -133,11 +140,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: "3.16.3"
-
       - name: Install git-cliff
         uses: taiki-e/install-action@v2
         with:
@@ -146,6 +148,12 @@ jobs:
       - name: Resolve version
         id: ver
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download chart artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: helm-chart-${{ steps.ver.outputs.version }}
+          path: /tmp/helm-packages
 
       - name: Generate changelog
         run: |
@@ -167,12 +175,6 @@ jobs:
             --namespace clustervision --create-namespace
           ```
           EOF
-
-      - name: Package chart
-        run: |
-          sed -i "s/^version:.*/version: ${{ steps.ver.outputs.version }}/" helm/clustervision/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.ver.outputs.version }}\"/" helm/clustervision/Chart.yaml
-          helm package helm/clustervision --destination /tmp/helm-packages
 
       - name: Upload chart to Release
         uses: softprops/action-gh-release@v3
