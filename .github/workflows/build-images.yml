@@ -53,7 +53,8 @@ jobs:
         run: npm ci --prefix frontend
 
       - name: TypeScript type check (frontend)
-        run: npm exec --prefix frontend -- tsc --noEmit
+        run: npx tsc --noEmit
+        working-directory: frontend
 
   # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
