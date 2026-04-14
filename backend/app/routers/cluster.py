@@ -8,7 +8,7 @@ from pydantic import BaseModel, field_validator
 from kubernetes import client
 
 from ..config import get_settings
-from ..core.kubernetes_client import get_local_api_client, get_version_api
+from ..core.kubernetes_client import get_version_api
 from ..services.cluster_service import get_cluster_service
 from ..dependencies import get_api_client
 from ..core.async_utils import run_sync
