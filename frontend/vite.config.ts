@@ -9,10 +9,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query', 'zustand'],
-          'vendor-ui': ['lucide-react', 'react-hot-toast'],
+        manualChunks: (id) => {
+          if (['react', 'react-dom', 'react-router-dom'].some((m) => id.includes(`/node_modules/${m}/`))) return 'vendor-react'
+          if (['@tanstack/react-query', 'zustand'].some((m) => id.includes(`/node_modules/${m}/`))) return 'vendor-query'
+          if (['lucide-react', 'react-hot-toast'].some((m) => id.includes(`/node_modules/${m}/`))) return 'vendor-ui'
         },
       },
     },
