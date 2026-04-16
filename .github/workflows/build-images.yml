@@ -288,6 +288,7 @@ jobs:
     needs: [merge-backend, merge-frontend]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
+    permissions: {}
     steps:
       - name: Write summary
         run: |
