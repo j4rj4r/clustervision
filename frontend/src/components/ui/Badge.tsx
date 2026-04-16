@@ -22,7 +22,7 @@ const dotColors: Record<string, string> = {
 
 export default function Badge({ variant = 'default', dot, children }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${variants[variant]}`}>
       {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColors[variant]}`} />}
       {children}
     </span>

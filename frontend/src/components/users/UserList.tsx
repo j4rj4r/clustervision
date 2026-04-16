@@ -80,7 +80,7 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
       return next
     })
 
-  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider cursor-pointer select-none hover:text-surface-200 transition-colors'
+  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal cursor-pointer select-none hover:text-surface-200 transition-colors'
 
   return (
     <>
@@ -94,11 +94,11 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
           <th className={thClass} onClick={() => toggleSort('type')}>
             Type <SortIcon col="type" sortCol={sortCol} sortDir={sortDir} />
           </th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Groups</th>
+          <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Groups</th>
           <th className={thClass} onClick={() => toggleSort('created_at')}>
             Created <SortIcon col="created_at" sortCol={sortCol} sortDir={sortDir} />
           </th>
-          <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
+          <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 tracking-normal">Actions</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-surface-700">
@@ -122,7 +122,7 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
               <td className="px-4 py-3 text-surface-400 text-xs">
                 {user.groups?.length > 0 ? user.groups.join(', ') : <span className="text-surface-500">—</span>}
               </td>
-              <td className="px-4 py-3 text-surface-400 text-xs">
+              <td className="px-4 py-3 text-surface-400 text-xs tabular-nums">
                 <div>{new Date(user.created_at).toLocaleDateString()}</div>
                 {user.cert_expiry && (
                   <div className="mt-1"><ExpiryBadge expiry={user.cert_expiry} /></div>

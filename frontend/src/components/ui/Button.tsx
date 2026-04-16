@@ -32,7 +32,7 @@ export default function Button({
     <button
       {...props}
       disabled={disabled || loading}
-      className={`inline-flex items-center rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center rounded-md font-medium transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {loading && <Loader2 size={14} className="animate-spin" />}
       {children}

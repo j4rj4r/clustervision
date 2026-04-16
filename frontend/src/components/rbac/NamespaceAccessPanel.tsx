@@ -89,12 +89,12 @@ export default function NamespaceAccessPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-surface-600 bg-surface-900/60">
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Subject</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Kind</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Role Kind</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Scope</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider">Binding</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Subject</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Kind</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Role Kind</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Scope</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal">Binding</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-700">

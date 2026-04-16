@@ -12,12 +12,12 @@ const links = [
 export default function Sidebar() {
   return (
     <aside className="w-56 bg-surface-900 border-r border-surface-600 flex flex-col">
-      <div className="px-5 py-4 border-b border-surface-600">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">CV</span>
+      <div className="px-5 py-4 border-b border-surface-700/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-brand-600/20 ring-1 ring-brand-500/40 flex items-center justify-center">
+            <span className="text-brand-400 text-[10px] font-bold tracking-tight">CV</span>
           </div>
-          <span className="font-semibold text-surface-100 text-sm">ClusterVision</span>
+          <span className="font-semibold text-surface-100 text-sm tracking-tight">ClusterVision</span>
         </div>
       </div>
 
@@ -27,10 +27,10 @@ export default function Sidebar() {
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md border-l-2 transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-md transition-all ${
                 isActive
-                  ? 'border-brand-500 bg-surface-700 text-brand-400'
-                  : 'border-transparent text-surface-300 hover:text-surface-100 hover:bg-surface-700'
+                  ? 'bg-brand-600/10 text-brand-300 ring-1 ring-brand-500/20'
+                  : 'text-surface-400 hover:text-surface-100 hover:bg-surface-800'
               }`
             }
           >
@@ -39,7 +39,7 @@ export default function Sidebar() {
                 <Icon size={17} className="shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-tight">{label}</p>
-                  <p className={`text-xs leading-tight truncate ${isActive ? 'text-brand-500/70' : 'text-surface-500'}`}>{desc}</p>
+                  <p className={`text-xs leading-tight truncate ${isActive ? 'text-brand-400/60' : 'text-surface-600'}`}>{desc}</p>
                 </div>
               </>
             )}

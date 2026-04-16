@@ -70,11 +70,11 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
       return next
     })
 
-  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 uppercase tracking-wider cursor-pointer select-none hover:text-surface-200 transition-colors'
+  const thClass = 'px-4 py-3 text-left text-xs font-medium text-surface-400 tracking-normal cursor-pointer select-none hover:text-surface-200 transition-colors'
 
   return (
     <div>
-      {title && <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-3 px-1">{title}</h3>}
+      {title && <h3 className="text-xs font-semibold text-surface-400 mb-3 px-1">{title}</h3>}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-surface-600 bg-surface-900/50">
@@ -88,7 +88,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
             <th className={thClass} onClick={() => toggleSort('status')}>
               Status <SortIcon col="status" sortCol={sortCol} sortDir={sortDir} />
             </th>
-            <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 uppercase tracking-wider">Actions</th>
+            <th className="px-4 py-3 text-right text-xs font-medium text-surface-400 tracking-normal">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-700">

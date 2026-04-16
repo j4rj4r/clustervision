@@ -56,7 +56,7 @@ export default function UserPermissionsPanel({ username, userType, userNamespace
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-surface-300 uppercase tracking-wider">Permissions</p>
+        <p className="text-xs font-medium text-surface-300">Permissions</p>
         <Button size="sm" variant="ghost" onClick={() => setShowAssign(!showAssign)}>
           <Plus size={12} /> Assign role
         </Button>
