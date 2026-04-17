@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, RefreshCw, FileInput } from 'lucide-react'
+import { Plus, RefreshCw, FileInput, AlertCircle } from 'lucide-react'
 import Button from '../components/ui/Button'
 import UserList from '../components/users/UserList'
 import CreateUserWizard from '../components/users/CreateUserWizard'
 import DeleteUserModal from '../components/users/DeleteUserModal'
 import ImportUserModal from '../components/users/ImportUserModal'
+import { SkeletonTable } from '../components/ui/Skeleton'
 import { useUsers } from '../hooks/useUsers'
 import { useQueryClient } from '@tanstack/react-query'
 import { useClusterStore } from '../store/clusterStore'
@@ -18,7 +19,6 @@ export default function UsersPage() {
   const qc = useQueryClient()
   const cluster = useClusterStore((s) => s.activeCluster)
 
-  // Prefetch permissions for all users as soon as the list loads
   useEffect(() => {
     if (!data?.users) return
     data.users.forEach((user) => {
@@ -29,39 +29,43 @@ export default function UsersPage() {
       })
     })
   }, [data?.users, cluster])
+
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [toDelete, setToDelete] = useState<User | null>(null)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-surface-100">Users</h1>
-          <p className="text-sm text-surface-400 mt-0.5">
-            {data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : 'Loading...'}
+          <h1 className="text-lg font-semibold text-surface-100 tracking-tight">Users</h1>
+          <p className="text-xs text-surface-500 mt-0.5 tabular-nums">
+            {isLoading ? <span className="inline-block w-24 h-3 animate-shimmer rounded" /> : data ? `${data.total} user${data.total !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['users'] })}>
             <RefreshCw size={13} />
           </Button>
-          <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <FileInput size={14} /> Import
+          <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+            <FileInput size={13} /> Import
           </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={14} /> Create
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus size={13} /> Create
           </Button>
         </div>
       </div>
 
-      <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
+      <div className="bg-surface-900 border border-surface-700/60 rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-surface-400">Loading users...</div>
+          <SkeletonTable rows={6} cols={6} />
         ) : isError ? (
           <div className="py-16 text-center space-y-3">
+            <AlertCircle size={28} className="mx-auto text-red-400/50" />
             <p className="text-sm text-red-400">Failed to load users.</p>
-            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:underline">Retry</button>
+            <button onClick={() => refetch()} className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+              Retry
+            </button>
           </div>
         ) : (
           <UserList
