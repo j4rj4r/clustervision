@@ -62,7 +62,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState('')
   const [userType, setUserType] = useState<'certificate' | 'service_account'>('service_account')
-  const [saNamespace, setSaNamespace] = useState('default')
+  const [saNamespace, setSaNamespace] = useState('__new__')
   const [newNamespace, setNewNamespace] = useState('')
   const [newNamespaceError, setNewNamespaceError] = useState('')
   const [groups, setGroups] = useState('')
@@ -122,7 +122,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const handleClose = () => {
     setStep(1)
     setName(''); setNameError(''); setUserType('service_account')
-    setSaNamespace('default'); setNewNamespace(''); setNewNamespaceError(''); setGroups('')
+    setSaNamespace('__new__'); setNewNamespace(''); setNewNamespaceError(''); setGroups('')
     setPreset('readonly'); setScope('namespace'); setSelectedNs(new Set())
     setCredentials(null); setConfirmed(false); setCopied(false)
     generateKubeconfig.reset()
@@ -257,8 +257,8 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                   value={saNamespace}
                   onChange={(e) => { setSaNamespace(e.target.value); setNewNamespace('') }}
                   options={[
-                    ...(namespaces.length ? namespaces.map((n) => ({ value: n, label: n })) : [{ value: 'default', label: 'default' }]),
                     { value: '__new__', label: '＋ New namespace…' },
+                    ...(namespaces.length ? namespaces.map((n) => ({ value: n, label: n })) : [{ value: 'default', label: 'default' }]),
                   ]}
                 />
               )}

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from kubernetes.client.exceptions import ApiException
@@ -17,7 +17,10 @@ from .core.exceptions import (
 )
 from .config import get_settings
 from .core.kubernetes_client import get_api_client
+from .core.dependencies import auth_gate
 from .routers import users, rbac, kubeconfig, cluster, tokens
+from .routers import auth as auth_router
+from .services.auth_service import ensure_default_admin
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -31,6 +34,7 @@ async def lifespan(app: FastAPI):
         logger.info("Kubernetes client initialized successfully")
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
+    ensure_default_admin()
     yield
 
 
@@ -87,8 +91,9 @@ ClusterVision lets you **create, manage and delete** Kubernetes users (X.509 cer
 and ServiceAccounts) and their RBAC permissions through a single REST API.
 
 ## Authentication
-No authentication is built into the API itself — access should be restricted at the
-network layer (ingress, NetworkPolicy) or via a reverse-proxy.
+JWT-based. POST `/api/v1/auth/login` to get an access token (15 min),
+renewed automatically via an httpOnly refresh cookie (7 days).
+Viewers can read; admins can read and write.
 
 ## User types
 | Type | Auth method | Revocation |
@@ -123,11 +128,14 @@ app.add_exception_handler(UserNotFoundError, user_not_found_handler)
 app.add_exception_handler(UserAlreadyExistsError, user_exists_handler)
 app.add_exception_handler(ImportedUserError, imported_user_handler)
 
-app.include_router(users.router)
-app.include_router(rbac.router)
-app.include_router(kubeconfig.router)
-app.include_router(cluster.router)
-app.include_router(tokens.router)
+_auth_dep = [Depends(auth_gate)]
+
+app.include_router(auth_router.router)
+app.include_router(users.router,      dependencies=_auth_dep)
+app.include_router(rbac.router,       dependencies=_auth_dep)
+app.include_router(kubeconfig.router, dependencies=_auth_dep)
+app.include_router(cluster.router,    dependencies=_auth_dep)
+app.include_router(tokens.router,     dependencies=_auth_dep)
 
 
 @app.get("/health")
