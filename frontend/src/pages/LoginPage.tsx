@@ -23,7 +23,14 @@ export default function LoginPage() {
       setAuth({ username: data.username, role: data.role }, data.access_token)
       navigate('/', { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      const msg = err instanceof Error ? err.message : ''
+      if (msg === 'Invalid credentials') {
+        setError('Incorrect username or password.')
+      } else if (!username || !password) {
+        setError('Please fill in all fields.')
+      } else {
+        setError('Sign in failed — please try again.')
+      }
     } finally {
       setLoading(false)
     }

@@ -22,6 +22,25 @@ backend:
     # e.g. https://clustervision.example.com — auto-detected from request if empty
     publicUrl: ""
 
+    auth:
+      # JWT signing secret — strongly recommended in production.
+      # Reference an existing K8s Secret containing CV_JWT_SECRET.
+      # If omitted, a random secret is generated at each pod startup
+      # (all sessions are invalidated on restart).
+      jwtSecret:
+        secretName: ""       # e.g. clustervision-jwt
+        secretKey: "jwt-secret"
+
+      # Initial admin account — only applied on first deployment when no users exist.
+      # Create a K8s Secret beforehand:
+      #   kubectl create secret generic clustervision-admin --from-literal=admin-password=<pass>
+      adminPassword:
+        secretName: ""       # e.g. clustervision-admin
+        secretKey: "admin-password"
+
+      # Set to "false" when serving over plain HTTP (development only).
+      secureCookie: true
+
   resources:
     requests:
       cpu: 100m
