@@ -52,19 +52,18 @@ spec:
                   fieldPath: metadata.namespace
             - name: CV_SECURE_COOKIE
               value: {{ .Values.backend.env.auth.secureCookie | quote }}
-            {{- if .Values.backend.env.auth.jwtSecret.secretName }}
             - name: CV_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.env.auth.jwtSecret.secretName }}
-                  key: {{ .Values.backend.env.auth.jwtSecret.secretKey }}
-            {{- end }}
-            {{- if .Values.backend.env.auth.adminPassword.secretName }}
+                  name: {{ .Values.backend.env.auth.jwtSecret.existingSecret | default (printf "%s-jwt" (include "clustervision.fullname" .)) }}
+                  key: {{ .Values.backend.env.auth.jwtSecret.existingSecretKey }}
+            {{- $ap := .Values.backend.env.auth.adminPassword }}
+            {{- if or $ap.value $ap.existingSecret }}
             - name: CV_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.env.auth.adminPassword.secretName }}
-                  key: {{ .Values.backend.env.auth.adminPassword.secretKey }}
+                  name: {{ $ap.existingSecret | default (printf "%s-admin" (include "clustervision.fullname" .)) }}
+                  key: {{ $ap.existingSecretKey }}
             {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
