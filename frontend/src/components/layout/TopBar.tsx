@@ -1,9 +1,12 @@
 import { Server, LogOut } from 'lucide-react'
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useClusterInfo, useClusters } from '../../hooks/useCluster'
 import { useClusterStore } from '../../store/clusterStore'
 import { useAuthStore } from '../../store/authStore'
 import { authApi } from '../../api/auth'
+import Modal from '../ui/Modal'
+import Button from '../ui/Button'
 
 const routeLabels: Record<string, string> = {
   '/users':      'Users',
@@ -20,6 +23,7 @@ export default function TopBar() {
   const { data: clusters = [] } = useClusters()
   const { activeCluster, setActiveCluster } = useClusterStore()
   const { user, clearAuth } = useAuthStore()
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   const pageLabel = routeLabels[pathname] ?? 'ClusterVision'
 
@@ -80,25 +84,42 @@ export default function TopBar() {
 
       {/* User badge + logout */}
       {user && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-800 border border-surface-600">
-            <span className="text-xs text-surface-300 font-mono">{user.username}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-              user.role === 'admin'
-                ? 'bg-brand-600/20 text-brand-400'
-                : 'bg-surface-700 text-surface-400'
-            }`}>
-              {user.role}
-            </span>
+        <>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-800 border border-surface-600">
+              <span className="text-xs text-surface-300 font-mono">{user.username}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                user.role === 'admin'
+                  ? 'bg-brand-600/20 text-brand-400'
+                  : 'bg-surface-700 text-surface-400'
+              }`}>
+                {user.role}
+              </span>
+            </div>
+            <button
+              onClick={() => setConfirmLogout(true)}
+              title="Sign out"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-800 border border-transparent hover:border-surface-600 transition-all text-xs"
+            >
+              <LogOut size={14} />
+              <span>Sign out</span>
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            className="p-1.5 rounded-lg text-surface-400 hover:text-surface-200 hover:bg-surface-800 border border-transparent hover:border-surface-600 transition-all"
-          >
-            <LogOut size={14} />
-          </button>
-        </div>
+
+          <Modal open={confirmLogout} onClose={() => setConfirmLogout(false)} title="Sign out" size="sm">
+            <p className="text-sm text-surface-300 mb-6">
+              Sign out of <span className="font-mono text-surface-100">{user.username}</span>?
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" size="sm" className="flex-1" onClick={() => setConfirmLogout(false)}>
+                Cancel
+              </Button>
+              <Button variant="danger" size="sm" className="flex-1" onClick={handleLogout}>
+                <LogOut size={13} /> Sign out
+              </Button>
+            </div>
+          </Modal>
+        </>
       )}
     </header>
   )
