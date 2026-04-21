@@ -2,6 +2,7 @@ import os
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 
 from ..core.auth import create_access_token, create_refresh_token, decode_token
 from ..core.dependencies import get_current_user, require_admin
@@ -9,6 +10,7 @@ from ..models.auth import LoginRequest, TokenResponse, UserInfo
 from ..services.auth_service import (
     authenticate,
     change_password,
+    change_role,
     create_user,
     delete_user,
     list_users,
@@ -96,6 +98,19 @@ async def remove_user(username: str, current: UserInfo = Depends(require_admin))
     if username == current.username:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     delete_user(username)
+
+
+class ChangeRoleBody(BaseModel):
+    role: str
+
+
+@router.patch("/users/{username}/role", status_code=204)
+async def update_role(username: str, body: ChangeRoleBody, current: UserInfo = Depends(require_admin)):
+    if body.role not in ("admin", "viewer"):
+        raise HTTPException(status_code=422, detail="role must be 'admin' or 'viewer'")
+    if username == current.username:
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+    change_role(username, body.role)
 
 
 @router.post("/users/{username}/password", status_code=204)

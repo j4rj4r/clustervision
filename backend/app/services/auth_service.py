@@ -106,3 +106,12 @@ def change_password(username: str, new_password: str) -> None:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     users[username]["hash"] = hash_password(new_password)
     _write_users(users)
+
+
+def change_role(username: str, role: str) -> None:
+    users = _read_users()
+    if username not in users:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    users[username]["role"] = role
+    _write_users(users)
