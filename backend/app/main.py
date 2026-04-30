@@ -20,22 +20,50 @@ from .core.kubernetes_client import get_api_client
 from .core.dependencies import auth_gate
 from .routers import users, rbac, kubeconfig, cluster, tokens, profile
 from .routers import auth as auth_router
+from .routers import drift as drift_router
 from .services.auth_service import ensure_default_admin
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
+async def _drift_background(svc):
+    """Run periodic drift scan every 60s + real-time watch in background."""
+    async def _periodic():
+        while True:
+            await asyncio.sleep(60)
+            try:
+                new = await run_sync(svc.scan)
+                if new:
+                    logger.warning("Drift scan found %d new event(s)", len(new))
+            except Exception as e:
+                logger.warning("Drift scan error: %s", e)
+
+    await asyncio.gather(_periodic(), svc.watch_loop())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Eagerly initialize the K8s client on startup to surface config errors early
     try:
         get_api_client()
         logger.info("Kubernetes client initialized successfully")
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
     ensure_default_admin()
+
+    try:
+        from .routers.drift import get_drift_service
+        from .core.async_utils import run_sync
+        drift_svc = get_drift_service()
+        drift_task = asyncio.create_task(_drift_background(drift_svc))
+    except Exception as e:
+        logger.warning("Could not start drift watcher: %s", e)
+        drift_task = None
+
     yield
+
+    if drift_task:
+        drift_task.cancel()
 
 
 openapi_tags = [
@@ -137,6 +165,7 @@ app.include_router(kubeconfig.router, dependencies=_auth_dep)
 app.include_router(cluster.router,    dependencies=_auth_dep)
 app.include_router(tokens.router,     dependencies=_auth_dep)
 app.include_router(profile.router,    dependencies=_auth_dep)
+app.include_router(drift_router.router)
 
 
 @app.get("/health")

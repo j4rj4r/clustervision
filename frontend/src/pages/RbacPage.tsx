@@ -8,6 +8,10 @@ import RoleList from '../components/rbac/RoleList'
 import RoleEditorModal from '../components/rbac/RoleEditorModal'
 import NamespaceAccessPanel from '../components/rbac/NamespaceAccessPanel'
 import AccessSimulatorPanel from '../components/rbac/AccessSimulatorPanel'
+import DriftPanel from '../components/rbac/DriftPanel'
+import { useAuthStore } from '../store/authStore'
+import { useQuery } from '@tanstack/react-query'
+import { driftApi } from '../api/drift'
 import {
   useClusterRoles, useRoles, useNamespaces,
   useCreateClusterRole, useUpdateClusterRole, useDeleteClusterRole,
@@ -16,7 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import type { PolicyRule, RoleRead } from '../types/rbac'
 
-type Tab = 'roles' | 'clusterroles' | 'access' | 'simulator'
+type Tab = 'roles' | 'clusterroles' | 'access' | 'simulator' | 'drift'
 
 export default function RbacPage() {
   const qc = useQueryClient()
@@ -32,6 +36,15 @@ export default function RbacPage() {
   }>({ open: false, isCluster: false })
 
   const [deleteTarget, setDeleteTarget] = useState<{ role: RoleRead; isCluster: boolean } | null>(null)
+
+  const isAdmin = useAuthStore((s) => s.isAdmin())
+  const { data: driftData } = useQuery({
+    queryKey: ['drift-events'],
+    queryFn: () => driftApi.list(),
+    refetchInterval: 30_000,
+    enabled: isAdmin,
+  })
+  const driftCount = driftData?.total ?? 0
 
   const { data: clusterRoles = [], isLoading: loadingCR, isError: errorCR, refetch: refetchCR } = useClusterRoles(showSystem, tab === 'clusterroles')
   const { data: roles = [], isLoading: loadingR, isError: errorR, refetch: refetchR } = useRoles(namespace)
@@ -105,17 +118,23 @@ export default function RbacPage() {
           { key: 'clusterroles', label: 'Cluster-wide roles', tip: 'Roles that apply across all namespaces in the cluster' },
           { key: 'access', label: 'Who has access', tip: undefined },
           { key: 'simulator', label: 'Test permissions', tip: undefined },
-        ] as { key: Tab; label: string; tip?: string }[]).map(({ key, label, tip }) => (
+          ...(isAdmin ? [{ key: 'drift' as Tab, label: 'Drift detection', tip: undefined, badge: driftCount }] : []),
+        ] as { key: Tab; label: string; tip?: string; badge?: number }[]).map(({ key, label, tip, badge }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5 ${
               tab === key
                 ? 'border-brand-500 text-brand-400'
                 : 'border-transparent text-surface-400 hover:text-surface-200 hover:border-surface-500'
             }`}
           >
             {tip ? <Tooltip content={tip}><span>{label}</span></Tooltip> : label}
+            {!!badge && (
+              <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 text-xs font-semibold">
+                {badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -187,6 +206,9 @@ export default function RbacPage() {
 
       {/* Access Simulator tab */}
       {tab === 'simulator' && <AccessSimulatorPanel />}
+
+      {/* Drift detection tab */}
+      {tab === 'drift' && <DriftPanel />}
 
       {modal.open && (
         <RoleEditorModal
