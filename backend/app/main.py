@@ -18,7 +18,7 @@ from .core.exceptions import (
 from .config import get_settings
 from .core.kubernetes_client import get_api_client
 from .core.dependencies import auth_gate
-from .routers import users, rbac, kubeconfig, cluster, tokens
+from .routers import users, rbac, kubeconfig, cluster, tokens, profile
 from .routers import auth as auth_router
 from .services.auth_service import ensure_default_admin
 
@@ -136,6 +136,7 @@ app.include_router(rbac.router,       dependencies=_auth_dep)
 app.include_router(kubeconfig.router, dependencies=_auth_dep)
 app.include_router(cluster.router,    dependencies=_auth_dep)
 app.include_router(tokens.router,     dependencies=_auth_dep)
+app.include_router(profile.router,    dependencies=_auth_dep)
 
 
 @app.get("/health")
