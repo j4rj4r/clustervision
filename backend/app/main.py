@@ -25,6 +25,7 @@ from .routers import drift as drift_router
 from .routers import access_requests as access_requests_router
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
+from .core.async_utils import run_sync
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -58,7 +59,6 @@ async def lifespan(app: FastAPI):
 
     try:
         from .routers.drift import get_drift_service
-        from .core.async_utils import run_sync
         drift_svc = get_drift_service()
         drift_task = asyncio.create_task(_drift_background(drift_svc))
     except Exception as e:

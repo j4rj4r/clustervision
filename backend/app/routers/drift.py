@@ -1,5 +1,4 @@
-import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from ..core.dependencies import require_admin
 from ..models.auth import UserInfo
