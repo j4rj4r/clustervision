@@ -3,6 +3,7 @@ import { Plus, RefreshCw } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Select from '../components/ui/Select'
 import Modal from '../components/ui/Modal'
+import Tooltip from '../components/ui/Tooltip'
 import RoleList from '../components/rbac/RoleList'
 import RoleEditorModal from '../components/rbac/RoleEditorModal'
 import NamespaceAccessPanel from '../components/rbac/NamespaceAccessPanel'
@@ -75,8 +76,8 @@ export default function RbacPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-surface-100">RBAC</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Manage roles and cluster-wide roles</p>
+          <h1 className="text-xl font-semibold text-surface-100">Permissions</h1>
+          <p className="text-sm text-surface-400 mt-0.5">Manage roles and access rules across your cluster</p>
         </div>
         <div className="flex gap-2 items-center">
           <label className="flex items-center gap-2 text-xs text-surface-300 cursor-pointer">
@@ -100,11 +101,11 @@ export default function RbacPage() {
       {/* Tabs */}
       <div className="flex border-b border-surface-600">
         {([
-          { key: 'roles', label: 'Roles' },
-          { key: 'clusterroles', label: 'Cluster Roles' },
-          { key: 'access', label: 'Who has access' },
-          { key: 'simulator', label: 'Test permissions' },
-        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
+          { key: 'roles', label: 'Namespace roles', tip: 'Roles that apply within a specific namespace only' },
+          { key: 'clusterroles', label: 'Cluster-wide roles', tip: 'Roles that apply across all namespaces in the cluster' },
+          { key: 'access', label: 'Who has access', tip: undefined },
+          { key: 'simulator', label: 'Test permissions', tip: undefined },
+        ] as { key: Tab; label: string; tip?: string }[]).map(({ key, label, tip }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -114,7 +115,7 @@ export default function RbacPage() {
                 : 'border-transparent text-surface-400 hover:text-surface-200 hover:border-surface-500'
             }`}
           >
-            {label}
+            {tip ? <Tooltip content={tip}><span>{label}</span></Tooltip> : label}
           </button>
         ))}
       </div>

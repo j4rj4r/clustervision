@@ -8,6 +8,7 @@ export interface User {
   created_at: string
   cert_expiry?: string
   csr_name?: string
+  imported?: boolean
 }
 
 export interface UserWithCredentials extends User {

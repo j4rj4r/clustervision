@@ -27,4 +27,7 @@ export const usersApi = {
     client
       .delete(`/users/${username}`, { params: { user_type: userType, namespace } })
       .then(() => undefined),
+
+  renewCertificate: (username: string): Promise<UserWithCredentials> =>
+    client.post(`/users/${username}/renew-certificate`).then((r) => r.data),
 }

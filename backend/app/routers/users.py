@@ -114,6 +114,30 @@ async def get_user(
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
 
 
+@router.post(
+    "/{username}/renew-certificate",
+    response_model=UserWithCredentials,
+    summary="Renew a user's certificate",
+    description=(
+        "Generate a new key pair and certificate for an existing certificate user. "
+        "The new private key is returned **once** and never stored. "
+        "The old certificate remains valid until its original expiry."
+    ),
+    responses={**_404},
+)
+async def renew_certificate(
+    username: str,
+    cert_svc: CertificateService = Depends(get_cert_service),
+):
+    from ..core.exceptions import ImportedUserError
+    try:
+        return await run_sync(cert_svc.renew_certificate, username)
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    except ImportedUserError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete(
     "/{username}",
     status_code=204,

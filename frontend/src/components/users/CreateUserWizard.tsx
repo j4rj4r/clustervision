@@ -20,10 +20,10 @@ interface Props {
 type Step = 1 | 2 | 3
 
 const PRESETS = [
-  { id: 'none',     label: 'No permissions', desc: 'Assign later manually',           role: null },
-  { id: 'readonly', label: 'Read-only',       desc: 'Can view but not modify',         role: 'view' },
-  { id: 'developer',label: 'Developer',       desc: 'Can create, update resources',    role: 'edit' },
-  { id: 'admin',    label: 'Admin',           desc: 'Full access on selected scopes',  role: 'admin' },
+  { id: 'none',     label: 'No permissions', desc: 'Assign manually after creation',              role: null },
+  { id: 'readonly', label: 'Read-only',       desc: 'View resources, no writes',                  role: 'view' },
+  { id: 'developer',label: 'Developer',       desc: 'Create, update and delete resources',        role: 'edit' },
+  { id: 'admin',    label: 'Admin',           desc: 'Full control including RBAC and secrets',    role: 'admin' },
 ]
 
 function StepIndicator({ current }: { current: Step }) {
@@ -231,14 +231,14 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                   className={`p-3 rounded-lg border text-left transition-colors ${userType === 'service_account' ? 'border-brand-500 bg-brand-500/10' : 'border-surface-600 hover:border-surface-500'}`}
                 >
                   <p className="text-sm font-medium text-surface-100">ServiceAccount</p>
-                  <p className="text-xs text-surface-400 mt-0.5">For apps, CI/CD pipelines</p>
+                  <p className="text-xs text-surface-400 mt-0.5">For apps, bots, CI/CD pipelines</p>
                 </button>
                 <button
                   onClick={() => setUserType('certificate')}
                   className={`p-3 rounded-lg border text-left transition-colors ${isCert ? 'border-brand-500 bg-brand-500/10' : 'border-surface-600 hover:border-surface-500'}`}
                 >
                   <p className="text-sm font-medium text-surface-100">Certificate (X.509)</p>
-                  <p className="text-xs text-surface-400 mt-0.5">For human users</p>
+                  <p className="text-xs text-surface-400 mt-0.5">For human users — key-based auth</p>
                 </button>
               </div>
 
@@ -280,7 +280,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                   value={groups}
                   onChange={(e) => setGroups(e.target.value)}
                   placeholder="developers, devops"
-                  hint="Maps to /O= in the certificate subject"
+                  hint="Assigns the user to groups for permission rules (e.g. developers, devops)"
                 />
               )}
 
@@ -328,6 +328,18 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                       <p className="text-surface-500 mt-0.5">Access to all namespaces</p>
                     </button>
                   </div>
+
+                  {preset === 'admin' && scope === 'cluster' && (
+                    <div className="flex items-start gap-3 p-3 bg-red-950/30 border border-red-500/40 rounded-lg">
+                      <AlertTriangle size={15} className="text-red-400 mt-0.5 shrink-0" />
+                      <div className="text-xs text-red-300 space-y-1">
+                        <p className="font-semibold">Cluster-admin binding — high privilege</p>
+                        <p className="text-red-400/80">
+                          This grants full read &amp; write access to every resource in the cluster, including Secrets and RBAC rules. Prefer namespace-scoped admin when possible.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {scope === 'namespace' && (
                     <div>

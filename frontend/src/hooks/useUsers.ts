@@ -65,3 +65,16 @@ export const useDeleteUser = () => {
     onError: (err: Error) => toast.error(err.message),
   })
 }
+
+export const useRenewCertificate = (onSuccess?: (data: Awaited<ReturnType<typeof usersApi.renewCertificate>>) => void) => {
+  const qc = useQueryClient()
+  const cluster = useCluster()
+  return useMutation({
+    mutationFn: (username: string) => usersApi.renewCertificate(username),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['users', cluster] })
+      onSuccess?.(data)
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}

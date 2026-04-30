@@ -11,7 +11,7 @@ export default function KubeconfigPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-surface-100">Kubeconfig</h1>
-        <p className="text-sm text-surface-400 mt-0.5">Generate a kubeconfig file for any user</p>
+        <p className="text-sm text-surface-400 mt-0.5">Generate a kubeconfig — the credentials file used by kubectl to connect to the cluster</p>
       </div>
 
       <div className="bg-surface-900 border border-surface-600 rounded-xl p-6">
@@ -22,7 +22,7 @@ export default function KubeconfigPage() {
           <div>
             <p className="text-sm font-medium text-surface-200">Generate kubeconfig</p>
             <p className="text-xs text-surface-400">
-              For certificate users, you must provide your private key (not stored by ClusterVision).
+              For certificate (X.509) users, paste your private key below — ClusterVision never stores it.
             </p>
           </div>
         </div>

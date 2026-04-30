@@ -6,7 +6,7 @@ const links = [
   { to: '/users',      icon: Users,     label: 'Users',       desc: 'Manage cluster users'    },
   { to: '/rbac',       icon: Shield,    label: 'Permissions', desc: 'Roles & bindings'        },
   { to: '/kubeconfig', icon: FileCode2,  label: 'Kubeconfig',  desc: 'Generate access config'  },
-  { to: '/tokens',     icon: Key,       label: 'History',     desc: 'Kubeconfig generations'  },
+  { to: '/tokens',     icon: Key,       label: 'Kubeconfig log', desc: 'Past generations & access' },
   { to: '/clusters',   icon: Server,    label: 'Clusters',    desc: 'Connected clusters'      },
 ]
 

@@ -169,6 +169,82 @@ class CertificateService(RegistryMixin):
             raise ImportedUserError(f"No signed certificate found for user {username}")
         return base64.b64decode(csr.status.certificate).decode()
 
+    def renew_certificate(self, username: str) -> dict:
+        users = self._load_registry()
+        user = next((u for u in users if u["name"] == username and u.get("type") == "certificate"), None)
+        if not user:
+            raise UserNotFoundError(username)
+        if user.get("imported") or not user.get("csr_name"):
+            raise ImportedUserError(
+                f"User '{username}' was imported and has no managed CSR. "
+                "Certificate renewal is only available for ClusterVision-managed users."
+            )
+
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        name_attrs = [x509.NameAttribute(NameOID.COMMON_NAME, username)]
+        for group in user.get("groups", []):
+            name_attrs.append(x509.NameAttribute(NameOID.ORGANIZATION_NAME, group))
+
+        csr = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(x509.Name(name_attrs))
+            .sign(private_key, hashes.SHA256())
+        )
+        csr_pem = csr.public_bytes(serialization.Encoding.PEM)
+
+        csr_name = f"clustervision:{username}"
+        try:
+            self.certs_api.delete_certificate_signing_request(csr_name)
+            time.sleep(1)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+        k8s_csr = client.V1CertificateSigningRequest(
+            metadata=client.V1ObjectMeta(name=csr_name),
+            spec=client.V1CertificateSigningRequestSpec(
+                request=base64.b64encode(csr_pem).decode(),
+                signer_name="kubernetes.io/kube-apiserver-client",
+                usages=["client auth"],
+                expiration_seconds=86400 * 365,
+            ),
+        )
+        self.certs_api.create_certificate_signing_request(k8s_csr)
+
+        existing_csr = self.certs_api.read_certificate_signing_request(csr_name)
+        existing_csr.status = client.V1CertificateSigningRequestStatus(
+            conditions=[
+                client.V1CertificateSigningRequestCondition(
+                    type="Approved",
+                    status="True",
+                    reason="ClusterVisionRenewal",
+                    message=f"Certificate renewed by ClusterVision for user {username}",
+                    last_update_time=datetime.now(timezone.utc),
+                )
+            ]
+        )
+        self.certs_api.replace_certificate_signing_request_approval(csr_name, existing_csr)
+
+        signed_cert_b64 = self._wait_for_certificate(csr_name)
+        certificate_pem = base64.b64decode(signed_cert_b64).decode()
+
+        private_key_pem = private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        ).decode()
+
+        new_expiry = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        for u in users:
+            if u["name"] == username and u.get("type") == "certificate":
+                u["cert_expiry"] = new_expiry
+                u["csr_name"] = csr_name
+        self._save_registry(users)
+        logger.info("Renewed certificate for user: %s", username)
+
+        updated_user = next(u for u in users if u["name"] == username and u.get("type") == "certificate")
+        return {**updated_user, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
+
     def _wait_for_certificate(self, csr_name: str, timeout: int = 30) -> str:
         deadline = time.time() + timeout
         while time.time() < deadline:
