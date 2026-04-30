@@ -4,6 +4,7 @@ import { Plus, Trash2, KeyRound, ShieldCheck, ShieldOff, RefreshCw, CheckCircle,
 import toast from 'react-hot-toast'
 import { adminApi, type CvUser } from '../api/admin'
 import { accessRequestsApi, type AccessRequest } from '../api/accessRequests'
+import VaultConfigSection from '../components/admin/VaultConfigSection'
 import { useAuthStore } from '../store/authStore'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -418,6 +419,12 @@ export default function AdminPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* Integrations */}
+      <div>
+        <h2 className="text-sm font-semibold text-surface-200 mb-3">Integrations</h2>
+        <VaultConfigSection />
+      </div>
     </div>
   )
 }

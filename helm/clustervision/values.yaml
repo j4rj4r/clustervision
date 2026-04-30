@@ -95,3 +95,21 @@ rbac:
 networkPolicy:
   enabled: true
   ingressControllerNamespace: traefik  # adjust to your Ingress controller namespace
+
+
+# ── Vault integration (optional) ──────────────────────────────────────────────
+vault:
+  enabled: false
+
+  # Vault server address
+  addr: ""                     # e.g. https://vault.example.com
+
+  # Token auth (simple)
+  token: ""                    # inline — Helm creates a managed Secret
+  existingSecret: ""           # pre-existing Secret name
+  existingSecretKey: "vault-token"
+
+  # KV v2 settings
+  mount: "secret"              # KV v2 mount path
+  basePath: "clustervision/users"
+  namespace: ""                # Vault Enterprise namespace (leave empty for OSS)

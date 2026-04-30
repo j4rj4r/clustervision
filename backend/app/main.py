@@ -22,6 +22,7 @@ from .routers import users, rbac, kubeconfig, cluster, tokens, profile
 from .routers import auth as auth_router
 from .routers import drift as drift_router
 from .routers import access_requests as access_requests_router
+from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
@@ -51,6 +52,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
     ensure_default_admin()
+    from .services.vault_service import init_vault_from_env
+    init_vault_from_env()
 
     try:
         from .routers.drift import get_drift_service
@@ -168,6 +171,7 @@ app.include_router(tokens.router,     dependencies=_auth_dep)
 app.include_router(profile.router,    dependencies=_auth_dep)
 app.include_router(drift_router.router)
 app.include_router(access_requests_router.router, dependencies=_auth_dep)
+app.include_router(vault_admin_router.router)
 
 
 @app.get("/health")

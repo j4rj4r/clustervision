@@ -14,6 +14,7 @@ export interface User {
 export interface UserWithCredentials extends User {
   private_key_pem?: string
   certificate_pem?: string
+  vault_path?: string
 }
 
 export interface UserList {

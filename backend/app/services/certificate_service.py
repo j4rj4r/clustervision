@@ -113,11 +113,32 @@ class CertificateService(RegistryMixin):
             "created_at": now,
             "cert_expiry": expiry,
         }
+
+        # Step 7: Store private key in Vault if configured
+        vault_path = None
+        from .vault_service import get_vault_service
+        vault = get_vault_service()
+        if vault:
+            try:
+                vault_path = vault.write_secret(username, {
+                    "private_key_pem": private_key_pem,
+                    "certificate_pem": certificate_pem,
+                })
+                user_record["vault_path"] = vault_path
+                logger.info("Stored credentials for %s in Vault at %s", username, vault_path)
+            except Exception as e:
+                logger.warning("Vault write failed for %s, returning key inline: %s", username, e)
+
         users.append(user_record)
         self._save_registry(users)
         logger.info("Created certificate user: %s", username)
 
-        return {**user_record, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
+        result = {**user_record, "certificate_pem": certificate_pem}
+        if vault_path:
+            result["vault_path"] = vault_path
+        else:
+            result["private_key_pem"] = private_key_pem
+        return result
 
     def delete_user(self, username: str):
         users = self._load_registry()
@@ -243,7 +264,26 @@ class CertificateService(RegistryMixin):
         logger.info("Renewed certificate for user: %s", username)
 
         updated_user = next(u for u in users if u["name"] == username and u.get("type") == "certificate")
-        return {**updated_user, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
+
+        vault_path = None
+        from .vault_service import get_vault_service
+        vault = get_vault_service()
+        if vault:
+            try:
+                vault_path = vault.write_secret(username, {
+                    "private_key_pem": private_key_pem,
+                    "certificate_pem": certificate_pem,
+                })
+                logger.info("Updated credentials for %s in Vault at %s", username, vault_path)
+            except Exception as e:
+                logger.warning("Vault write failed for %s during renewal: %s", username, e)
+
+        result = {**updated_user, "certificate_pem": certificate_pem}
+        if vault_path:
+            result["vault_path"] = vault_path
+        else:
+            result["private_key_pem"] = private_key_pem
+        return result
 
     def _wait_for_certificate(self, csr_name: str, timeout: int = 30) -> str:
         deadline = time.time() + timeout

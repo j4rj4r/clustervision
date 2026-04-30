@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Check, CheckCircle, Clipboard, Download, FileCode2 } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle, Clipboard, Download, FileCode2, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -202,7 +202,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   }
 
   const isCert = userType === 'certificate'
-  const canClose = step !== 3 || !isCert || confirmed
+  const canClose = step !== 3 || !isCert || confirmed || !!credentials?.vault_path
 
   if (!open) return null
 
@@ -387,7 +387,18 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 <span className="text-sm font-medium">User <span className="font-mono">{name}</span> created</span>
               </div>
 
-              {/* Cert credentials */}
+              {/* Cert credentials — Vault path */}
+              {isCert && credentials?.vault_path && (
+                <div className="flex items-start gap-3 p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <Lock size={15} className="text-emerald-400 mt-0.5 shrink-0" />
+                  <div className="text-xs text-emerald-300 space-y-1">
+                    <p className="font-semibold">Private key stored in Vault</p>
+                    <p className="font-mono text-emerald-400/80">{credentials.vault_path}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Cert credentials — inline */}
               {isCert && credentials?.private_key_pem && (
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
