@@ -21,6 +21,7 @@ from .core.dependencies import auth_gate
 from .routers import users, rbac, kubeconfig, cluster, tokens, profile
 from .routers import auth as auth_router
 from .routers import drift as drift_router
+from .routers import access_requests as access_requests_router
 from .services.auth_service import ensure_default_admin
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
@@ -166,6 +167,7 @@ app.include_router(cluster.router,    dependencies=_auth_dep)
 app.include_router(tokens.router,     dependencies=_auth_dep)
 app.include_router(profile.router,    dependencies=_auth_dep)
 app.include_router(drift_router.router)
+app.include_router(access_requests_router.router, dependencies=_auth_dep)
 
 
 @app.get("/health")

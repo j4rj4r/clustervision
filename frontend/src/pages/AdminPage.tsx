@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, KeyRound, ShieldCheck, ShieldOff, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, KeyRound, ShieldCheck, ShieldOff, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi, type CvUser } from '../api/admin'
+import { accessRequestsApi, type AccessRequest } from '../api/accessRequests'
 import { useAuthStore } from '../store/authStore'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -138,6 +139,141 @@ function ResetPasswordModal({ user, onClose }: { user: CvUser | null; onClose: (
   )
 }
 
+// ── Access requests section ────────────────────────────────────────────────
+
+function AccessRequestsSection() {
+  const qc = useQueryClient()
+  const [denyTarget, setDenyTarget] = useState<AccessRequest | null>(null)
+  const [denyReason, setDenyReason] = useState('')
+
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ['access-requests', 'pending'],
+    queryFn: () => accessRequestsApi.list('pending'),
+    refetchInterval: 30_000,
+  })
+
+  const approve = useMutation({
+    mutationFn: (id: string) => accessRequestsApi.approve(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['access-requests'] })
+      toast.success('Request approved and role assigned')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const deny = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => accessRequestsApi.deny(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['access-requests'] })
+      toast.success('Request denied')
+      setDenyTarget(null); setDenyReason('')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  return (
+    <>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-surface-200">Access requests</h2>
+            {requests.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-semibold">
+                {requests.length} pending
+              </span>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['access-requests'] })}>
+            <RefreshCw size={13} />
+          </Button>
+        </div>
+
+        <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
+          {isLoading ? (
+            <div className="py-8 text-center text-sm text-surface-400">Loading…</div>
+          ) : requests.length === 0 ? (
+            <div className="py-8 text-center text-sm text-surface-500">No pending requests</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-600 bg-surface-900/60">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Requester</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Justification</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-surface-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-700">
+                {requests.map((req) => (
+                  <tr key={req.id} className="hover:bg-surface-700/40">
+                    <td className="px-4 py-3 font-mono text-surface-100 text-xs">{req.requester}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-surface-200">{req.role_name}</span>
+                      {req.namespace
+                        ? <span className="ml-1.5"><Badge variant="default">{req.namespace}</Badge></span>
+                        : <span className="ml-1.5"><Badge variant="info">cluster-wide</Badge></span>
+                      }
+                    </td>
+                    <td className="px-4 py-3 text-xs text-surface-400 max-w-[200px] truncate">{req.justification}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="text-emerald-400 hover:text-emerald-300 border-emerald-500/30"
+                          loading={approve.isPending}
+                          onClick={() => approve.mutate(req.id)}
+                        >
+                          <CheckCircle size={12} /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-400 hover:text-red-300"
+                          onClick={() => { setDenyTarget(req); setDenyReason('') }}
+                        >
+                          <XCircle size={12} /> Deny
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <Modal open={!!denyTarget} onClose={() => setDenyTarget(null)} title="Deny request" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-surface-400">
+            Deny access to <span className="font-mono text-surface-100">{denyTarget?.role_name}</span> for{' '}
+            <span className="font-mono text-surface-100">{denyTarget?.requester}</span>?
+          </p>
+          <Input
+            label="Reason (optional)"
+            value={denyReason}
+            onChange={(e) => setDenyReason(e.target.value)}
+            placeholder="e.g. Use a more scoped role instead"
+          />
+          <div className="flex gap-3">
+            <Button variant="secondary" size="sm" className="flex-1" onClick={() => setDenyTarget(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              size="sm"
+              className="flex-1"
+              loading={deny.isPending}
+              onClick={() => denyTarget && deny.mutate({ id: denyTarget.id, reason: denyReason })}
+            >
+              Deny
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -256,6 +392,8 @@ export default function AdminPage() {
           </table>
         )}
       </div>
+
+      <AccessRequestsSection />
 
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <ResetPasswordModal user={resetTarget} onClose={() => setResetTarget(null)} />

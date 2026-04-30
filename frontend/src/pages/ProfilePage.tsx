@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { User, ShieldCheck, Key, AlertTriangle, FileCode2 } from 'lucide-react'
+import { User, ShieldCheck, Key, AlertTriangle, FileCode2, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import client from '../api/client'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import RequestAccessModal from '../components/access/RequestAccessModal'
 
 interface Binding {
   name: string
@@ -38,7 +40,7 @@ function ExpiryInfo({ expiry }: { expiry: string }) {
 export default function ProfilePage() {
   const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
-  const isAdmin = useAuthStore((s) => s.isAdmin())
+  const [requestOpen, setRequestOpen] = useState(false)
 
   const { data, isLoading } = useQuery<ProfileData>({
     queryKey: ['profile-me'],
@@ -143,12 +145,12 @@ export default function ProfilePage() {
         <Button variant="secondary" onClick={() => navigate('/kubeconfig')}>
           <FileCode2 size={14} /> Generate kubeconfig
         </Button>
-        {!isAdmin && (
-          <Button variant="ghost" onClick={() => navigate('/access-requests/new')}>
-            Request more access
-          </Button>
-        )}
+        <Button variant="ghost" onClick={() => setRequestOpen(true)}>
+          <Plus size={14} /> Request access
+        </Button>
       </div>
+
+      <RequestAccessModal open={requestOpen} onClose={() => setRequestOpen(false)} />
     </div>
   )
 }
