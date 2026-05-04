@@ -7,4 +7,4 @@ kubernetes==35.0.0
 cryptography==47.0.0
 PyYAML==6.0.3
 PyJWT==2.12.1
-bcrypt==4.3.0
+bcrypt==5.0.0
