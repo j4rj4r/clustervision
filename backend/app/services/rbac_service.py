@@ -90,7 +90,11 @@ class RbacService:
             rules=[_rule_to_k8s(r) for r in rules],
         )
         created = self.rbac_v1.create_cluster_role(cr)
-        return {"name": created.metadata.name}
+        return {
+            "name": created.metadata.name,
+            "rules": [_rule_from_k8s(r) for r in (created.rules or [])],
+            "is_system": created.metadata.name.startswith("system:"),
+        }
 
     def update_cluster_role(self, name: str, rules: list[PolicyRule]) -> dict:
         cr = self.rbac_v1.read_cluster_role(name)
@@ -142,7 +146,12 @@ class RbacService:
             rules=[_rule_to_k8s(r) for r in rules],
         )
         created = self.rbac_v1.create_namespaced_role(namespace, role)
-        return {"name": created.metadata.name, "namespace": namespace}
+        return {
+            "name": created.metadata.name,
+            "namespace": created.metadata.namespace,
+            "rules": [_rule_from_k8s(r) for r in (created.rules or [])],
+            "is_system": False,
+        }
 
     def update_role(self, namespace: str, name: str, rules: list[PolicyRule]) -> dict:
         role = self.rbac_v1.read_namespaced_role(name, namespace)
