@@ -2,7 +2,7 @@ fastapi==0.136.1
 uvicorn[standard]==0.46.0
 gunicorn==25.3.0
 pydantic==2.13.3
-pydantic-settings==2.13.1
+pydantic-settings==2.14.0
 kubernetes==35.0.0
 cryptography==47.0.0
 PyYAML==6.0.3
