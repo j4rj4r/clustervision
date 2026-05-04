@@ -79,6 +79,10 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const [copied, setCopied] = useState(false)
 
   const { data: namespaces = [] } = useNamespaces()
+  const pendingNs = saNamespace === '__new__' ? newNamespace.trim() : ''
+  const namespacesWithPending = pendingNs && !namespaces.includes(pendingNs)
+    ? [pendingNs, ...namespaces]
+    : namespaces
   const generateKubeconfig = useGenerateKubeconfig()
 
   const createUser = useCreateUser(async (data) => {
@@ -152,7 +156,9 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   }
 
   const handleStep1Next = () => {
-    if (validateStep1()) setStep(2)
+    if (!validateStep1()) return
+    if (pendingNs) setSelectedNs((prev) => new Set([...prev, pendingNs]))
+    setStep(2)
   }
 
   const handleCreate = () => {
@@ -333,7 +339,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                     <div>
                       <label className="block text-xs font-medium text-surface-300 mb-2">Namespaces</label>
                       <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                        {namespaces.map((ns) => (
+                        {namespacesWithPending.map((ns) => (
                           <label key={ns} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-700 cursor-pointer">
                             <input
                               type="checkbox"
@@ -342,6 +348,9 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                               className="accent-brand-500"
                             />
                             <span className="text-sm font-mono text-surface-200">{ns}</span>
+                            {ns === pendingNs && (
+                              <span className="text-xs text-brand-400 ml-auto">new</span>
+                            )}
                           </label>
                         ))}
                       </div>
