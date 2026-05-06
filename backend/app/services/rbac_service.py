@@ -230,6 +230,24 @@ class RbacService:
             for rb in rbs.items
         ]
 
+    def _ensure_namespace(self, namespace: str):
+        try:
+            self.core_v1.read_namespace(namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+            try:
+                self.core_v1.create_namespace(client.V1Namespace(
+                    metadata=client.V1ObjectMeta(
+                        name=namespace,
+                        labels={"managed-by": "clustervision"},
+                    )
+                ))
+                logger.info("Created namespace: %s", namespace)
+            except ApiException as ce:
+                if ce.status != 409:
+                    raise
+
     def create_role_binding(
         self,
         namespace: str,
@@ -238,6 +256,7 @@ class RbacService:
         role_kind: str,
         subjects: list[Subject],
     ) -> dict:
+        self._ensure_namespace(namespace)
         rb = client.V1RoleBinding(
             metadata=client.V1ObjectMeta(
                 name=name,

@@ -72,6 +72,9 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   const [scope, setScope] = useState<'cluster' | 'namespace'>('namespace')
   const [selectedNs, setSelectedNs] = useState<Set<string>>(new Set())
   const [assigning, setAssigning] = useState(false)
+  const [inlineNsInput, setInlineNsInput] = useState('')
+  const [inlineNsError, setInlineNsError] = useState('')
+  const [extraNs, setExtraNs] = useState<Set<string>>(new Set())
 
   // Step 3
   const [credentials, setCredentials] = useState<UserWithCredentials | null>(null)
@@ -80,9 +83,11 @@ export default function CreateUserWizard({ open, onClose }: Props) {
 
   const { data: namespaces = [] } = useNamespaces()
   const pendingNs = saNamespace === '__new__' ? newNamespace.trim() : ''
-  const namespacesWithPending = pendingNs && !namespaces.includes(pendingNs)
-    ? [pendingNs, ...namespaces]
-    : namespaces
+  const allNewNs = new Set([...(pendingNs ? [pendingNs] : []), ...extraNs])
+  const namespacesWithPending = [
+    ...[...allNewNs].filter((ns) => !namespaces.includes(ns)),
+    ...namespaces,
+  ]
   const generateKubeconfig = useGenerateKubeconfig()
 
   const createUser = useCreateUser(async (data) => {
@@ -128,6 +133,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
     setName(''); setNameError(''); setUserType('service_account')
     setSaNamespace('__new__'); setNewNamespace(''); setNewNamespaceError(''); setGroups('')
     setPreset('readonly'); setScope('namespace'); setSelectedNs(new Set())
+    setInlineNsInput(''); setInlineNsError(''); setExtraNs(new Set())
     setCredentials(null); setConfirmed(false); setCopied(false)
     generateKubeconfig.reset()
     onClose()
@@ -169,6 +175,19 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       groups: groups.split(',').map((g) => g.trim()).filter(Boolean),
       namespace: userType === 'service_account' ? effectiveNamespace : '',
     })
+  }
+
+  const addInlineNs = () => {
+    const ns = inlineNsInput.trim()
+    if (!ns) return
+    if (!/^[a-z0-9][a-z0-9\-]*$/.test(ns)) {
+      setInlineNsError('Lowercase alphanumeric and hyphens only')
+      return
+    }
+    setExtraNs((prev) => new Set([...prev, ns]))
+    setSelectedNs((prev) => new Set([...prev, ns]))
+    setInlineNsInput('')
+    setInlineNsError('')
   }
 
   const toggleNs = (ns: string) =>
@@ -348,12 +367,30 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                               className="accent-brand-500"
                             />
                             <span className="text-sm font-mono text-surface-200">{ns}</span>
-                            {ns === pendingNs && (
+                            {allNewNs.has(ns) && (
                               <span className="text-xs text-brand-400 ml-auto">new</span>
                             )}
                           </label>
                         ))}
                       </div>
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={inlineNsInput}
+                          onChange={(e) => { setInlineNsInput(e.target.value); setInlineNsError('') }}
+                          onKeyDown={(e) => e.key === 'Enter' && addInlineNs()}
+                          placeholder="Add namespace…"
+                          className="flex-1 bg-surface-900 border border-surface-600 rounded-lg px-3 py-1.5 text-xs font-mono text-surface-200 placeholder-surface-600 focus:outline-none focus:border-brand-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={addInlineNs}
+                          className="px-3 py-1.5 rounded-lg bg-surface-700 hover:bg-surface-600 text-xs text-surface-200 transition-colors"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {inlineNsError && <p className="mt-1 text-xs text-red-400">{inlineNsError}</p>}
                     </div>
                   )}
                 </div>
