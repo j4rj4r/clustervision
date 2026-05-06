@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Check, Clipboard, Download, FileCode2, RefreshCw } from 'lucide-react'
+import { Check, Clipboard, Download, FileCode2, RefreshCw, Upload } from 'lucide-react'
 import Select from '../ui/Select'
 import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
@@ -21,6 +21,20 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
   const [namespace, setNamespace] = useState(preselectedNamespace ?? '')
   const [privateKey, setPrivateKey] = useState('')
   const [copied, setCopied] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handlePemUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const match = text.match(/(-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]+?-----END (?:RSA |EC )?PRIVATE KEY-----)/)
+      setPrivateKey(match ? match[1].trim() : text.trim())
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   const selectedUser = users.find((u) => u.name === selectedUsername)
   const isCert = selectedUser?.user_type === 'certificate'
@@ -94,7 +108,23 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
         {isCert && (
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-surface-300">Private Key PEM</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-surface-300">Private Key PEM</label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
+              >
+                <Upload size={11} /> Upload .pem
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pem,.key,.txt"
+              className="hidden"
+              onChange={handlePemUpload}
+            />
             <textarea
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
@@ -102,7 +132,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
               rows={6}
               className="w-full bg-surface-800 border border-surface-600 rounded-md px-3 py-2 text-xs text-surface-200 font-mono placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
             />
-            <p className="text-xs text-surface-400">Paste the private key saved at user creation time.</p>
+            <p className="text-xs text-surface-400">Upload the credentials.pem downloaded at user creation, or paste the key directly.</p>
           </div>
         )}
 
