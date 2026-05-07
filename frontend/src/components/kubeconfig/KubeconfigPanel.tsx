@@ -67,9 +67,16 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
   }
 
   // Auto-generate for SA users and cert users when Vault is active (no key input needed)
+  // Cert users skip namespace-only changes — they have the Generate button for that.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevUsernameRef = useRef(selectedUsername)
+  const prevNsRef = useRef(namespace)
   useEffect(() => {
+    const nsOnlyChanged = prevNsRef.current !== namespace && prevUsernameRef.current === selectedUsername
+    prevNsRef.current = namespace
+    prevUsernameRef.current = selectedUsername
     if (!canGenerate || (isCert && !vaultEnabled)) return
+    if (isCert && nsOnlyChanged) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(handleGenerate, 1500)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }

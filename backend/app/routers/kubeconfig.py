@@ -52,8 +52,11 @@ async def generate_kubeconfig(
             from ..services.vault_service import get_vault_service
             vault_svc = get_vault_service()
             if vault_svc:
-                secret = await run_sync(vault_svc.read_secret, payload.username)
-                private_key_pem = secret.get("private_key_pem")
+                try:
+                    secret = await run_sync(vault_svc.read_secret, payload.username)
+                    private_key_pem = secret.get("private_key_pem") if secret else None
+                except Exception:
+                    logger.warning("Vault read failed for %s, falling back to inline key", payload.username, exc_info=True)
         if not private_key_pem:
             raise HTTPException(
                 status_code=400,
