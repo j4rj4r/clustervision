@@ -7,6 +7,7 @@ export interface VaultStatus {
   base_path?: string
   namespace?: string
   healthy?: boolean
+  error?: string | null
 }
 
 export interface VaultConfig {

@@ -50,12 +50,12 @@ class VaultService:
         result = self._request("GET", path)
         return result.get("data", {}).get("data", {})
 
-    def health_check(self) -> bool:
+    def health_check(self) -> tuple[bool, str | None]:
         try:
             self._request("GET", "sys/health?standbyok=true&sealedok=true&uninitok=true")
-            return True
-        except VaultError:
-            return False
+            return True, None
+        except VaultError as e:
+            return False, str(e)
 
 
 # ── Singleton ──────────────────────────────────────────────────────────────

@@ -27,11 +27,11 @@ export default function VaultConfigSection() {
   const configure = useMutation({
     mutationFn: vaultApi.configure,
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['vault-status'] })
+      qc.setQueryData(['vault-status'], data)
       if (data.healthy) {
         toast.success('Vault connected and healthy')
       } else {
-        toast.error('Config saved but Vault health check failed — verify address and token')
+        toast.error(data.error ?? 'Vault health check failed — verify address and token')
       }
       setEditing(false)
     },
@@ -97,11 +97,18 @@ export default function VaultConfigSection() {
       </div>
 
       {status?.enabled && !editing && (
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-          <span className="text-surface-500">Address</span><span className="text-surface-300 font-mono">{status.addr}</span>
-          <span className="text-surface-500">Mount</span><span className="text-surface-300 font-mono">{status.mount}</span>
-          <span className="text-surface-500">Base path</span><span className="text-surface-300 font-mono">{status.base_path}</span>
-          {status.namespace && <><span className="text-surface-500">Namespace</span><span className="text-surface-300 font-mono">{status.namespace}</span></>}
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+            <span className="text-surface-500">Address</span><span className="text-surface-300 font-mono">{status.addr}</span>
+            <span className="text-surface-500">Mount</span><span className="text-surface-300 font-mono">{status.mount}</span>
+            <span className="text-surface-500">Base path</span><span className="text-surface-300 font-mono">{status.base_path}</span>
+            {status.namespace && <><span className="text-surface-500">Namespace</span><span className="text-surface-300 font-mono">{status.namespace}</span></>}
+          </div>
+          {status.error && (
+            <p className="text-xs text-red-400 bg-red-950/30 border border-red-500/20 rounded-lg px-3 py-2 font-mono break-all">
+              {status.error}
+            </p>
+          )}
         </div>
       )}
 
