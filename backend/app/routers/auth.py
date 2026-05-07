@@ -1,7 +1,10 @@
 import os
+import time
+from collections import defaultdict
+from threading import Lock
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from ..core.auth import create_access_token, create_refresh_token, decode_token
@@ -17,6 +20,26 @@ from ..services.auth_service import (
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# ── Login rate limiting ────────────────────────────────────────────────────
+_RATE_LIMIT = 10        # max attempts
+_RATE_WINDOW = 300      # per 5 minutes
+_rate_lock = Lock()
+_rate_buckets: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_rate_limit(ip: str) -> None:
+    now = time.monotonic()
+    with _rate_lock:
+        attempts = _rate_buckets[ip]
+        _rate_buckets[ip] = [t for t in attempts if now - t < _RATE_WINDOW]
+        if len(_rate_buckets[ip]) >= _RATE_LIMIT:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts — try again later",
+                headers={"Retry-After": str(_RATE_WINDOW)},
+            )
+        _rate_buckets[ip].append(now)
 
 _REFRESH_COOKIE = "cv_refresh"
 _REFRESH_MAX_AGE = 7 * 86400
@@ -37,7 +60,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, response: Response):
+async def login(body: LoginRequest, request: Request, response: Response):
+    _check_rate_limit(request.client.host if request.client else "unknown")
     user = authenticate(body.username, body.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")

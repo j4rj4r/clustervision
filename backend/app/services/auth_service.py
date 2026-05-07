@@ -66,12 +66,16 @@ def ensure_default_admin() -> None:
         logger.warning("Could not initialize default admin: %s", e)
 
 
+_DUMMY_HASH = "$2b$12$Kix0GsNjGUDMHlTGtqKhCOSVRAf5Y/LNmXZnkgDlJwO7hzf5Q7Psy"
+
+
 def authenticate(username: str, password: str) -> dict | None:
     users = _read_users()
     entry = users.get(username)
-    if not entry:
+    # Always run bcrypt to prevent username enumeration via timing
+    if not verify_password(password, entry["hash"] if entry else _DUMMY_HASH):
         return None
-    if not verify_password(password, entry["hash"]):
+    if not entry:
         return None
     return {"username": username, "role": entry["role"]}
 
