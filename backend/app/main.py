@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Could not initialize Kubernetes client: %s", e)
     ensure_default_admin()
     from .services.vault_service import init_vault_from_env
-    init_vault_from_env()
+    await init_vault_from_env()
     yield
 
 

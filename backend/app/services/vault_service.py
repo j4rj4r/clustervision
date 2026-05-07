@@ -23,6 +23,9 @@ class VaultService:
         if tls_skip_verify:
             self._ctx.check_hostname = False
             self._ctx.verify_mode = ssl.CERT_NONE
+        # Cached from last health_check() call — avoids blocking the async event loop on GET /status
+        self._cached_healthy: bool = False
+        self._cached_error: str | None = None
 
     def _headers(self) -> dict:
         h = {"X-Vault-Token": self.token, "Content-Type": "application/json"}
@@ -57,9 +60,10 @@ class VaultService:
     def health_check(self) -> tuple[bool, str | None]:
         try:
             self._request("GET", "sys/health?standbyok=true&sealedok=true&uninitok=true")
-            return True, None
+            self._cached_healthy, self._cached_error = True, None
         except VaultError as e:
-            return False, str(e)
+            self._cached_healthy, self._cached_error = False, str(e)
+        return self._cached_healthy, self._cached_error
 
 
 # ── Singleton ──────────────────────────────────────────────────────────────
@@ -82,11 +86,12 @@ def disable_vault():
     _vault_svc = None
 
 
-def init_vault_from_env():
+async def init_vault_from_env():
     from ..config import get_settings
+    from ..core.async_utils import run_sync
     s = get_settings()
     if s.vault_enabled and s.vault_addr and s.vault_token:
-        configure_vault(
+        svc = configure_vault(
             addr=s.vault_addr,
             token=s.vault_token,
             mount=s.vault_mount,
@@ -94,4 +99,5 @@ def init_vault_from_env():
             namespace=s.vault_namespace,
             tls_skip_verify=s.vault_tls_skip_verify,
         )
-        logger.info("Vault integration initialized from environment")
+        await run_sync(svc.health_check)
+        logger.info("Vault integration initialized from environment (healthy=%s)", svc._cached_healthy)

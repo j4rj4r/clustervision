@@ -15,7 +15,11 @@ interface Props {
 export default function KubeconfigPanel({ preselectedName, preselectedNamespace }: Props) {
   const { data: usersData, isError: usersError } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
-  const { data: vaultStatus } = useQuery({ queryKey: ['vault-status'], queryFn: vaultApi.status })
+  const { data: vaultStatus, isLoading: vaultLoading } = useQuery({
+    queryKey: ['vault-status'],
+    queryFn: vaultApi.status,
+    staleTime: 60_000,
+  })
   const generate = useGenerateKubeconfig()
 
   const vaultEnabled = vaultStatus?.enabled && vaultStatus.healthy

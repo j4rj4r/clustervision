@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from ..core.async_utils import run_sync
 from ..core.dependencies import require_admin
 from ..models.auth import UserInfo
 from ..services.vault_service import (
@@ -20,7 +21,6 @@ class VaultConfig(BaseModel):
 
 
 def _status_payload(svc) -> dict:
-    healthy, error = svc.health_check()
     return {
         "enabled": True,
         "addr": svc.addr,
@@ -28,8 +28,8 @@ def _status_payload(svc) -> dict:
         "base_path": svc.base_path,
         "namespace": svc.namespace,
         "tls_skip_verify": svc.tls_skip_verify,
-        "healthy": healthy,
-        "error": error,
+        "healthy": svc._cached_healthy,
+        "error": svc._cached_error,
     }
 
 
@@ -51,6 +51,8 @@ async def set_vault_config(payload: VaultConfig, _: UserInfo = Depends(require_a
         namespace=payload.namespace,
         tls_skip_verify=payload.tls_skip_verify,
     )
+    # Live health check only on configure — runs in thread pool, doesn't block event loop
+    await run_sync(svc.health_check)
     return _status_payload(svc)
 
 

@@ -42,6 +42,7 @@ class UserRead(BaseModel):
 class UserWithCredentials(UserRead):
     private_key_pem: Optional[str] = None
     certificate_pem: Optional[str] = None
+    vault_path: Optional[str] = None
 
 
 class UserList(BaseModel):
