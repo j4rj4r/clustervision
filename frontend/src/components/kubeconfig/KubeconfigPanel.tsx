@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Check, Clipboard, Download, FileCode2, RefreshCw, Upload } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Check, Clipboard, Download, FileCode2, RefreshCw, Upload, Vault } from 'lucide-react'
 import Select from '../ui/Select'
 import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
 import { useGenerateKubeconfig, downloadKubeconfig } from '../../hooks/useKubeconfig'
+import { vaultApi } from '../../api/vault'
 
 interface Props {
   preselectedName?: string
@@ -13,7 +15,10 @@ interface Props {
 export default function KubeconfigPanel({ preselectedName, preselectedNamespace }: Props) {
   const { data: usersData, isError: usersError } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
+  const { data: vaultStatus } = useQuery({ queryKey: ['vault-status'], queryFn: vaultApi.status })
   const generate = useGenerateKubeconfig()
+
+  const vaultEnabled = vaultStatus?.enabled && vaultStatus.healthy
 
   const users = usersData?.users ?? []
 
@@ -38,7 +43,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
   const selectedUser = users.find((u) => u.name === selectedUsername)
   const isCert = selectedUser?.user_type === 'certificate'
-  const canGenerate = !!selectedUser && (!isCert || !!privateKey.trim())
+  const canGenerate = !!selectedUser && (!isCert || !!privateKey.trim() || !!vaultEnabled)
 
   // Auto-update namespace when user changes
   useEffect(() => {
@@ -57,15 +62,14 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     })
   }
 
-  // Auto-generate for SA users (no sensitive input involved)
-  // Cert users must click Generate explicitly to avoid firing on every keystroke
+  // Auto-generate for SA users and cert users when Vault is active (no key input needed)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!canGenerate || isCert) return
+    if (!canGenerate || (isCert && !vaultEnabled)) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(handleGenerate, 1500)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [selectedUsername, namespace, users])
+  }, [selectedUsername, namespace, users, vaultEnabled])
 
   const handleCopy = () => {
     if (!generate.data) return
@@ -109,7 +113,10 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
         {isCert && (
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-medium text-surface-300">Private Key PEM</label>
+              <div className="flex items-center gap-2">
+                <label className="block text-xs font-medium text-surface-300">Private Key PEM</label>
+                {vaultEnabled && <span className="flex items-center gap-1 text-xs text-brand-400"><Vault size={11} /> from Vault</span>}
+              </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -128,11 +135,15 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
             <textarea
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
-              placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
-              rows={6}
+              placeholder={vaultEnabled ? '(optional — key will be fetched from Vault)' : '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'}
+              rows={vaultEnabled ? 3 : 6}
               className="w-full bg-surface-800 border border-surface-600 rounded-md px-3 py-2 text-xs text-surface-200 font-mono placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
             />
-            <p className="text-xs text-surface-400">Upload the credentials.pem downloaded at user creation, or paste the key directly.</p>
+            <p className="text-xs text-surface-400">
+              {vaultEnabled
+                ? 'Key fetched from Vault automatically. Paste or upload to override.'
+                : 'Upload the credentials.pem downloaded at user creation, or paste the key directly.'}
+            </p>
           </div>
         )}
 
@@ -182,7 +193,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
             <div className="h-full flex flex-col items-center justify-center gap-2 text-surface-600">
               <FileCode2 size={28} className="opacity-40" />
               <p className="text-xs">
-                {!selectedUser ? 'Select a user to preview' : isCert ? 'Paste your private key to preview' : 'Loading...'}
+                {!selectedUser ? 'Select a user to preview' : isCert && !vaultEnabled ? 'Paste your private key to generate' : 'Loading...'}
               </p>
             </div>
           )}
