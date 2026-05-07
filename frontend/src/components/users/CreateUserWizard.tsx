@@ -117,7 +117,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       }
     }
 
-    // Auto-generate kubeconfig
+    // Auto-generate kubeconfig (backend fetches key from Vault if needed)
     generateKubeconfig.mutate({
       username: data.name,
       user_type: data.user_type,
@@ -493,7 +493,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {isCert && (
+              {isCert && !credentials?.vault_path && (
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"

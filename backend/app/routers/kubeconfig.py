@@ -47,17 +47,24 @@ async def generate_kubeconfig(
     token_svc: TokenService = Depends(get_token_service),
 ):
     if payload.user_type == UserType.certificate:
-        if not payload.private_key_pem:
+        private_key_pem = payload.private_key_pem
+        if not private_key_pem:
+            from ..services.vault_service import get_vault_service
+            vault_svc = get_vault_service()
+            if vault_svc:
+                secret = await run_sync(vault_svc.read_secret, payload.username)
+                private_key_pem = secret.get("private_key_pem")
+        if not private_key_pem:
             raise HTTPException(
                 status_code=400,
-                detail="private_key_pem is required for certificate users",
+                detail="private_key_pem is required for certificate users (or enable Vault integration)",
             )
         certificate_pem = await run_sync(cert_svc.get_certificate_pem, payload.username)
         kubeconfig_yaml = await run_sync(
             kc_svc.generate_for_cert_user,
             payload.username,
             certificate_pem,
-            payload.private_key_pem,
+            private_key_pem,
             payload.namespace,
         )
         effective_namespace = payload.namespace or "default"
