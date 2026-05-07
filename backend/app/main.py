@@ -43,35 +43,43 @@ async def lifespan(app: FastAPI):
 
 openapi_tags = [
     {
+        "name": "auth",
+        "description": (
+            "Authentication endpoints. `POST /login` returns a 15-minute JWT access token "
+            "and an httpOnly refresh cookie (7 days). Use `POST /refresh` to silently renew. "
+            "Admin-only endpoints for managing ClusterVision users (create, delete, role change, password reset)."
+        ),
+    },
+    {
         "name": "users",
         "description": (
-            "Manage ClusterVision users. Two types are supported: "
-            "**certificate** (X.509 client cert, identity in CN/O fields) and "
-            "**service_account** (Kubernetes ServiceAccount with a long-lived token). "
-            "Deleting a user also removes all managed role bindings."
+            "Manage ClusterVision-tracked Kubernetes users. Two types: "
+            "**certificate** (X.509 client cert, CN=username, O=groups) and "
+            "**service_account** (Kubernetes ServiceAccount + long-lived token Secret). "
+            "Deleting a user removes all `clustervision-{username}-*` bindings."
         ),
     },
     {
         "name": "rbac",
         "description": (
-            "Manage Kubernetes RBAC objects: ClusterRoles, namespaced Roles, "
-            "ClusterRoleBindings, RoleBindings. Also exposes user-centric helpers "
-            "to assign/revoke roles and simulate access checks."
+            "Manage Kubernetes RBAC: ClusterRoles, namespaced Roles, ClusterRoleBindings, RoleBindings. "
+            "User-centric helpers: assign/revoke roles, who-has-access view, SubjectAccessReview simulator."
         ),
     },
     {
         "name": "kubeconfig",
         "description": (
             "Generate kubeconfig files ready to use with `kubectl`. "
-            "For certificate users the private key PEM must be supplied at generation time "
-            "(it is never stored server-side). For ServiceAccounts the token is fetched automatically."
+            "For certificate users the private key PEM must be supplied — it is never stored server-side "
+            "(unless Vault is enabled, in which case the key is written to Vault KV v2 and not returned inline). "
+            "For ServiceAccounts the token is fetched automatically from the cluster."
         ),
     },
     {
         "name": "tokens",
         "description": (
-            "Kubeconfig generation history and ServiceAccount token management "
-            "(list, revoke, rotate)."
+            "Kubeconfig generation audit trail and ServiceAccount token management "
+            "(list, revoke, rotate long-lived token Secrets)."
         ),
     },
     {
@@ -79,6 +87,14 @@ openapi_tags = [
         "description": (
             "Multi-cluster registry. Register remote clusters via a bootstrap script, "
             "list connected clusters, and query the active cluster version."
+        ),
+    },
+    {
+        "name": "admin",
+        "description": (
+            "Admin-only runtime configuration. Currently: Vault integration — configure, test, and disable "
+            "the HashiCorp Vault KV v2 backend for certificate private key storage. "
+            "Changes take effect immediately without a restart."
         ),
     },
 ]
@@ -94,19 +110,27 @@ ClusterVision lets you **create, manage and delete** Kubernetes users (X.509 cer
 and ServiceAccounts) and their RBAC permissions through a single REST API.
 
 ## Authentication
-JWT-based. POST `/api/v1/auth/login` to get an access token (15 min),
-renewed automatically via an httpOnly refresh cookie (7 days).
-Viewers can read; admins can read and write.
+JWT-based. `POST /api/v1/auth/login` → access token (15 min, Bearer) + httpOnly refresh cookie (7 days).
+Use **Authorize** above and enter `Bearer <token>` to authenticate in this UI.
+
+| Role | Permissions |
+|------|-------------|
+| `admin` | Full read & write access to all endpoints |
+| `viewer` | Read-only on GET endpoints |
 
 ## User types
 | Type | Auth method | Revocation |
 |------|-------------|------------|
-| `certificate` | TLS client certificate (X.509) | Soft — remove bindings; cert valid until expiry |
-| `service_account` | Bearer token | Immediate — delete the token Secret |
+| `certificate` | X.509 client certificate (CN=username, O=groups) | Soft — remove bindings; cert valid until expiry |
+| `service_account` | Long-lived Bearer token Secret | Immediate — delete the token Secret |
 
 ## Managed naming convention
-ClusterVision names every binding it creates `clustervision-{username}-{role}`.
-This prefix is used to identify and clean up bindings on user deletion.
+Every binding created by ClusterVision is named `clustervision-{username}-{role}`.
+This prefix is used to identify, clean up, and drift-detect managed resources.
+
+## Vault integration
+When enabled, certificate private keys are written to HashiCorp Vault KV v2
+instead of being returned inline. Configure at `PUT /api/v1/admin/vault/config`.
 """,
     version=get_settings().app_version,
     openapi_tags=openapi_tags,
