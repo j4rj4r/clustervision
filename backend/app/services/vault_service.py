@@ -12,13 +12,17 @@ class VaultError(Exception):
 
 
 class VaultService:
-    def __init__(self, addr: str, token: str, mount: str = "secret", base_path: str = "clustervision/users", namespace: str = ""):
+    def __init__(self, addr: str, token: str, mount: str = "secret", base_path: str = "clustervision/users", namespace: str = "", tls_skip_verify: bool = False):
         self.addr = addr.rstrip("/")
         self.token = token
         self.mount = mount.strip("/")
         self.base_path = base_path.strip("/")
         self.namespace = namespace
+        self.tls_skip_verify = tls_skip_verify
         self._ctx = ssl.create_default_context()
+        if tls_skip_verify:
+            self._ctx.check_hostname = False
+            self._ctx.verify_mode = ssl.CERT_NONE
 
     def _headers(self) -> dict:
         h = {"X-Vault-Token": self.token, "Content-Type": "application/json"}
@@ -67,9 +71,9 @@ def get_vault_service() -> VaultService | None:
     return _vault_svc
 
 
-def configure_vault(addr: str, token: str, mount: str, base_path: str, namespace: str) -> VaultService:
+def configure_vault(addr: str, token: str, mount: str, base_path: str, namespace: str, tls_skip_verify: bool = False) -> VaultService:
     global _vault_svc
-    _vault_svc = VaultService(addr=addr, token=token, mount=mount, base_path=base_path, namespace=namespace)
+    _vault_svc = VaultService(addr=addr, token=token, mount=mount, base_path=base_path, namespace=namespace, tls_skip_verify=tls_skip_verify)
     return _vault_svc
 
 
@@ -88,5 +92,6 @@ def init_vault_from_env():
             mount=s.vault_mount,
             base_path=s.vault_base_path,
             namespace=s.vault_namespace,
+            tls_skip_verify=s.vault_tls_skip_verify,
         )
         logger.info("Vault integration initialized from environment")

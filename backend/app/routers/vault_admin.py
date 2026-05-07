@@ -16,6 +16,7 @@ class VaultConfig(BaseModel):
     mount: str = "secret"
     base_path: str = "clustervision/users"
     namespace: str = ""
+    tls_skip_verify: bool = False
 
 
 def _status_payload(svc) -> dict:
@@ -26,6 +27,7 @@ def _status_payload(svc) -> dict:
         "mount": svc.mount,
         "base_path": svc.base_path,
         "namespace": svc.namespace,
+        "tls_skip_verify": svc.tls_skip_verify,
         "healthy": healthy,
         "error": error,
     }
@@ -47,6 +49,7 @@ async def set_vault_config(payload: VaultConfig, _: UserInfo = Depends(require_a
         mount=payload.mount,
         base_path=payload.base_path,
         namespace=payload.namespace,
+        tls_skip_verify=payload.tls_skip_verify,
     )
     return _status_payload(svc)
 

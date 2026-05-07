@@ -12,6 +12,7 @@ const DEFAULT_CONFIG: VaultConfig = {
   mount: 'secret',
   base_path: 'clustervision/users',
   namespace: '',
+  tls_skip_verify: false,
 }
 
 export default function VaultConfigSection() {
@@ -54,12 +55,14 @@ export default function VaultConfigSection() {
       mount: status?.mount ?? 'secret',
       base_path: status?.base_path ?? 'clustervision/users',
       namespace: status?.namespace ?? '',
+      tls_skip_verify: status?.tls_skip_verify ?? false,
     })
     setEditing(true)
   }
 
-  const field = (key: keyof VaultConfig) => ({
-    value: form[key],
+  type StringField = Exclude<keyof VaultConfig, 'tls_skip_verify'>
+  const field = (key: StringField) => ({
+    value: form[key] as string,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [key]: e.target.value })),
   })
 
@@ -124,6 +127,15 @@ export default function VaultConfigSection() {
             <Input label="Base path" placeholder="clustervision/users" {...field('base_path')} />
           </div>
           <Input label="Vault namespace (Enterprise only)" placeholder="admin/team" {...field('namespace')} />
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.tls_skip_verify}
+              onChange={(e) => setForm((f) => ({ ...f, tls_skip_verify: e.target.checked }))}
+              className="accent-brand-500 w-3.5 h-3.5"
+            />
+            <span className="text-xs text-surface-300">Skip TLS verification <span className="text-surface-500">(self-signed certificates)</span></span>
+          </label>
           <div className="flex gap-3 pt-1">
             <Button variant="secondary" size="sm" className="flex-1" onClick={() => setEditing(false)}>Cancel</Button>
             <Button size="sm" className="flex-1" loading={configure.isPending} disabled={!form.addr} onClick={() => configure.mutate(form)}>

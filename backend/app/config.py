@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     vault_mount: str = "secret"
     vault_base_path: str = "clustervision/users"
     vault_namespace: str = ""
+    vault_tls_skip_verify: bool = False
 
     @field_validator("cors_origins", mode="before")
     @classmethod

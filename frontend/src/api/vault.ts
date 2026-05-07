@@ -6,6 +6,7 @@ export interface VaultStatus {
   mount?: string
   base_path?: string
   namespace?: string
+  tls_skip_verify?: boolean
   healthy?: boolean
   error?: string | null
 }
@@ -16,6 +17,7 @@ export interface VaultConfig {
   mount: string
   base_path: string
   namespace: string
+  tls_skip_verify: boolean
 }
 
 export const vaultApi = {
