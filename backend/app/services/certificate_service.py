@@ -117,6 +117,19 @@ class CertificateService(RegistryMixin):
         self._save_registry(users)
         logger.info("Created certificate user: %s", username)
 
+        # Step 7: Store private key in Vault if enabled
+        from .vault_service import get_vault_service
+        vault_svc = get_vault_service()
+        if vault_svc:
+            try:
+                vault_path = vault_svc.write_secret(username, {
+                    "private_key_pem": private_key_pem,
+                    "certificate_pem": certificate_pem,
+                })
+                return {**user_record, "vault_path": vault_path, "certificate_pem": certificate_pem}
+            except Exception as e:
+                logger.warning("Vault write failed for %s, falling back to inline: %s", username, e)
+
         return {**user_record, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
 
     def delete_user(self, username: str):

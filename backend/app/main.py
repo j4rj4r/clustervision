@@ -20,6 +20,7 @@ from .core.kubernetes_client import get_api_client
 from .core.dependencies import auth_gate
 from .routers import users, rbac, kubeconfig, cluster, tokens
 from .routers import auth as auth_router
+from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
@@ -35,6 +36,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
     ensure_default_admin()
+    from .services.vault_service import init_vault_from_env
+    init_vault_from_env()
     yield
 
 
@@ -135,7 +138,8 @@ app.include_router(users.router,      dependencies=_auth_dep)
 app.include_router(rbac.router,       dependencies=_auth_dep)
 app.include_router(kubeconfig.router, dependencies=_auth_dep)
 app.include_router(cluster.router,    dependencies=_auth_dep)
-app.include_router(tokens.router,     dependencies=_auth_dep)
+app.include_router(tokens.router,        dependencies=_auth_dep)
+app.include_router(vault_admin_router.router, dependencies=_auth_dep)
 
 
 @app.get("/health")

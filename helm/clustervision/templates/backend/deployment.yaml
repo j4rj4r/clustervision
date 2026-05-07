@@ -65,6 +65,23 @@ spec:
                   name: {{ $ap.existingSecret | default (printf "%s-admin" (include "clustervision.fullname" .)) }}
                   key: {{ $ap.existingSecretKey }}
             {{- end }}
+            {{- if .Values.vault.enabled }}
+            - name: VAULT_ENABLED
+              value: "true"
+            - name: VAULT_ADDR
+              value: {{ .Values.vault.addr | quote }}
+            - name: VAULT_MOUNT
+              value: {{ .Values.vault.mount | quote }}
+            - name: VAULT_BASE_PATH
+              value: {{ .Values.vault.basePath | quote }}
+            - name: VAULT_NAMESPACE
+              value: {{ .Values.vault.namespace | quote }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.existingSecret | default (printf "%s-vault" (include "clustervision.fullname" .)) }}
+                  key: {{ .Values.vault.existingSecretKey }}
+            {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
           livenessProbe:

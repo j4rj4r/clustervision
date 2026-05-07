@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     # Public URL used in bootstrap scripts — auto-detected from request if empty
     public_url: str = ""
 
+    # Vault integration (optional)
+    vault_enabled: bool = False
+    vault_addr: str = ""
+    vault_token: str = ""
+    vault_mount: str = "secret"
+    vault_base_path: str = "clustervision/users"
+    vault_namespace: str = ""
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

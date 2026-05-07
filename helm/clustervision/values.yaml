@@ -95,3 +95,15 @@ rbac:
 networkPolicy:
   enabled: true
   ingressControllerNamespace: traefik  # adjust to your Ingress controller namespace
+
+# Vault integration (optional)
+# Can also be configured at runtime via Settings → Integrations (no restart needed).
+vault:
+  enabled: false
+  addr: ""           # e.g. https://vault.example.com
+  token: ""          # creates a managed Secret; use existingSecret to reference an existing one
+  existingSecret: "" # name of an existing Secret containing the Vault token
+  existingSecretKey: "token"
+  mount: "secret"
+  basePath: "clustervision/users"
+  namespace: ""      # Vault Enterprise namespace (leave empty for OSS)
