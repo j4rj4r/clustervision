@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 
 import yaml
 from kubernetes import client
@@ -131,22 +132,23 @@ class KubeconfigService:
     def _get_api_server_url(self) -> str:
         if self._api_url_cache is not None:
             return self._api_url_cache
-        if self.settings.cluster_api_url:
+        from ..core.kubernetes_client import get_local_api_client
+        api_client = self.core_v1.api_client
+        # The client's configured host is the real API server URL — for remote
+        # clusters this is the registered api_url, in local dev the kubeconfig
+        # server, and in-cluster the internal service address.
+        host = (api_client.configuration.host or "").rstrip("/")
+        is_local = api_client is get_local_api_client()
+        if is_local and self.settings.cluster_api_url:
             self._api_url_cache = self.settings.cluster_api_url
         else:
-            try:
-                with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace"):
-                    self._api_url_cache = "https://kubernetes.default.svc"
-            except FileNotFoundError:
-                from kubernetes import config as k8s_config
-                cfg = k8s_config.kube_config.list_kube_config_contexts()
-                for ctx in cfg[0]:
-                    if ctx.get("name") == cfg[1].get("name"):
-                        cluster_name = ctx.get("context", {}).get("cluster")
-                        self._api_url_cache = f"https://{cluster_name}"
-                        break
-                else:
-                    self._api_url_cache = "https://kubernetes.default.svc"
+            if is_local and os.environ.get("KUBERNETES_SERVICE_HOST"):
+                logger.warning(
+                    "cluster_api_url is not set — generated kubeconfigs point to the "
+                    "in-cluster address %s, which is not reachable from outside the cluster",
+                    host,
+                )
+            self._api_url_cache = host or "https://kubernetes.default.svc"
         return self._api_url_cache
 
     def _get_sa_token(self, sa_name: str, namespace: str) -> str:
@@ -185,4 +187,10 @@ class KubeconfigService:
         resp = self.core_v1.create_namespaced_service_account_token(
             sa_name, namespace, token_request
         )
+        # The API server may cap the requested TTL — surface the real expiry
+        if resp.status.expiration_timestamp:
+            logger.info(
+                "Issued TokenRequest token for %s/%s expiring at %s",
+                namespace, sa_name, resp.status.expiration_timestamp,
+            )
         return resp.status.token

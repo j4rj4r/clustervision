@@ -22,38 +22,57 @@ class ClusterService:
 
     # ── Registry ────────────────────────────────────────────────────────────
 
-    def _load_configs(self) -> list[dict]:
+    def _read_configs(self) -> tuple[list[dict], Optional[str]]:
         try:
             secret = self._core_v1.read_namespaced_secret(self._secret_name, self._namespace)
             raw_b64 = (secret.data or {}).get("clusters.json")
-            if not raw_b64:
-                return []
-            return json.loads(base64.b64decode(raw_b64).decode())
+            configs = json.loads(base64.b64decode(raw_b64).decode()) if raw_b64 else []
+            return configs, secret.metadata.resource_version
         except ApiException as e:
             if e.status == 404:
-                return []
+                return [], None
             raise
 
-    def _save_configs(self, configs: list[dict]):
-        encoded = base64.b64encode(json.dumps(configs).encode()).decode()
-        data = {"clusters.json": encoded}
-        try:
-            self._core_v1.patch_namespaced_secret(
-                self._secret_name, self._namespace, client.V1Secret(data=data)
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self._core_v1.create_namespaced_secret(
-                    self._namespace,
-                    client.V1Secret(
-                        metadata=client.V1ObjectMeta(
-                            name=self._secret_name, namespace=self._namespace
+    def _load_configs(self) -> list[dict]:
+        return self._read_configs()[0]
+
+    def _update_configs(self, mutate) -> None:
+        """Atomically update the clusters secret with optimistic locking —
+        retried on resourceVersion conflicts, so `mutate` must re-check its
+        preconditions against its input."""
+        last_exc = None
+        for _ in range(5):
+            configs, rv = self._read_configs()
+            updated = mutate(configs)
+            encoded = base64.b64encode(json.dumps(updated).encode()).decode()
+            data = {"clusters.json": encoded}
+            try:
+                if rv is None:
+                    self._core_v1.create_namespaced_secret(
+                        self._namespace,
+                        client.V1Secret(
+                            metadata=client.V1ObjectMeta(
+                                name=self._secret_name, namespace=self._namespace
+                            ),
+                            data=data,
                         ),
-                        data=data,
-                    ),
-                )
-            else:
+                    )
+                else:
+                    self._core_v1.patch_namespaced_secret(
+                        self._secret_name,
+                        self._namespace,
+                        client.V1Secret(
+                            metadata=client.V1ObjectMeta(resource_version=rv),
+                            data=data,
+                        ),
+                    )
+                return
+            except ApiException as e:
+                if e.status == 409:
+                    last_exc = e
+                    continue
                 raise
+        raise last_exc
 
     # ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -66,19 +85,23 @@ class ClusterService:
     def add_cluster(self, name: str, api_url: str, ca_data: str, token: str) -> dict:
         if name == "local":
             raise ValueError("'local' is reserved for the in-cluster connection")
-        configs = self._load_configs()
-        if any(c["name"] == name for c in configs):
-            raise ValueError(f"Cluster '{name}' already exists")
-        configs.append({"name": name, "api_url": api_url, "ca_data": ca_data, "token": token})
-        self._save_configs(configs)
+
+        def _append(configs: list[dict]) -> list[dict]:
+            if any(c["name"] == name for c in configs):
+                raise ValueError(f"Cluster '{name}' already exists")
+            return configs + [{"name": name, "api_url": api_url, "ca_data": ca_data, "token": token}]
+
+        self._update_configs(_append)
         logger.info("Registered remote cluster: %s", name)
         return {"name": name, "api_url": api_url, "is_local": False}
 
     def remove_cluster(self, name: str):
-        configs = self._load_configs()
-        if not any(c["name"] == name for c in configs):
-            raise ValueError(f"Cluster '{name}' not found")
-        self._save_configs([c for c in configs if c["name"] != name])
+        def _remove(configs: list[dict]) -> list[dict]:
+            if not any(c["name"] == name for c in configs):
+                raise ValueError(f"Cluster '{name}' not found")
+            return [c for c in configs if c["name"] != name]
+
+        self._update_configs(_remove)
         self._clients.pop(name, None)
         ca_file = self._ca_files.pop(name, None)
         if ca_file and os.path.exists(ca_file):

@@ -158,6 +158,8 @@ app.add_exception_handler(ImportedUserError, imported_user_handler)
 _auth_dep = [Depends(auth_gate)]
 
 app.include_router(auth_router.router)
+# Bootstrap registration — authenticated by its own short-lived register token
+app.include_router(cluster.public_router)
 app.include_router(users.router,      dependencies=_auth_dep)
 app.include_router(rbac.router,       dependencies=_auth_dep)
 app.include_router(kubeconfig.router, dependencies=_auth_dep)

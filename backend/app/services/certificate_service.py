@@ -1,7 +1,7 @@
 import base64
 import time
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -102,8 +102,11 @@ class CertificateService(RegistryMixin):
         ).decode()
 
         # Step 6: Save to registry
+        # Read the expiry from the signed certificate — the API server may cap
+        # the requested duration (--cluster-signing-duration)
+        signed_cert = x509.load_pem_x509_certificate(certificate_pem.encode())
         now = datetime.now(timezone.utc).isoformat()
-        expiry = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        expiry = signed_cert.not_valid_after_utc.isoformat()
         user_record = {
             "name": username,
             "type": "certificate",
@@ -113,8 +116,13 @@ class CertificateService(RegistryMixin):
             "created_at": now,
             "cert_expiry": expiry,
         }
-        users.append(user_record)
-        self._save_registry(users)
+
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == username for u in current):
+                raise UserAlreadyExistsError(username)
+            return current + [user_record]
+
+        self._update_registry(_append)
         logger.info("Created certificate user: %s", username)
 
         # Step 7: Store private key in Vault if enabled
@@ -138,24 +146,25 @@ class CertificateService(RegistryMixin):
         if not user:
             raise UserNotFoundError(username)
 
-        # Delete CSR
-        try:
-            self.certs_api.delete_certificate_signing_request(user["csr_name"])
-        except ApiException as e:
-            if e.status != 404:
-                raise
+        # Delete CSR (imported users have none)
+        if user.get("csr_name"):
+            try:
+                self.certs_api.delete_certificate_signing_request(user["csr_name"])
+            except ApiException as e:
+                if e.status != 404:
+                    raise
 
         # Remove from registry
-        updated = [u for u in users if not (u["name"] == username and u.get("type") == "certificate")]
-        self._save_registry(updated)
+        self._update_registry(
+            lambda current: [
+                u for u in current
+                if not (u["name"] == username and u.get("type") == "certificate")
+            ]
+        )
         logger.info("Deleted certificate user: %s", username)
 
     def import_user(self, username: str, groups: list[str]) -> dict:
         """Register an existing certificate user in the registry (no CSR created)."""
-        users = self._load_registry()
-        if any(u["name"] == username for u in users):
-            raise UserAlreadyExistsError(username)
-
         now = datetime.now(timezone.utc).isoformat()
         user_record = {
             "name": username,
@@ -165,8 +174,13 @@ class CertificateService(RegistryMixin):
             "created_at": now,
             "imported": True,
         }
-        users.append(user_record)
-        self._save_registry(users)
+
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == username for u in current):
+                raise UserAlreadyExistsError(username)
+            return current + [user_record]
+
+        self._update_registry(_append)
         logger.info("Imported certificate user: %s", username)
         return user_record
 

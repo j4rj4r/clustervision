@@ -2,13 +2,17 @@ import base64
 import re
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, field_validator
 from kubernetes import client
 
 from ..config import get_settings
+from ..core.auth import create_register_token, decode_token
+from ..core.dependencies import require_admin
 from ..core.kubernetes_client import get_version_api
+from ..models.auth import UserInfo
 from ..services.cluster_service import get_cluster_service
 from ..dependencies import get_api_client
 from ..core.async_utils import run_sync
@@ -16,6 +20,12 @@ from ..core.async_utils import run_sync
 _CLUSTER_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,63}$')
 
 router = APIRouter(prefix="/api/v1/cluster", tags=["cluster"])
+
+# Routes on this router are mounted WITHOUT the auth_gate dependency —
+# they carry their own authentication (bootstrap register token).
+public_router = APIRouter(prefix="/api/v1/cluster", tags=["cluster"])
+
+_register_bearer = HTTPBearer(auto_error=False)
 
 
 # ── Models ───────────────────────────────────────────────────────────────────
@@ -102,6 +112,35 @@ async def add_cluster(payload: ClusterAdd):
         raise HTTPException(status_code=409, detail=str(e))
 
 
+@public_router.post(
+    "/register",
+    status_code=201,
+    summary="Register a remote cluster (bootstrap token)",
+    description=(
+        "Same as `POST /clusters` but authenticated with the short-lived registration token "
+        "embedded in the bootstrap script instead of an admin session. "
+        "The token is scoped to a single cluster name."
+    ),
+)
+async def register_cluster(
+    payload: ClusterAdd,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_register_bearer),
+):
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bootstrap token")
+    token_payload = decode_token(credentials.credentials, expected_type="cluster_register")
+    if token_payload.get("sub") != payload.name:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bootstrap token was issued for a different cluster name",
+        )
+    svc = get_cluster_service()
+    try:
+        return await run_sync(svc.add_cluster, payload.name, payload.api_url, payload.ca_data, payload.token)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
 @router.get(
     "/bootstrap-script",
     response_class=PlainTextResponse,
@@ -109,10 +148,15 @@ async def add_cluster(payload: ClusterAdd):
     description=(
         "Returns a shell script that, when run against a remote cluster with `kubectl`, "
         "creates the ClusterVision ServiceAccount with the required RBAC permissions and "
-        "registers the cluster automatically via the API."
+        "registers the cluster automatically via the API. "
+        "The script embeds a registration token valid for 1 hour, scoped to the given cluster name."
     ),
 )
-async def bootstrap_script(request: Request, name: str = Query(..., description="Name to give this cluster in ClusterVision")):
+async def bootstrap_script(
+    request: Request,
+    name: str = Query(..., description="Name to give this cluster in ClusterVision"),
+    _: UserInfo = Depends(require_admin),
+):
     if not _CLUSTER_NAME_RE.match(name):
         raise HTTPException(
             status_code=422,
@@ -120,6 +164,7 @@ async def bootstrap_script(request: Request, name: str = Query(..., description=
         )
     settings = get_settings()
     base_url = settings.public_url.rstrip("/") if settings.public_url else str(request.base_url).rstrip("/")
+    register_token = create_register_token(name)
     script = f"""#!/bin/sh
 # ClusterVision — bootstrap agent on a remote cluster
 # Run this script with a kubeconfig targeting the cluster you want to add.
@@ -127,6 +172,7 @@ set -e
 
 CLUSTER_NAME="{name}"
 CLUSTERVISION_URL="{base_url}"
+REGISTER_TOKEN="{register_token}"
 NAMESPACE="clustervision"
 SA_NAME="clustervision-agent"
 
@@ -214,8 +260,9 @@ CA=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o jsonpath='{
 API_URL=$(kubectl config view --minify -o jsonpath='{{.clusters[0].cluster.server}}')
 
 echo "→ Registering cluster '$CLUSTER_NAME' in ClusterVision..."
-curl -sf -X POST "$CLUSTERVISION_URL/api/cluster/clusters" \
+curl -sfS -X POST "$CLUSTERVISION_URL/api/v1/cluster/register" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $REGISTER_TOKEN" \
   -d '{{"name":"'"$CLUSTER_NAME"'","api_url":"'"$API_URL"'","ca_data":"'"$CA"'","token":"'"$TOKEN"'"}}'
 
 echo ""

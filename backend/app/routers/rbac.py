@@ -6,9 +6,12 @@ from ..models.rbac import (
     NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult, PaginatedList,
 )
 from ..services.rbac_service import RbacService
-from ..dependencies import get_rbac_service
+from ..services.certificate_service import CertificateService
+from ..services.service_account_service import ServiceAccountService
+from ..dependencies import get_rbac_service, get_cert_service, get_sa_service
 from typing import Optional
 from ..core.async_utils import run_sync
+from ..core.exceptions import UserNotFoundError
 
 router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
 
@@ -323,15 +326,45 @@ async def get_namespace_access(namespace: str, svc: RbacService = Depends(get_rb
     description=(
         "Uses the Kubernetes SubjectAccessReview API to test whether `user` can perform `verb` "
         "on `resource` (optionally scoped to a `namespace` and `api_group`). "
-        "Equivalent to `kubectl auth can-i <verb> <resource> --as <user>`."
+        "Equivalent to `kubectl auth can-i <verb> <resource> --as <user>`. "
+        "Registry users are resolved to their real authentication subject: ServiceAccounts become "
+        "`system:serviceaccount:<ns>:<name>` with their implicit groups, certificate users carry "
+        "their O= groups. Unknown names are simulated as-is."
     ),
 )
-async def check_access(payload: CheckAccessRequest, svc: RbacService = Depends(get_rbac_service)):
+async def check_access(
+    payload: CheckAccessRequest,
+    svc: RbacService = Depends(get_rbac_service),
+    cert_svc: CertificateService = Depends(get_cert_service),
+    sa_svc: ServiceAccountService = Depends(get_sa_service),
+):
+    # Resolve the registry user to the subject the API server actually sees at
+    # authentication time — otherwise SA users and group-derived permissions
+    # simulate as denied even though real access works.
+    sar_user = payload.user
+    groups: list[str] = []
+    try:
+        cert_user = await run_sync(cert_svc.get_user, payload.user)
+        groups = list(cert_user.get("groups") or []) + ["system:authenticated"]
+    except UserNotFoundError:
+        try:
+            sa_user = await run_sync(sa_svc.get_user, payload.user)
+            sa_ns = sa_user.get("namespace", "default")
+            sar_user = f"system:serviceaccount:{sa_ns}:{payload.user}"
+            groups = [
+                "system:serviceaccounts",
+                f"system:serviceaccounts:{sa_ns}",
+                "system:authenticated",
+            ]
+        except UserNotFoundError:
+            pass  # not a registry user — simulate the raw name unchanged
+
     return await run_sync(
         svc.check_access,
-        payload.user,
+        sar_user,
         payload.verb,
         payload.resource,
         payload.namespace,
         payload.api_group,
+        groups,
     )
