@@ -49,14 +49,20 @@ async def generate_kubeconfig(
     if payload.user_type == UserType.certificate:
         private_key_pem = payload.private_key_pem
         if not private_key_pem:
-            from ..services.vault_service import get_vault_service
-            vault_svc = get_vault_service()
+            from ..services.vault_service import VaultError, VaultNotFoundError, get_vault_service
+            # get_vault_service may re-sync from the config Secret — keep it off the event loop
+            vault_svc = await run_sync(get_vault_service)
             if vault_svc:
                 try:
                     secret = await run_sync(vault_svc.read_secret, payload.username)
                     private_key_pem = secret.get("private_key_pem") if secret else None
-                except Exception:
-                    logger.warning("Vault read failed for %s, falling back to inline key", payload.username, exc_info=True)
+                except VaultNotFoundError:
+                    # Key was never stored in Vault — fall through to the 400 below
+                    pass
+                except VaultError as e:
+                    # Vault is enabled but unreachable/failing: surface it instead
+                    # of a misleading "private_key_pem is required"
+                    raise HTTPException(status_code=502, detail=f"Vault read failed: {e}")
         if not private_key_pem:
             raise HTTPException(
                 status_code=400,
