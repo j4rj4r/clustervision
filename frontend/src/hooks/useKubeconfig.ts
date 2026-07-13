@@ -7,6 +7,7 @@ interface GenerateOptions {
   username: string
   user_type: UserType
   namespace: string
+  sa_namespace?: string
   private_key_pem?: string
 }
 

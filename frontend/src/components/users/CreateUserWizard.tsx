@@ -122,6 +122,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
       username: data.name,
       user_type: data.user_type,
       namespace: data.namespace ?? '',
+      sa_namespace: data.user_type === 'service_account' ? data.namespace || undefined : undefined,
       private_key_pem: data.private_key_pem ?? undefined,
     })
 

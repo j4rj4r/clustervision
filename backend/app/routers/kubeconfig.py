@@ -78,7 +78,7 @@ async def generate_kubeconfig(
         )
         effective_namespace = payload.namespace or "default"
     else:
-        user = await run_sync(sa_svc.get_user, payload.username)
+        user = await run_sync(sa_svc.get_user, payload.username, payload.sa_namespace)
         effective_namespace = user.get("namespace", "default")
         kubeconfig_yaml = await run_sync(
             kc_svc.generate_for_service_account,

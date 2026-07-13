@@ -12,6 +12,10 @@ interface Props {
   preselectedNamespace?: string
 }
 
+// SA names are only unique per namespace, so option values must carry both.
+// Neither names nor namespaces may contain "/", making it a safe separator.
+const userKey = (u: { name: string; namespace?: string }) => `${u.namespace ?? ''}/${u.name}`
+
 export default function KubeconfigPanel({ preselectedName, preselectedNamespace }: Props) {
   const { data: usersData, isError: usersError } = useUsers()
   const { data: namespaces = [] } = useNamespaces()
@@ -26,8 +30,20 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
   const users = usersData?.users ?? []
 
-  const [selectedUsername, setSelectedUsername] = useState(preselectedName ?? '')
+  const [selectedKey, setSelectedKey] = useState('')
   const [namespace, setNamespace] = useState(preselectedNamespace ?? '')
+
+  // Resolve the ?user=&namespace= preselection once users are loaded — the
+  // name alone can be ambiguous, so prefer the namespace match when given
+  const preselectionDone = useRef(false)
+  useEffect(() => {
+    if (preselectionDone.current || !preselectedName || users.length === 0) return
+    preselectionDone.current = true
+    const match =
+      users.find((u) => u.name === preselectedName && u.namespace === preselectedNamespace) ??
+      users.find((u) => u.name === preselectedName)
+    if (match) setSelectedKey(userKey(match))
+  }, [users, preselectedName, preselectedNamespace])
   const [privateKey, setPrivateKey] = useState('')
   const [copied, setCopied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -45,7 +61,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     e.target.value = ''
   }
 
-  const selectedUser = users.find((u) => u.name === selectedUsername)
+  const selectedUser = users.find((u) => userKey(u) === selectedKey)
   const isCert = selectedUser?.user_type === 'certificate'
   const canGenerate = !!selectedUser && (!isCert || !!privateKey.trim() || !!vaultEnabled)
 
@@ -54,7 +70,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     if (selectedUser?.namespace) setNamespace(selectedUser.namespace)
     generate.reset()
     setPrivateKey('')
-  }, [selectedUsername])
+  }, [selectedKey])
 
   const handleGenerate = () => {
     if (!canGenerate) return
@@ -62,6 +78,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
       username: selectedUser!.name,
       user_type: selectedUser!.user_type,
       namespace,
+      sa_namespace: !isCert ? selectedUser!.namespace || undefined : undefined,
       private_key_pem: isCert ? privateKey : undefined,
     })
   }
@@ -69,18 +86,18 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
   // Auto-generate for SA users and cert users when Vault is active (no key input needed)
   // Cert users skip namespace-only changes — they have the Generate button for that.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const prevUsernameRef = useRef(selectedUsername)
+  const prevKeyRef = useRef(selectedKey)
   const prevNsRef = useRef(namespace)
   useEffect(() => {
-    const nsOnlyChanged = prevNsRef.current !== namespace && prevUsernameRef.current === selectedUsername
+    const nsOnlyChanged = prevNsRef.current !== namespace && prevKeyRef.current === selectedKey
     prevNsRef.current = namespace
-    prevUsernameRef.current = selectedUsername
+    prevKeyRef.current = selectedKey
     if (!canGenerate || (isCert && !vaultEnabled)) return
     if (isCert && nsOnlyChanged) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(handleGenerate, 1500)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [selectedUsername, namespace, users, vaultEnabled])
+  }, [selectedKey, namespace, users, vaultEnabled])
 
   const handleCopy = () => {
     if (!generate.data) return
@@ -106,11 +123,16 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
       <div className="space-y-4">
         <Select
           label="User"
-          value={selectedUsername}
-          onChange={(e) => setSelectedUsername(e.target.value)}
+          value={selectedKey}
+          onChange={(e) => setSelectedKey(e.target.value)}
           options={[
             { value: '', label: 'Select a user...' },
-            ...users.map((u) => ({ value: u.name, label: `${u.name} (${u.user_type === 'certificate' ? 'X.509' : 'SA'})` })),
+            ...users.map((u) => ({
+              value: userKey(u),
+              label: u.user_type === 'certificate'
+                ? `${u.name} (X.509)`
+                : `${u.name} (SA · ${u.namespace || 'default'})`,
+            })),
           ]}
         />
 

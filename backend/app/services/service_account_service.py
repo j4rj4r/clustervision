@@ -19,9 +19,16 @@ class ServiceAccountService(RegistryMixin):
     def list_users(self) -> list[dict]:
         return [u for u in self._load_registry() if u.get("type") == "service_account"]
 
-    def get_user(self, username: str) -> dict:
+    def get_user(self, username: str, namespace: str | None = None) -> dict:
+        # SA names are only unique per namespace — without one, the first
+        # match wins, which is wrong whenever homonyms exist. Callers that
+        # know the namespace must pass it.
         for u in self._load_registry():
-            if u["name"] == username and u.get("type") == "service_account":
+            if (
+                u["name"] == username
+                and u.get("type") == "service_account"
+                and (namespace is None or u.get("namespace", "default") == namespace)
+            ):
                 return u
         raise UserNotFoundError(username)
 
