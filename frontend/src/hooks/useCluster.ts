@@ -3,13 +3,16 @@ import toast from 'react-hot-toast'
 import { clusterApi, type AddClusterPayload } from '../api/cluster'
 import { useClusterStore } from '../store/clusterStore'
 
-export const useClusterInfo = () =>
-  useQuery({
-    queryKey: ['cluster-info', useClusterStore.getState().activeCluster],
+export const useClusterInfo = () => {
+  // Subscribe to the store — getState() in the key would not re-render on change
+  const cluster = useClusterStore((s) => s.activeCluster)
+  return useQuery({
+    queryKey: ['cluster-info', cluster],
     queryFn: clusterApi.info,
     staleTime: 60_000,
     retry: false,
   })
+}
 
 export const useClusters = () =>
   useQuery({

@@ -1,12 +1,13 @@
 import base64
 import time
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from fastapi import HTTPException
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
@@ -101,9 +102,12 @@ class CertificateService(RegistryMixin):
             serialization.NoEncryption(),
         ).decode()
 
-        # Step 6: Save to registry
+        # Step 6: Build the registry record
+        # Read the expiry from the signed certificate — the API server may cap
+        # the requested duration (--cluster-signing-duration)
+        signed_cert = x509.load_pem_x509_certificate(certificate_pem.encode())
         now = datetime.now(timezone.utc).isoformat()
-        expiry = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+        expiry = signed_cert.not_valid_after_utc.isoformat()
         user_record = {
             "name": username,
             "type": "certificate",
@@ -113,23 +117,42 @@ class CertificateService(RegistryMixin):
             "created_at": now,
             "cert_expiry": expiry,
         }
-        users.append(user_record)
-        self._save_registry(users)
-        logger.info("Created certificate user: %s", username)
 
-        # Step 7: Store private key in Vault if enabled
+        # Step 7: Store private key in Vault BEFORE registering the user.
+        # If Vault is enabled, the key must never be returned inline — on a
+        # write failure we roll back the CSR and fail loudly instead of
+        # silently downgrading to inline delivery.
         from .vault_service import get_vault_service
         vault_svc = get_vault_service()
+        vault_path = None
         if vault_svc:
             try:
                 vault_path = vault_svc.write_secret(username, {
                     "private_key_pem": private_key_pem,
                     "certificate_pem": certificate_pem,
                 })
-                return {**user_record, "vault_path": vault_path, "certificate_pem": certificate_pem}
             except Exception as e:
-                logger.warning("Vault write failed for %s, falling back to inline: %s", username, e)
+                logger.error("Vault write failed for %s — rolling back CSR: %s", username, e)
+                try:
+                    self.certs_api.delete_certificate_signing_request(csr_name)
+                except ApiException:
+                    logger.warning("Could not clean up CSR %s after Vault failure", csr_name)
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Vault is enabled but the private key could not be stored: {e}",
+                )
 
+        # Step 8: Save to registry
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == username for u in current):
+                raise UserAlreadyExistsError(username)
+            return current + [user_record]
+
+        self._update_registry(_append)
+        logger.info("Created certificate user: %s", username)
+
+        if vault_path:
+            return {**user_record, "vault_path": vault_path, "certificate_pem": certificate_pem}
         return {**user_record, "private_key_pem": private_key_pem, "certificate_pem": certificate_pem}
 
     def delete_user(self, username: str):
@@ -138,24 +161,25 @@ class CertificateService(RegistryMixin):
         if not user:
             raise UserNotFoundError(username)
 
-        # Delete CSR
-        try:
-            self.certs_api.delete_certificate_signing_request(user["csr_name"])
-        except ApiException as e:
-            if e.status != 404:
-                raise
+        # Delete CSR (imported users have none)
+        if user.get("csr_name"):
+            try:
+                self.certs_api.delete_certificate_signing_request(user["csr_name"])
+            except ApiException as e:
+                if e.status != 404:
+                    raise
 
         # Remove from registry
-        updated = [u for u in users if not (u["name"] == username and u.get("type") == "certificate")]
-        self._save_registry(updated)
+        self._update_registry(
+            lambda current: [
+                u for u in current
+                if not (u["name"] == username and u.get("type") == "certificate")
+            ]
+        )
         logger.info("Deleted certificate user: %s", username)
 
     def import_user(self, username: str, groups: list[str]) -> dict:
         """Register an existing certificate user in the registry (no CSR created)."""
-        users = self._load_registry()
-        if any(u["name"] == username for u in users):
-            raise UserAlreadyExistsError(username)
-
         now = datetime.now(timezone.utc).isoformat()
         user_record = {
             "name": username,
@@ -165,8 +189,13 @@ class CertificateService(RegistryMixin):
             "created_at": now,
             "imported": True,
         }
-        users.append(user_record)
-        self._save_registry(users)
+
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == username for u in current):
+                raise UserAlreadyExistsError(username)
+            return current + [user_record]
+
+        self._update_registry(_append)
         logger.info("Imported certificate user: %s", username)
         return user_record
 

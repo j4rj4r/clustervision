@@ -5,6 +5,9 @@ interface KubeconfigRequest {
   username: string
   user_type: UserType
   namespace: string
+  /** Namespace the SA lives in — disambiguates same-named SAs across
+   *  namespaces (`namespace` is only the kubeconfig's default context) */
+  sa_namespace?: string
   private_key_pem?: string
 }
 

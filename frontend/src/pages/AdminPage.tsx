@@ -41,7 +41,7 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Create user" size="sm">
+    <Modal open={open} onClose={onClose} title="Create user" size="sm" closeOnBackdrop={false}>
       <div className="space-y-4">
         <Input
           label="Username"
@@ -110,7 +110,7 @@ function ResetPasswordModal({ user, onClose }: { user: CvUser | null; onClose: (
   })
 
   return (
-    <Modal open={!!user} onClose={onClose} title="Reset password" size="sm">
+    <Modal open={!!user} onClose={onClose} title="Reset password" size="sm" closeOnBackdrop={false}>
       <div className="space-y-4">
         <p className="text-sm text-surface-400">
           Set a new password for <span className="font-mono text-surface-100">{user?.username}</span>.

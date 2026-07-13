@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { Copy, Check, Terminal, FormInput } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
@@ -41,6 +42,8 @@ export default function AddClusterModal({ onClose }: Props) {
     try {
       const s = await clusterApi.bootstrapScript(cmdName.trim())
       setScript(s)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate script')
     } finally {
       setLoadingScript(false)
     }
@@ -54,7 +57,7 @@ export default function AddClusterModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Add cluster">
+    <Modal open onClose={onClose} title="Add cluster" closeOnBackdrop={false}>
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-surface-800/60 rounded-lg mb-4">
         <button

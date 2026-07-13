@@ -44,7 +44,7 @@ export default function ImportUserModal({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Import existing user" size="lg">
+    <Modal open={open} onClose={handleClose} title="Import existing user" size="lg" closeOnBackdrop={false}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Select
           label="Type"

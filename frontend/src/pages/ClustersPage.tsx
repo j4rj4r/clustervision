@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Plus, Server, Trash2 } from 'lucide-react'
+import { Plus, Server, Trash2, TriangleAlert } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import Modal from '../components/ui/Modal'
 import AddClusterModal from '../components/clusters/AddClusterModal'
 import { useClusters, useRemoveCluster } from '../hooks/useCluster'
 import { useClusterStore } from '../store/clusterStore'
@@ -11,6 +12,7 @@ export default function ClustersPage() {
   const { activeCluster, setActiveCluster } = useClusterStore()
   const remove = useRemoveCluster()
   const [addOpen, setAddOpen] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null)
 
   return (
     <div className="space-y-6">
@@ -55,7 +57,7 @@ export default function ClustersPage() {
                     size="sm"
                     variant="ghost"
                     aria-label="Remove cluster"
-                    onClick={(e) => { e.stopPropagation(); remove.mutate(c.name) }}
+                    onClick={(e) => { e.stopPropagation(); setRemoveTarget(c.name) }}
                     className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                   >
                     <Trash2 size={13} />
@@ -68,6 +70,29 @@ export default function ClustersPage() {
       </div>
 
       {addOpen && <AddClusterModal onClose={() => setAddOpen(false)} />}
+
+      <Modal open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Remove cluster" size="sm">
+        <div className="space-y-5">
+          <div className="flex gap-3 p-3 rounded-lg bg-red-950/40 border border-red-500/20">
+            <TriangleAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
+            <p className="text-sm text-surface-200">
+              Remove <span className="font-mono font-semibold text-surface-100">{removeTarget}</span> from
+              ClusterVision? The cluster itself is untouched, but its stored connection credentials are deleted.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setRemoveTarget(null)} className="flex-1">Cancel</Button>
+            <Button
+              variant="danger"
+              loading={remove.isPending}
+              onClick={() => remove.mutate(removeTarget!, { onSuccess: () => setRemoveTarget(null) })}
+              className="flex-1"
+            >
+              <Trash2 size={14} /> Remove
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -106,6 +106,7 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
       onClose={onClose}
       title={`${isEdit ? 'Edit' : isCopy ? 'Copy' : 'Create'} ${isCluster ? 'ClusterRole' : 'Role'}`}
       size="lg"
+      closeOnBackdrop={false}
     >
       <div className="space-y-4">
         <div className="flex gap-3">

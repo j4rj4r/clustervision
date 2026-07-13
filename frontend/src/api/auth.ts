@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { formatApiError } from './client'
 
 export interface LoginResponse {
   access_token: string
@@ -12,10 +13,7 @@ const authClient = axios.create({ baseURL: '/api/v1', withCredentials: true })
 
 authClient.interceptors.response.use(
   (res) => res,
-  (err) => {
-    const message = err.response?.data?.detail ?? err.message ?? 'Request failed'
-    return Promise.reject(new Error(message))
-  },
+  (err) => Promise.reject(formatApiError(err)),
 )
 
 export const authApi = {
