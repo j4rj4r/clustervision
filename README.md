@@ -9,7 +9,7 @@ A web UI for managing Kubernetes users, RBAC permissions, and kubeconfig generat
 - **User management** — create X.509 certificate users and ServiceAccounts; import existing ones
 - **RBAC management** — ClusterRoles, namespaced Roles, bindings, access simulator
 - **Kubeconfig generation** — ready-to-use files for `kubectl`, with audit trail
-- **Multi-cluster** — manage multiple clusters from a single instance
+- **Multi-cluster** — manage multiple clusters from a single instance; add them with a generated bootstrap script or manually (connectivity is verified at registration)
 - **JWT authentication** — admin/viewer roles, 15-min access tokens, 7-day httpOnly refresh cookie
 - **Vault integration** — store certificate private keys in HashiCorp Vault KV v2
 
@@ -57,11 +57,18 @@ For production configuration see [`helm/clustervision/values.yaml`](helm/cluster
 | `vault.addr` | `""` | Vault server address (e.g. `https://vault.example.com`) |
 | `vault.token` | `""` | Vault token (creates a managed Secret) |
 | `vault.existingSecret` | `""` | Use a pre-existing Secret containing the token |
+| `vault.existingSecretKey` | `token` | Key holding the token in that Secret |
 | `vault.mount` | `secret` | KV v2 mount path |
 | `vault.basePath` | `clustervision/users` | Base path for stored keys |
 | `vault.namespace` | `""` | Vault Enterprise namespace |
+| `vault.tlsSkipVerify` | `false` | Skip TLS certificate verification (self-signed Vault) |
+
+`vault.enabled=true` requires `vault.token` or `vault.existingSecret` — the chart fails at template time otherwise.
 
 Vault can also be configured at runtime from the Settings → Integrations panel (no restart required).
+
+> **Precedence** — the runtime configuration is persisted in the `clustervision-vault-config` Secret and takes priority over Helm values. Once Vault has been configured (or disabled) from the UI, later `helm upgrade` changes to `vault.*` are ignored. To hand control back to Helm, delete that Secret:
+> `kubectl delete secret clustervision-vault-config -n <namespace>`
 
 ## Security
 
