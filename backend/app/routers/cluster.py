@@ -13,7 +13,7 @@ from ..core.auth import create_register_token, decode_token
 from ..core.dependencies import require_admin
 from ..core.kubernetes_client import get_version_api
 from ..models.auth import UserInfo
-from ..services.cluster_service import get_cluster_service
+from ..services.cluster_service import ClusterConnectionError, get_cluster_service
 from ..dependencies import get_api_client
 from ..core.async_utils import run_sync
 
@@ -108,6 +108,8 @@ async def add_cluster(payload: ClusterAdd):
     svc = get_cluster_service()
     try:
         return await run_sync(svc.add_cluster, payload.name, payload.api_url, payload.ca_data, payload.token)
+    except ClusterConnectionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -137,6 +139,8 @@ async def register_cluster(
     svc = get_cluster_service()
     try:
         return await run_sync(svc.add_cluster, payload.name, payload.api_url, payload.ca_data, payload.token)
+    except ClusterConnectionError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -246,16 +250,19 @@ MANIFEST
 
 echo "→ Waiting for token to be populated..."
 for i in $(seq 1 10); do
-  TOKEN=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o jsonpath='{{.data.token}}' 2>/dev/null || true)
-  [ -n "$TOKEN" ] && break
+  TOKEN_B64=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o jsonpath='{{.data.token}}' 2>/dev/null || true)
+  [ -n "$TOKEN_B64" ] && break
   sleep 2
 done
 
-if [ -z "$TOKEN" ]; then
+if [ -z "$TOKEN_B64" ]; then
   echo "ERROR: Token not available after 20s. Check your cluster." >&2
   exit 1
 fi
 
+# The registration API expects the raw JWT but .data.token is base64-encoded.
+# Decode through kubectl — the base64 CLI flags differ between GNU and BSD.
+TOKEN=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o go-template='{{{{.data.token | base64decode}}}}')
 CA=$(kubectl get secret clustervision-agent-token -n "$NAMESPACE" -o jsonpath='{{.data.ca\\.crt}}')
 API_URL=$(kubectl config view --minify -o jsonpath='{{.clusters[0].cluster.server}}')
 
