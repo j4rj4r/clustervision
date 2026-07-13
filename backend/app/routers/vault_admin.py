@@ -1,6 +1,6 @@
 from functools import partial
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..core.async_utils import run_sync
@@ -15,7 +15,9 @@ router = APIRouter(prefix="/api/v1/admin/vault", tags=["admin"])
 
 class VaultConfig(BaseModel):
     addr: str = Field(..., min_length=1)
-    token: str = Field(..., min_length=1)
+    # Empty means "keep the currently configured token" (the UI never gets
+    # the token back, so edits would otherwise force re-entering it)
+    token: str = ""
     mount: str = "secret"
     base_path: str = "clustervision/users"
     namespace: str = ""
@@ -49,11 +51,17 @@ async def vault_status(_: UserInfo = Depends(require_admin)):
 
 @router.put("/config", summary="Configure Vault integration")
 async def set_vault_config(payload: VaultConfig, _: UserInfo = Depends(require_admin)):
+    token = payload.token
+    if not token:
+        current = await run_sync(get_vault_service)
+        if current is None:
+            raise HTTPException(status_code=400, detail="A Vault token is required")
+        token = current.token
     # Persists the config to a K8s Secret (shared across workers/restarts)
     svc = await run_sync(partial(
         configure_vault,
         addr=payload.addr,
-        token=payload.token,
+        token=token,
         mount=payload.mount,
         base_path=payload.base_path,
         namespace=payload.namespace,
