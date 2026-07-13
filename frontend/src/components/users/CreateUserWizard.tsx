@@ -505,7 +505,13 @@ export default function CreateUserWizard({ open, onClose }: Props) {
                 </label>
               )}
 
-              <Button className="w-full" disabled={isCert && !confirmed} onClick={handleClose}>
+              <Button
+                className="w-full"
+                // The confirmation checkbox only exists when the key was shown
+                // inline — with Vault there is nothing to acknowledge
+                disabled={isCert && !confirmed && !credentials?.vault_path}
+                onClick={handleClose}
+              >
                 Done
               </Button>
             </div>

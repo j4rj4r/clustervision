@@ -54,7 +54,7 @@ export default function AddClusterModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Add cluster">
+    <Modal open onClose={onClose} title="Add cluster" closeOnBackdrop={false}>
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-surface-800/60 rounded-lg mb-4">
         <button
