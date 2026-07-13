@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
     "axios": "1.18.1",
-    "geist": "^1.7.0",
+    "geist": "^1.7.2",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.7",
