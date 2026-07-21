@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { FileCode2, Plus, Trash2 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Select from '../ui/Select'
+import { parseRulesYaml, RbacYamlError } from '../../lib/parseRbacYaml'
 import type { PolicyRule, RoleRead } from '../../types/rbac'
 
 const ALL_VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete', 'deletecollection']
@@ -95,6 +96,31 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
   const updateRule = (i: number, r: PolicyRule) => setRules((prev) => prev.map((x, idx) => (idx === i ? r : x)))
   const removeRule = (i: number) => setRules((prev) => prev.filter((_, idx) => idx !== i))
 
+  const [showImport, setShowImport] = useState(false)
+  const [yamlText, setYamlText] = useState('')
+  const [yamlError, setYamlError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+
+  const closeImport = () => {
+    setShowImport(false)
+    setYamlText('')
+    setYamlError(null)
+  }
+
+  const handleImportYaml = async () => {
+    setImporting(true)
+    setYamlError(null)
+    try {
+      const imported = await parseRulesYaml(yamlText)
+      setRules(imported)
+      closeImport()
+    } catch (e) {
+      setYamlError(e instanceof RbacYamlError ? e.message : 'Failed to parse YAML')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const handleSave = () => {
     if (!name.trim()) return
     onSave(name.trim(), rules, isCluster ? undefined : namespace)
@@ -136,13 +162,45 @@ export default function RoleEditorModal({ role, copyFrom, namespace: defaultNs, 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs text-surface-300">Rules</label>
-            <button
-              onClick={() => setRules((prev) => [...prev, emptyRule()])}
-              className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
-            >
-              <Plus size={12} /> Add rule
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => (showImport ? closeImport() : setShowImport(true))}
+                className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
+              >
+                <FileCode2 size={12} /> Import YAML
+              </button>
+              <button
+                onClick={() => setRules((prev) => [...prev, emptyRule()])}
+                className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
+              >
+                <Plus size={12} /> Add rule
+              </button>
+            </div>
           </div>
+
+          {showImport && (
+            <div className="border border-surface-600 rounded-lg p-3 space-y-2 bg-surface-900">
+              <textarea
+                autoFocus
+                rows={8}
+                value={yamlText}
+                onChange={(e) => setYamlText(e.target.value)}
+                placeholder={'- apiGroups: [""]\n  resources: ["pods", "pods/log"]\n  verbs: ["get", "list", "watch"]'}
+                className="w-full bg-surface-800 border border-surface-600 rounded px-3 py-2 text-xs font-mono text-surface-100 placeholder-surface-500 focus:outline-none focus:border-brand-500 resize-y"
+              />
+              <p className="text-xs text-surface-500">
+                Paste a <span className="font-mono">rules:</span> list (or a full Role/ClusterRole manifest) — this replaces the rules below.
+              </p>
+              {yamlError && <p className="text-xs text-red-400">{yamlError}</p>}
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={closeImport}>Cancel</Button>
+                <Button size="sm" onClick={handleImportYaml} loading={importing} disabled={!yamlText.trim()}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          )}
+
           {rules.map((rule, i) => (
             <RuleRow key={i} rule={rule} onChange={(r) => updateRule(i, r)} onRemove={() => removeRule(i)} />
           ))}
