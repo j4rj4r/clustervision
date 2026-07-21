@@ -34,9 +34,15 @@ _rate_buckets: dict[str, list[float]] = defaultdict(list)
 def _client_ip(request: Request) -> str:
     # Behind the ingress, request.client.host is the proxy IP — without this,
     # every user shares a single rate-limit bucket.
+    #
+    # Take the LAST hop, not the first: Traefik (and most reverse proxies)
+    # append the real client IP to any X-Forwarded-For already present on the
+    # inbound request rather than replacing it, so the first entry is
+    # attacker-controlled — trusting it lets anyone reset their own bucket by
+    # sending a different X-Forwarded-For on every attempt.
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 

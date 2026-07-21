@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle, Clipboard, Download, FileCode2, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createPortal } from 'react-dom'
@@ -90,6 +90,12 @@ export default function CreateUserWizard({ open, onClose }: Props) {
   ]
   const generateKubeconfig = useGenerateKubeconfig()
 
+  // The pending "new namespace" gets auto-added to selectedNs on step 1 →
+  // step 2. If the user goes back and renames or drops it, the stale name
+  // must be removed too — otherwise it lingers in selectedNs, invisible in
+  // the step 2 list, and the backend silently creates it with RBAC granted.
+  const lastAutoAddedNsRef = useRef<string | null>(null)
+
   const createUser = useCreateUser(async (data) => {
     setCredentials(data)
 
@@ -136,6 +142,7 @@ export default function CreateUserWizard({ open, onClose }: Props) {
     setPreset('readonly'); setScope('namespace'); setSelectedNs(new Set())
     setInlineNsInput(''); setInlineNsError(''); setExtraNs(new Set())
     setCredentials(null); setConfirmed(false); setCopied(false)
+    lastAutoAddedNsRef.current = null
     generateKubeconfig.reset()
     onClose()
   }
@@ -164,7 +171,15 @@ export default function CreateUserWizard({ open, onClose }: Props) {
 
   const handleStep1Next = () => {
     if (!validateStep1()) return
-    if (pendingNs) setSelectedNs((prev) => new Set([...prev, pendingNs]))
+    setSelectedNs((prev) => {
+      const next = new Set(prev)
+      if (lastAutoAddedNsRef.current && lastAutoAddedNsRef.current !== pendingNs) {
+        next.delete(lastAutoAddedNsRef.current)
+      }
+      if (pendingNs) next.add(pendingNs)
+      return next
+    })
+    lastAutoAddedNsRef.current = pendingNs || null
     setStep(2)
   }
 
