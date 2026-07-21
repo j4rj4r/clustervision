@@ -29,7 +29,7 @@ export default function UserPermissionsPanel({ username, userType, userNamespace
     if (scope === 'namespace' && selectedNs) {
       return [
         ...nsRoles.map((r) => ({ value: `Role::${r.name}`, label: `${r.name} (Role)` })),
-        ...clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: `${r.name} (ClusterRole)` })),
+        ...clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: `${r.name} (ClusterRole — this namespace only)` })),
       ]
     }
     return clusterRoles.map((r) => ({ value: `ClusterRole::${r.name}`, label: r.name }))
