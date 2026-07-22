@@ -19,9 +19,16 @@ class ServiceAccountService(RegistryMixin):
     def list_users(self) -> list[dict]:
         return [u for u in self._load_registry() if u.get("type") == "service_account"]
 
-    def get_user(self, username: str) -> dict:
+    def get_user(self, username: str, namespace: str | None = None) -> dict:
+        # SA names are only unique per namespace — without one, the first
+        # match wins, which is wrong whenever homonyms exist. Callers that
+        # know the namespace must pass it.
         for u in self._load_registry():
-            if u["name"] == username and u.get("type") == "service_account":
+            if (
+                u["name"] == username
+                and u.get("type") == "service_account"
+                and (namespace is None or u.get("namespace", "default") == namespace)
+            ):
                 return u
         raise UserNotFoundError(username)
 
@@ -88,19 +95,32 @@ class ServiceAccountService(RegistryMixin):
             "namespace": namespace,
             "created_at": now,
         }
-        users.append(user_record)
-        self._save_registry(users)
+
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == name and u.get("namespace") == namespace for u in current):
+                raise UserAlreadyExistsError(name)
+            return current + [user_record]
+
+        self._update_registry(_append)
         logger.info("Created service account user: %s in %s", name, namespace)
         return user_record
 
     def delete_user(self, username: str, namespace: str = "default"):
         users = self._load_registry()
-        user = next(
-            (u for u in users if u["name"] == username and u.get("type") == "service_account"),
-            None,
-        )
-        if not user:
+        matches = [
+            u for u in users
+            if u["name"] == username and u.get("type") == "service_account"
+        ]
+        if not matches:
             raise UserNotFoundError(username)
+
+        # Same SA name can exist in several namespaces — pick the right entry,
+        # and only fall back to a name-only match when it is unambiguous
+        user = next((u for u in matches if u.get("namespace", "default") == namespace), None)
+        if user is None:
+            if len(matches) > 1:
+                raise UserNotFoundError(f"{username} (namespace {namespace})")
+            user = matches[0]
 
         ns = user.get("namespace", namespace)
         try:
@@ -115,21 +135,22 @@ class ServiceAccountService(RegistryMixin):
             if e.status != 404:
                 raise
 
-        updated = [
-            u for u in users
-            if not (u["name"] == username and u.get("type") == "service_account")
-        ]
-        self._save_registry(updated)
-        logger.info("Deleted service account user: %s", username)
+        self._update_registry(
+            lambda current: [
+                u for u in current
+                if not (
+                    u["name"] == username
+                    and u.get("type") == "service_account"
+                    and u.get("namespace", "default") == ns
+                )
+            ]
+        )
+        logger.info("Deleted service account user: %s in %s", username, ns)
 
     def import_user(self, name: str, namespace: str = "default") -> dict:
         """Register an existing ServiceAccount in the ClusterVision registry."""
         # Verify the SA actually exists in K8s
         self.core_v1.read_namespaced_service_account(name, namespace)
-
-        users = self._load_registry()
-        if any(u["name"] == name and u.get("type") == "service_account" for u in users):
-            raise UserAlreadyExistsError(name)
 
         now = datetime.now(timezone.utc).isoformat()
         user_record = {
@@ -140,8 +161,13 @@ class ServiceAccountService(RegistryMixin):
             "created_at": now,
             "imported": True,
         }
-        users.append(user_record)
-        self._save_registry(users)
+
+        def _append(current: list[dict]) -> list[dict]:
+            if any(u["name"] == name and u.get("type") == "service_account" for u in current):
+                raise UserAlreadyExistsError(name)
+            return current + [user_record]
+
+        self._update_registry(_append)
         logger.info("Imported service account user: %s from %s", name, namespace)
         return user_record
 

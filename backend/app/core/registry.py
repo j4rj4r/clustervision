@@ -1,6 +1,10 @@
 import json
+from typing import Callable, Optional
+
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+
+_MAX_CONFLICT_RETRIES = 5
 
 
 class RegistryMixin:
@@ -22,38 +26,65 @@ class RegistryMixin:
                     )
                 )
 
-    def _load_registry(self) -> list[dict]:
+    def _read_registry(self) -> tuple[list[dict], Optional[str]]:
+        """Return (users, resourceVersion) — resourceVersion is None if the
+        ConfigMap does not exist yet."""
         try:
             cm = self.core_v1.read_namespaced_config_map(
                 self.settings.registry_configmap,
                 self.settings.registry_namespace,
             )
-            return json.loads(cm.data.get("users.json", "[]"))
+            users = json.loads((cm.data or {}).get("users.json", "[]"))
+            return users, cm.metadata.resource_version
         except ApiException as e:
             if e.status == 404:
-                return []
+                return [], None
             raise
 
-    def _save_registry(self, users: list[dict]):
-        self._ensure_namespace()
-        data = {"users.json": json.dumps(users, indent=2)}
-        try:
-            self.core_v1.patch_namespaced_config_map(
-                self.settings.registry_configmap,
-                self.settings.registry_namespace,
-                client.V1ConfigMap(data=data),
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.core_v1.create_namespaced_config_map(
-                    self.settings.registry_namespace,
-                    client.V1ConfigMap(
-                        metadata=client.V1ObjectMeta(
-                            name=self.settings.registry_configmap,
-                            namespace=self.settings.registry_namespace,
+    def _load_registry(self) -> list[dict]:
+        return self._read_registry()[0]
+
+    def _update_registry(self, mutate: Callable[[list[dict]], list[dict]]) -> list[dict]:
+        """Atomically update the registry with optimistic locking.
+
+        `mutate` receives the freshly-loaded user list and returns the new one.
+        On a resourceVersion conflict (concurrent writer) the load+mutate+write
+        cycle is retried, so `mutate` must be safe to re-run and should perform
+        its own consistency checks (duplicates, existence) against its input.
+        """
+        last_exc: Optional[ApiException] = None
+        for _ in range(_MAX_CONFLICT_RETRIES):
+            users, rv = self._read_registry()
+            updated = mutate(users)
+            data = {"users.json": json.dumps(updated, indent=2)}
+            try:
+                if rv is None:
+                    self._ensure_namespace()
+                    self.core_v1.create_namespaced_config_map(
+                        self.settings.registry_namespace,
+                        client.V1ConfigMap(
+                            metadata=client.V1ObjectMeta(
+                                name=self.settings.registry_configmap,
+                                namespace=self.settings.registry_namespace,
+                            ),
+                            data=data,
                         ),
-                        data=data,
-                    ),
-                )
-            else:
+                    )
+                else:
+                    self.core_v1.patch_namespaced_config_map(
+                        self.settings.registry_configmap,
+                        self.settings.registry_namespace,
+                        client.V1ConfigMap(
+                            metadata=client.V1ObjectMeta(resource_version=rv),
+                            data=data,
+                        ),
+                    )
+                return updated
+            except ApiException as e:
+                # 409 = conflict: either the resourceVersion changed under us
+                # or the ConfigMap was created concurrently — reload and retry
+                if e.status == 409:
+                    last_exc = e
+                    continue
                 raise
+        raise last_exc

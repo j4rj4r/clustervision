@@ -5,8 +5,10 @@ from threading import Lock
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from ..core.async_utils import run_sync
 from ..core.auth import create_access_token, create_refresh_token, decode_token
 from ..core.dependencies import get_current_user, require_admin
 from ..models.auth import LoginRequest, TokenResponse, UserInfo
@@ -16,6 +18,7 @@ from ..services.auth_service import (
     change_role,
     create_user,
     delete_user,
+    get_user_entry,
     list_users,
 )
 
@@ -28,18 +31,38 @@ _rate_lock = Lock()
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 
 
+def _client_ip(request: Request) -> str:
+    # Behind the ingress, request.client.host is the proxy IP — without this,
+    # every user shares a single rate-limit bucket.
+    #
+    # Take the LAST hop, not the first: Traefik (and most reverse proxies)
+    # append the real client IP to any X-Forwarded-For already present on the
+    # inbound request rather than replacing it, so the first entry is
+    # attacker-controlled — trusting it lets anyone reset their own bucket by
+    # sending a different X-Forwarded-For on every attempt.
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[-1].strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _check_rate_limit(ip: str) -> None:
     now = time.monotonic()
     with _rate_lock:
-        attempts = _rate_buckets[ip]
-        _rate_buckets[ip] = [t for t in attempts if now - t < _RATE_WINDOW]
-        if len(_rate_buckets[ip]) >= _RATE_LIMIT:
+        if len(_rate_buckets) > 1024:
+            stale = [k for k, v in _rate_buckets.items() if not v or now - v[-1] >= _RATE_WINDOW]
+            for k in stale:
+                del _rate_buckets[k]
+        attempts = [t for t in _rate_buckets[ip] if now - t < _RATE_WINDOW]
+        if len(attempts) >= _RATE_LIMIT:
+            _rate_buckets[ip] = attempts
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts — try again later",
                 headers={"Retry-After": str(_RATE_WINDOW)},
             )
-        _rate_buckets[ip].append(now)
+        attempts.append(now)
+        _rate_buckets[ip] = attempts
 
 _REFRESH_COOKIE = "cv_refresh"
 _REFRESH_MAX_AGE = 7 * 86400
@@ -61,8 +84,9 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, request: Request, response: Response):
-    _check_rate_limit(request.client.host if request.client else "unknown")
-    user = authenticate(body.username, body.password)
+    _check_rate_limit(_client_ip(request))
+    # bcrypt + K8s secret read are blocking — keep them off the event loop
+    user = await run_sync(authenticate, body.username, body.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     access_token = create_access_token(user["username"], user["role"])
@@ -80,11 +104,21 @@ async def refresh(cv_refresh: Annotated[str | None, Cookie()] = None):
     if not cv_refresh:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
     payload = decode_token(cv_refresh, expected_type="refresh")
-    access_token = create_access_token(payload["sub"], payload["role"])
+    # Re-check the user store: a deleted user must not outlive their refresh
+    # token, and a role change must apply immediately.
+    user = await run_sync(get_user_entry, payload["sub"])
+    if not user:
+        resp = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "User no longer exists"},
+        )
+        resp.delete_cookie(key=_REFRESH_COOKIE, path=_COOKIE_PATH)
+        return resp
+    access_token = create_access_token(user["username"], user["role"])
     return TokenResponse(
         access_token=access_token,
-        role=payload["role"],
-        username=payload["sub"],
+        role=user["role"],
+        username=user["username"],
     )
 
 

@@ -66,6 +66,9 @@ spec:
                   key: {{ $ap.existingSecretKey }}
             {{- end }}
             {{- if .Values.vault.enabled }}
+            {{- if and (not .Values.vault.token) (not .Values.vault.existingSecret) }}
+            {{- fail "vault.enabled=true requires vault.token or vault.existingSecret (the pod would fail to start referencing a missing Secret)" }}
+            {{- end }}
             - name: VAULT_ENABLED
               value: "true"
             - name: VAULT_ADDR
@@ -76,6 +79,8 @@ spec:
               value: {{ .Values.vault.basePath | quote }}
             - name: VAULT_NAMESPACE
               value: {{ .Values.vault.namespace | quote }}
+            - name: VAULT_TLS_SKIP_VERIFY
+              value: {{ .Values.vault.tlsSkipVerify | default false | quote }}
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef:
