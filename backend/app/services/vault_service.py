@@ -183,7 +183,7 @@ def _apply_config(cfg: dict | None) -> None:
     # Keep the existing instance (and its cached health) if nothing changed
     if _vault_svc is None or _vault_svc.config_dict() != candidate.config_dict():
         _vault_svc = candidate
-        logger.info("Vault configuration (re)loaded (addr=%s)", candidate.addr)
+        logger.info("Vault configuration (re)loaded")
 
 
 def _sync(force: bool = False) -> None:
