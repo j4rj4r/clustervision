@@ -3,6 +3,7 @@ import uuid
 import logging
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
@@ -20,62 +21,74 @@ class TokenService:
 
     # ── History ───────────────────────────────────────────────────────────────
 
-    def _load_history(self) -> list[dict]:
+    def _read_history(self) -> tuple[list[dict], str | None]:
         try:
             cm = self.core_v1.read_namespaced_config_map(
                 HISTORY_CONFIGMAP, self.settings.registry_namespace
             )
-            return json.loads(cm.data.get("history.json", "[]"))
+            return json.loads((cm.data or {}).get("history.json", "[]")), cm.metadata.resource_version
         except ApiException as e:
             if e.status == 404:
-                return []
+                return [], None
             raise
 
-    def _save_history(self, history: list[dict]):
-        data = {"history.json": json.dumps(history, indent=2)}
-        try:
-            self.core_v1.patch_namespaced_config_map(
-                HISTORY_CONFIGMAP,
-                self.settings.registry_namespace,
-                client.V1ConfigMap(data=data),
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.core_v1.create_namespaced_config_map(
-                    self.settings.registry_namespace,
-                    client.V1ConfigMap(
-                        metadata=client.V1ObjectMeta(
-                            name=HISTORY_CONFIGMAP,
-                            namespace=self.settings.registry_namespace,
+    def _load_history(self) -> list[dict]:
+        return self._read_history()[0]
+
+    def _update_history(self, mutate):
+        """Atomically update the history ConfigMap with optimistic locking —
+        retried on resourceVersion conflicts."""
+        last_exc = None
+        for _ in range(5):
+            history, rv = self._read_history()
+            data = {"history.json": json.dumps(mutate(history), indent=2)}
+            try:
+                if rv is None:
+                    self.core_v1.create_namespaced_config_map(
+                        self.settings.registry_namespace,
+                        client.V1ConfigMap(
+                            metadata=client.V1ObjectMeta(
+                                name=HISTORY_CONFIGMAP,
+                                namespace=self.settings.registry_namespace,
+                            ),
+                            data=data,
                         ),
-                        data=data,
-                    ),
-                )
-            else:
+                    )
+                else:
+                    self.core_v1.patch_namespaced_config_map(
+                        HISTORY_CONFIGMAP,
+                        self.settings.registry_namespace,
+                        client.V1ConfigMap(
+                            metadata=client.V1ObjectMeta(resource_version=rv),
+                            data=data,
+                        ),
+                    )
+                return
+            except ApiException as e:
+                if e.status == 409:
+                    last_exc = e
+                    continue
                 raise
+        raise last_exc
 
     def record_generation(self, user: str, user_type: str, namespace: str):
-        history = self._load_history()
-        history.append({
+        entry = {
             "id": str(uuid.uuid4()),
             "user": user,
             "user_type": user_type,
             "namespace": namespace,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-        })
-        if len(history) > 500:
-            history = history[-500:]
-        self._save_history(history)
+        }
+        self._update_history(lambda history: (history + [entry])[-500:])
 
     def list_history(self) -> list[dict]:
         return list(reversed(self._load_history()))
 
     def delete_history_entry(self, entry_id: str):
-        history = self._load_history()
-        self._save_history([e for e in history if e.get("id") != entry_id])
+        self._update_history(lambda history: [e for e in history if e.get("id") != entry_id])
 
     def clear_history(self):
-        self._save_history([])
+        self._update_history(lambda history: [])
 
     # ── SA token secrets ──────────────────────────────────────────────────────
 
@@ -98,11 +111,46 @@ class TokenService:
             })
         return result
 
+    def _read_managed_token_secret(self, secret_name: str, namespace: str) -> client.V1Secret:
+        """Fetch a Secret and refuse to touch it unless it is a ClusterVision-managed
+        service-account token — the app's RBAC can delete any secret cluster-wide,
+        so this API must not become an arbitrary-secret-deletion endpoint."""
+        try:
+            secret = self.core_v1.read_namespaced_secret(secret_name, namespace)
+        except ApiException as e:
+            if e.status == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Secret '{secret_name}' not found in namespace '{namespace}'",
+                )
+            raise
+        labels = secret.metadata.labels or {}
+        if (
+            secret.type != "kubernetes.io/service-account-token"
+            or labels.get("managed-by") != "clustervision"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Secret '{secret_name}' is not a ClusterVision-managed SA token",
+            )
+        return secret
+
     def revoke_sa_token(self, secret_name: str, namespace: str):
+        self._read_managed_token_secret(secret_name, namespace)
         self.core_v1.delete_namespaced_secret(secret_name, namespace)
         logger.info("Revoked SA token secret %s in %s", secret_name, namespace)
 
     def rotate_sa_token(self, secret_name: str, sa_name: str, namespace: str):
+        existing = self._read_managed_token_secret(secret_name, namespace)
+        annotated_sa = (existing.metadata.annotations or {}).get(
+            "kubernetes.io/service-account.name"
+        )
+        if annotated_sa != sa_name:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Secret '{secret_name}' belongs to ServiceAccount "
+                       f"'{annotated_sa}', not '{sa_name}'",
+            )
         try:
             self.core_v1.delete_namespaced_secret(secret_name, namespace)
         except ApiException as e:

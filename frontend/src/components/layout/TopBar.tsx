@@ -1,10 +1,11 @@
 import { Server, LogOut } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useClusterInfo, useClusters } from '../../hooks/useCluster'
 import { useClusterStore } from '../../store/clusterStore'
 import { useAuthStore } from '../../store/authStore'
 import { authApi } from '../../api/auth'
+import { queryClient } from '../../lib/queryClient'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 
@@ -12,24 +13,36 @@ const routeLabels: Record<string, string> = {
   '/users':      'Users',
   '/rbac':       'Permissions',
   '/kubeconfig': 'Kubeconfig',
-  '/tokens':     'History',
+  '/tokens':     'Tokens',
   '/clusters':   'Clusters',
+  '/settings':   'Settings',
 }
 
 export default function TopBar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { data, isError, isLoading } = useClusterInfo()
-  const { data: clusters = [] } = useClusters()
+  const { data: clusters = [], isSuccess: clustersLoaded } = useClusters()
   const { activeCluster, setActiveCluster } = useClusterStore()
   const { user, clearAuth } = useAuthStore()
   const [confirmLogout, setConfirmLogout] = useState(false)
+
+  // The active cluster is persisted in localStorage — if it was removed
+  // (possibly from another browser/session), fall back to "local" instead of
+  // sending ?cluster=<gone> with every request.
+  useEffect(() => {
+    if (clustersLoaded && !clusters.some((c) => c.name === activeCluster)) {
+      setActiveCluster('local')
+    }
+  }, [clustersLoaded, clusters, activeCluster, setActiveCluster])
 
   const pageLabel = routeLabels[pathname] ?? 'ClusterVision'
 
   const handleLogout = async () => {
     await authApi.logout().catch(() => undefined)
     clearAuth()
+    // Cached queries belong to the old session — don't leak them to the next user
+    queryClient.clear()
     navigate('/login', { replace: true })
   }
 

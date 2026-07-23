@@ -1,6 +1,38 @@
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { useClusterStore } from '../store/clusterStore'
 import { useAuthStore } from '../store/authStore'
+import { queryClient } from '../lib/queryClient'
+
+export interface ApiError extends Error {
+  status?: number
+}
+
+// FastAPI puts a string in `detail` for business errors, but an array of
+// {loc, msg} objects for 422 validation errors — stringify both readably.
+export function formatApiError(err: AxiosError<{ detail?: unknown }>): ApiError {
+  const detail = err.response?.data?.detail
+  let message: string
+  if (typeof detail === 'string') {
+    message = detail
+  } else if (Array.isArray(detail)) {
+    message = detail
+      .map((d) => {
+        if (d && typeof d === 'object' && 'msg' in d) {
+          const loc = Array.isArray((d as { loc?: unknown[] }).loc)
+            ? (d as { loc: unknown[] }).loc.slice(1).join('.')
+            : ''
+          return loc ? `${loc}: ${(d as { msg: string }).msg}` : (d as { msg: string }).msg
+        }
+        return String(d)
+      })
+      .join(' — ')
+  } else {
+    message = err.message || 'Request failed'
+  }
+  const error = new Error(message) as ApiError
+  error.status = err.response?.status
+  return error
+}
 
 const client = axios.create({
   baseURL: '/api/v1',
@@ -55,6 +87,8 @@ client.interceptors.response.use(
       } catch {
         drainQueue(null)
         useAuthStore.getState().clearAuth()
+        // Session data must not survive into the next login
+        queryClient.clear()
         window.location.href = '/login'
         return Promise.reject(err)
       } finally {
@@ -62,8 +96,7 @@ client.interceptors.response.use(
       }
     }
 
-    const message = err.response?.data?.detail ?? err.message ?? 'Unknown error'
-    return Promise.reject(new Error(message))
+    return Promise.reject(formatApiError(err))
   },
 )
 

@@ -8,6 +8,7 @@ _JWT_SECRET = os.environ.get("CV_JWT_SECRET", "")
 _JWT_ALGORITHM = "HS256"
 _ACCESS_TOKEN_EXPIRE_MINUTES = 15
 _REFRESH_TOKEN_EXPIRE_DAYS = 7
+_REGISTER_TOKEN_EXPIRE_MINUTES = 60
 
 if not _JWT_SECRET:
     import secrets as _secrets
@@ -38,6 +39,17 @@ def create_refresh_token(username: str, role: str) -> str:
         "role": role,
         "exp": datetime.now(timezone.utc) + timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
+    }
+    return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
+
+
+def create_register_token(cluster_name: str) -> str:
+    """Short-lived token embedded in the bootstrap script to authorize
+    a single remote-cluster registration (scoped to the cluster name)."""
+    payload = {
+        "sub": cluster_name,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=_REGISTER_TOKEN_EXPIRE_MINUTES),
+        "type": "cluster_register",
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
 

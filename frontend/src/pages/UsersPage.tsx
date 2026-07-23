@@ -70,7 +70,8 @@ export default function UsersPage() {
             onCreateClick={() => setCreateOpen(true)}
             onKubeconfig={(user) => {
               const params = new URLSearchParams({ user: user.name })
-              if (user.namespace && user.namespace !== 'default') params.set('namespace', user.namespace)
+              // Always include the namespace — SA names alone are ambiguous
+              if (user.namespace) params.set('namespace', user.namespace)
               navigate(`/kubeconfig?${params.toString()}`)
             }}
           />

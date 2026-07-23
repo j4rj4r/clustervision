@@ -475,11 +475,13 @@ class RbacService:
         resource: str,
         namespace: Optional[str],
         api_group: str = "",
+        groups: Optional[list[str]] = None,
     ) -> dict:
         sar = self.auth_v1.create_subject_access_review(
             client.V1SubjectAccessReview(
                 spec=client.V1SubjectAccessReviewSpec(
                     user=user,
+                    groups=groups or None,
                     resource_attributes=client.V1ResourceAttributes(
                         verb=verb,
                         resource=resource,

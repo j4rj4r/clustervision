@@ -107,3 +107,4 @@ vault:
   mount: "secret"
   basePath: "clustervision/users"
   namespace: ""      # Vault Enterprise namespace (leave empty for OSS)
+  tlsSkipVerify: false # skip TLS certificate verification (self-signed Vault)

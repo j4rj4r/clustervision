@@ -25,30 +25,58 @@ def _core_v1() -> k8s_client.CoreV1Api:
     return k8s_client.CoreV1Api(api_client=get_local_api_client())
 
 
-def _read_users() -> dict:
+_MAX_CONFLICT_RETRIES = 5
+
+
+def _read_users_with_rv() -> tuple[dict, str | None]:
     try:
         secret = _core_v1().read_namespaced_secret(_SECRET_NAME, _NAMESPACE)
         raw = (secret.data or {}).get("users.json", "")
-        return json.loads(base64.b64decode(raw).decode()) if raw else {}
+        users = json.loads(base64.b64decode(raw).decode()) if raw else {}
+        return users, secret.metadata.resource_version
     except ApiException as e:
         if e.status == 404:
-            return {}
+            return {}, None
         raise
 
 
-def _write_users(users: dict) -> None:
-    encoded = base64.b64encode(json.dumps(users).encode()).decode()
-    body = k8s_client.V1Secret(
-        metadata=k8s_client.V1ObjectMeta(name=_SECRET_NAME, namespace=_NAMESPACE),
-        data={"users.json": encoded},
-    )
-    try:
-        _core_v1().replace_namespaced_secret(_SECRET_NAME, _NAMESPACE, body)
-    except ApiException as e:
-        if e.status == 404:
-            _core_v1().create_namespaced_secret(_NAMESPACE, body)
-        else:
+def _read_users() -> dict:
+    return _read_users_with_rv()[0]
+
+
+def _update_users(mutate) -> None:
+    """Atomically update the auth secret with optimistic locking.
+
+    `mutate` receives the freshly-loaded users dict and returns the new one,
+    or None to abort without writing. Retried on resourceVersion conflicts,
+    so `mutate` must re-check its preconditions against its input.
+    """
+    last_exc = None
+    for _ in range(_MAX_CONFLICT_RETRIES):
+        users, rv = _read_users_with_rv()
+        updated = mutate(users)
+        if updated is None:
+            return
+        encoded = base64.b64encode(json.dumps(updated).encode()).decode()
+        body = k8s_client.V1Secret(
+            metadata=k8s_client.V1ObjectMeta(
+                name=_SECRET_NAME, namespace=_NAMESPACE, resource_version=rv
+            ),
+            data={"users.json": encoded},
+        )
+        try:
+            if rv is None:
+                _core_v1().create_namespaced_secret(_NAMESPACE, body)
+            else:
+                _core_v1().replace_namespaced_secret(_SECRET_NAME, _NAMESPACE, body)
+            return
+        except ApiException as e:
+            # 409 = stale resourceVersion or concurrent create — reload and retry
+            if e.status == 409:
+                last_exc = e
+                continue
             raise
+    raise last_exc
 
 
 def ensure_default_admin() -> None:
@@ -56,12 +84,15 @@ def ensure_default_admin() -> None:
     password = os.environ.get("CV_ADMIN_PASSWORD")
     if not password:
         return
+
+    def _init(users: dict) -> dict | None:
+        if users:
+            return None
+        logger.info("Creating default admin from CV_ADMIN_PASSWORD")
+        return {"admin": {"hash": hash_password(password), "role": "admin"}}
+
     try:
-        users = _read_users()
-        if not users:
-            logger.info("Creating default admin from CV_ADMIN_PASSWORD")
-            users["admin"] = {"hash": hash_password(password), "role": "admin"}
-            _write_users(users)
+        _update_users(_init)
     except Exception as e:
         logger.warning("Could not initialize default admin: %s", e)
 
@@ -80,42 +111,57 @@ def authenticate(username: str, password: str) -> dict | None:
     return {"username": username, "role": entry["role"]}
 
 
+def get_user_entry(username: str) -> dict | None:
+    """Current store entry for a user, or None if deleted — used to re-validate
+    refresh tokens so removed/demoted users don't keep their old access."""
+    entry = _read_users().get(username)
+    return {"username": username, "role": entry["role"]} if entry else None
+
+
 def list_users() -> list[dict]:
     users = _read_users()
     return [{"username": u, "role": v["role"]} for u, v in users.items()]
 
 
 def create_user(username: str, password: str, role: str) -> None:
-    users = _read_users()
-    if username in users:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=409, detail=f"User '{username}' already exists")
-    users[username] = {"hash": hash_password(password), "role": role}
-    _write_users(users)
+    hashed = hash_password(password)
+
+    def _create(users: dict) -> dict:
+        if username in users:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail=f"User '{username}' already exists")
+        return {**users, username: {"hash": hashed, "role": role}}
+
+    _update_users(_create)
 
 
 def delete_user(username: str) -> None:
-    users = _read_users()
-    if username not in users:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
-    del users[username]
-    _write_users(users)
+    def _delete(users: dict) -> dict:
+        if username not in users:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        return {u: v for u, v in users.items() if u != username}
+
+    _update_users(_delete)
 
 
 def change_password(username: str, new_password: str) -> None:
-    users = _read_users()
-    if username not in users:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
-    users[username]["hash"] = hash_password(new_password)
-    _write_users(users)
+    hashed = hash_password(new_password)
+
+    def _change(users: dict) -> dict:
+        if username not in users:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        return {**users, username: {**users[username], "hash": hashed}}
+
+    _update_users(_change)
 
 
 def change_role(username: str, role: str) -> None:
-    users = _read_users()
-    if username not in users:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
-    users[username]["role"] = role
-    _write_users(users)
+    def _change(users: dict) -> dict:
+        if username not in users:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        return {**users, username: {**users[username], "role": role}}
+
+    _update_users(_change)
