@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Users, Shield, FileCode2, Server, Key, Settings, Clock } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { useAccessRequests } from '../../hooks/useAccessRequests'
 
 const links = [
   { to: '/users',            icon: Users,     label: 'Users',           desc: 'Manage cluster users'    },
@@ -13,6 +14,10 @@ const links = [
 
 export default function Sidebar() {
   const isAdmin = useAuthStore((s) => s.isAdmin())
+  // Same cached query the Access Requests page uses — admins see everyone's
+  // pending count (needs their action), others see their own (in progress).
+  const { data: accessRequests = [] } = useAccessRequests()
+  const pendingCount = accessRequests.filter((r) => r.status === 'pending').length
 
   return (
     <aside className="w-56 bg-surface-900 border-r border-surface-600 flex flex-col">
@@ -41,10 +46,15 @@ export default function Sidebar() {
             {({ isActive }) => (
               <>
                 <Icon size={17} className="shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium leading-tight">{label}</p>
                   <p className={`text-xs leading-tight truncate ${isActive ? 'text-brand-400/60' : 'text-surface-600'}`}>{desc}</p>
                 </div>
+                {to === '/access-requests' && pendingCount > 0 && (
+                  <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
               </>
             )}
           </NavLink>
