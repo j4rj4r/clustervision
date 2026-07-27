@@ -1,7 +1,8 @@
+import logging
+from functools import lru_cache
+
 import urllib3
 from kubernetes import client, config
-from functools import lru_cache
-import logging
 
 logger = logging.getLogger(__name__)
 

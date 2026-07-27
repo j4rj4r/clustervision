@@ -1,17 +1,26 @@
+
 from fastapi import APIRouter, Depends, Query
 
-from ..models.rbac import (
-    ClusterRoleCreate, RoleCreate, RoleUpdate, BindingCreate,
-    AssignRoleRequest, RoleRead, BindingRead, UserPermissionSummary,
-    NamespaceAccessEntry, CheckAccessRequest, CheckAccessResult, PaginatedList,
-)
-from ..services.rbac_service import RbacService
-from ..services.certificate_service import CertificateService
-from ..services.service_account_service import ServiceAccountService
-from ..dependencies import get_rbac_service, get_cert_service, get_sa_service
-from typing import Optional
 from ..core.async_utils import run_sync
 from ..core.exceptions import UserNotFoundError
+from ..dependencies import get_cert_service, get_rbac_service, get_sa_service
+from ..models.rbac import (
+    AssignRoleRequest,
+    BindingCreate,
+    BindingRead,
+    CheckAccessRequest,
+    CheckAccessResult,
+    ClusterRoleCreate,
+    NamespaceAccessEntry,
+    PaginatedList,
+    RoleCreate,
+    RoleRead,
+    RoleUpdate,
+    UserPermissionSummary,
+)
+from ..services.certificate_service import CertificateService
+from ..services.rbac_service import RbacService
+from ..services.service_account_service import ServiceAccountService
 
 router = APIRouter(prefix="/api/v1/rbac", tags=["rbac"])
 
@@ -33,7 +42,7 @@ _403 = {403: {"description": "Insufficient Kubernetes permissions"}}
 async def list_cluster_roles(
     include_system: bool = False,
     limit: int = Query(default=500, ge=1, le=1000),
-    cursor: Optional[str] = Query(default=None, alias="continue"),
+    cursor: str | None = Query(default=None, alias="continue"),
     svc: RbacService = Depends(get_rbac_service),
 ):
     return await run_sync(svc.list_cluster_roles, include_system, limit, cursor)
@@ -91,7 +100,7 @@ async def delete_cluster_role(name: str, svc: RbacService = Depends(get_rbac_ser
 async def list_roles(
     namespace: str,
     limit: int = Query(default=500, ge=1, le=1000),
-    cursor: Optional[str] = Query(default=None, alias="continue"),
+    cursor: str | None = Query(default=None, alias="continue"),
     svc: RbacService = Depends(get_rbac_service),
 ):
     return await run_sync(svc.list_roles, namespace, limit, cursor)
@@ -146,7 +155,7 @@ async def delete_role(namespace: str, name: str, svc: RbacService = Depends(get_
 )
 async def list_cluster_bindings(
     limit: int = Query(default=500, ge=1, le=1000),
-    cursor: Optional[str] = Query(default=None, alias="continue"),
+    cursor: str | None = Query(default=None, alias="continue"),
     svc: RbacService = Depends(get_rbac_service),
 ):
     return await run_sync(svc.list_cluster_role_bindings, limit, cursor)
@@ -257,7 +266,7 @@ async def assign_role(
     username: str,
     payload: AssignRoleRequest,
     user_kind: str = "User",
-    sa_namespace: str = None,
+    sa_namespace: str | None = None,
     svc: RbacService = Depends(get_rbac_service),
 ):
     await run_sync(
@@ -284,7 +293,7 @@ async def assign_role(
 async def revoke_role(
     username: str,
     role_name: str,
-    namespace: str = None,
+    namespace: str | None = None,
     svc: RbacService = Depends(get_rbac_service),
 ):
     await run_sync(svc.revoke_role, username, role_name, namespace)
@@ -345,7 +354,7 @@ async def check_access(
     groups: list[str] = []
     try:
         cert_user = await run_sync(cert_svc.get_user, payload.user)
-        groups = list(cert_user.get("groups") or []) + ["system:authenticated"]
+        groups = [*list(cert_user.get("groups") or []), "system:authenticated"]
     except UserNotFoundError:
         try:
             sa_user = await run_sync(sa_svc.get_user, payload.user)

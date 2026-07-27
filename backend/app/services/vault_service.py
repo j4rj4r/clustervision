@@ -104,6 +104,7 @@ except FileNotFoundError:
 
 def _core_v1():
     from kubernetes import client as k8s_client
+
     from ..core.kubernetes_client import get_local_api_client
     return k8s_client.CoreV1Api(api_client=get_local_api_client())
 

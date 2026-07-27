@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
@@ -87,7 +87,7 @@ class ServiceAccountService(RegistryMixin):
             if e.status != 409:
                 raise
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         user_record = {
             "name": name,
             "type": "service_account",
@@ -99,7 +99,7 @@ class ServiceAccountService(RegistryMixin):
         def _append(current: list[dict]) -> list[dict]:
             if any(u["name"] == name and u.get("namespace") == namespace for u in current):
                 raise UserAlreadyExistsError(name)
-            return current + [user_record]
+            return [*current, user_record]
 
         self._update_registry(_append)
         logger.info("Created service account user: %s in %s", name, namespace)
@@ -152,7 +152,7 @@ class ServiceAccountService(RegistryMixin):
         # Verify the SA actually exists in K8s
         self.core_v1.read_namespaced_service_account(name, namespace)
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         user_record = {
             "name": name,
             "type": "service_account",
@@ -165,7 +165,7 @@ class ServiceAccountService(RegistryMixin):
         def _append(current: list[dict]) -> list[dict]:
             if any(u["name"] == name and u.get("type") == "service_account" for u in current):
                 raise UserAlreadyExistsError(name)
-            return current + [user_record]
+            return [*current, user_record]
 
         self._update_registry(_append)
         logger.info("Imported service account user: %s from %s", name, namespace)

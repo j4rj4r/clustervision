@@ -4,18 +4,18 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, field_validator
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from kubernetes import client
+from pydantic import BaseModel, field_validator
 
 from ..config import get_settings
+from ..core.async_utils import run_sync
 from ..core.auth import create_register_token, decode_token
 from ..core.dependencies import require_admin
 from ..core.kubernetes_client import get_version_api
+from ..dependencies import get_api_client
 from ..models.auth import UserInfo
 from ..services.cluster_service import ClusterConnectionError, get_cluster_service
-from ..dependencies import get_api_client
-from ..core.async_utils import run_sync
 
 _CLUSTER_NAME_RE = re.compile(r'^[a-zA-Z0-9_-]{1,63}$')
 
@@ -40,7 +40,7 @@ class ClusterAdd(BaseModel):
     @classmethod
     def validate_name(cls, v: str) -> str:
         if not _CLUSTER_NAME_RE.match(v):
-            raise ValueError("name must be 1–63 alphanumeric characters, hyphens or underscores")
+            raise ValueError("name must be 1-63 alphanumeric characters, hyphens or underscores")
         return v
 
     @field_validator("api_url")
@@ -95,7 +95,7 @@ async def cluster_info(api_client: client.ApiClient = Depends(get_api_client)):
 async def list_clusters():
     svc = get_cluster_service()
     remote = await run_sync(svc.list_clusters)
-    return [{"name": "local", "api_url": "", "is_local": True}] + remote
+    return [{"name": "local", "api_url": "", "is_local": True}, *remote]
 
 
 @router.post(
@@ -164,7 +164,7 @@ async def bootstrap_script(
     if not _CLUSTER_NAME_RE.match(name):
         raise HTTPException(
             status_code=422,
-            detail="Cluster name must be 1–63 alphanumeric characters, hyphens or underscores."
+            detail="Cluster name must be 1-63 alphanumeric characters, hyphens or underscores."
         )
     settings = get_settings()
     base_url = settings.public_url.rstrip("/") if settings.public_url else str(request.base_url).rstrip("/")

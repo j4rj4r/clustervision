@@ -1,18 +1,23 @@
 import base64
-import time
 import logging
-from datetime import datetime, timezone
+import time
+from datetime import UTC, datetime
 
 from cryptography import x509
-from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 from fastapi import HTTPException
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from ..config import get_settings
-from ..core.exceptions import CertificateTimeoutError, ImportedUserError, UserAlreadyExistsError, UserNotFoundError
+from ..core.exceptions import (
+    CertificateTimeoutError,
+    ImportedUserError,
+    UserAlreadyExistsError,
+    UserNotFoundError,
+)
 from ..core.registry import RegistryMixin
 
 logger = logging.getLogger(__name__)
@@ -86,7 +91,7 @@ class CertificateService(RegistryMixin):
                     status="True",
                     reason="ClusterVisionApproval",
                     message=f"Approved by ClusterVision for user {username}",
-                    last_update_time=datetime.now(timezone.utc),
+                    last_update_time=datetime.now(UTC),
                 )
             ]
         )
@@ -106,7 +111,7 @@ class CertificateService(RegistryMixin):
         # Read the expiry from the signed certificate — the API server may cap
         # the requested duration (--cluster-signing-duration)
         signed_cert = x509.load_pem_x509_certificate(certificate_pem.encode())
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         expiry = signed_cert.not_valid_after_utc.isoformat()
         user_record = {
             "name": username,
@@ -146,7 +151,7 @@ class CertificateService(RegistryMixin):
         def _append(current: list[dict]) -> list[dict]:
             if any(u["name"] == username for u in current):
                 raise UserAlreadyExistsError(username)
-            return current + [user_record]
+            return [*current, user_record]
 
         self._update_registry(_append)
         logger.info("Created certificate user: %s", username)
@@ -180,7 +185,7 @@ class CertificateService(RegistryMixin):
 
     def import_user(self, username: str, groups: list[str]) -> dict:
         """Register an existing certificate user in the registry (no CSR created)."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         user_record = {
             "name": username,
             "type": "certificate",
@@ -193,7 +198,7 @@ class CertificateService(RegistryMixin):
         def _append(current: list[dict]) -> list[dict]:
             if any(u["name"] == username for u in current):
                 raise UserAlreadyExistsError(username)
-            return current + [user_record]
+            return [*current, user_record]
 
         self._update_registry(_append)
         logger.info("Imported certificate user: %s", username)

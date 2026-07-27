@@ -7,7 +7,9 @@ from ..core.async_utils import run_sync
 from ..core.dependencies import require_admin
 from ..models.auth import UserInfo
 from ..services.vault_service import (
-    get_vault_service, configure_vault, disable_vault,
+    configure_vault,
+    disable_vault,
+    get_vault_service,
 )
 
 router = APIRouter(prefix="/api/v1/admin/vault", tags=["admin"])

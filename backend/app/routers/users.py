@@ -1,13 +1,21 @@
 import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..models.user import UserCreate, UserImport, UserRead, UserWithCredentials, UserList, UserType
-from ..services.certificate_service import CertificateService
-from ..services.service_account_service import ServiceAccountService
-from ..services.rbac_service import RbacService
-from ..dependencies import get_cert_service, get_sa_service, get_rbac_service
 from ..core.async_utils import run_sync
 from ..core.exceptions import UserNotFoundError
+from ..dependencies import get_cert_service, get_rbac_service, get_sa_service
+from ..models.user import (
+    UserCreate,
+    UserImport,
+    UserList,
+    UserRead,
+    UserType,
+    UserWithCredentials,
+)
+from ..services.certificate_service import CertificateService
+from ..services.rbac_service import RbacService
+from ..services.service_account_service import ServiceAccountService
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 

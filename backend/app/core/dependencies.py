@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .auth import decode_token
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from ..models.auth import UserInfo
+from .auth import decode_token
 
 _bearer = HTTPBearer(auto_error=False)
 

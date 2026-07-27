@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from ..core.async_utils import run_sync
-from ..dependencies import get_cert_service, get_sa_service, get_kubeconfig_service, get_token_service
+from ..dependencies import (
+    get_cert_service,
+    get_kubeconfig_service,
+    get_sa_service,
+    get_token_service,
+)
 from ..models.kubeconfig import KubeconfigRequest
 from ..models.user import UserType
 from ..services.certificate_service import CertificateService
@@ -49,7 +54,11 @@ async def generate_kubeconfig(
     if payload.user_type == UserType.certificate:
         private_key_pem = payload.private_key_pem
         if not private_key_pem:
-            from ..services.vault_service import VaultError, VaultNotFoundError, get_vault_service
+            from ..services.vault_service import (
+                VaultError,
+                VaultNotFoundError,
+                get_vault_service,
+            )
             # get_vault_service may re-sync from the config Secret — keep it off the event loop
             vault_svc = await run_sync(get_vault_service)
             if vault_svc:

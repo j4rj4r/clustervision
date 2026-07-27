@@ -1,6 +1,7 @@
+from enum import StrEnum
+from typing import Generic, TypeVar
+
 from pydantic import BaseModel, Field
-from typing import Generic, Optional, TypeVar
-from enum import Enum
 
 T = TypeVar("T")
 
@@ -8,14 +9,14 @@ T = TypeVar("T")
 class PaginatedList(BaseModel, Generic[T]):
     items: list[T]
     total: int
-    next_continue: Optional[str] = None
+    next_continue: str | None = None
 
 
 class PolicyRule(BaseModel):
     api_groups: list[str] = Field(default_factory=lambda: [""])
     resources: list[str]
     verbs: list[str]
-    resource_names: Optional[list[str]] = None
+    resource_names: list[str] | None = None
 
 
 class RoleCreate(BaseModel):
@@ -35,12 +36,12 @@ class RoleUpdate(BaseModel):
 
 class RoleRead(BaseModel):
     name: str
-    namespace: Optional[str] = None
+    namespace: str | None = None
     rules: list[PolicyRule]
     is_system: bool = False
 
 
-class SubjectKind(str, Enum):
+class SubjectKind(StrEnum):
     User = "User"
     Group = "Group"
     ServiceAccount = "ServiceAccount"
@@ -49,7 +50,7 @@ class SubjectKind(str, Enum):
 class Subject(BaseModel):
     kind: SubjectKind
     name: str
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 class BindingCreate(BaseModel):
@@ -57,12 +58,12 @@ class BindingCreate(BaseModel):
     role_name: str
     role_kind: str = Field(..., pattern=r"^(ClusterRole|Role)$")
     subjects: list[Subject]
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 class BindingRead(BaseModel):
     name: str
-    namespace: Optional[str]
+    namespace: str | None
     role_ref: str
     role_kind: str
     subjects: list[Subject]
@@ -71,7 +72,7 @@ class BindingRead(BaseModel):
 class AssignRoleRequest(BaseModel):
     role_name: str
     role_kind: str = Field(default="ClusterRole", pattern=r"^(ClusterRole|Role)$")
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 class UserPermissionSummary(BaseModel):
@@ -83,7 +84,7 @@ class UserPermissionSummary(BaseModel):
 class NamespaceAccessEntry(BaseModel):
     subject: str
     subject_kind: str
-    subject_namespace: Optional[str] = None
+    subject_namespace: str | None = None
     role: str
     role_kind: str
     binding: str
@@ -94,7 +95,7 @@ class CheckAccessRequest(BaseModel):
     user: str
     verb: str
     resource: str
-    namespace: Optional[str] = None
+    namespace: str | None = None
     api_group: str = ""
 
 

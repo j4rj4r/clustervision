@@ -1,9 +1,9 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, Field, model_validator
-from enum import Enum
-from typing import Optional
 
 
-class UserType(str, Enum):
+class UserType(StrEnum):
     certificate = "certificate"
     service_account = "service_account"
 
@@ -28,8 +28,8 @@ class UserRead(BaseModel):
     groups: list[str]
     namespace: str = "default"
     created_at: str
-    cert_expiry: Optional[str] = None
-    csr_name: Optional[str] = None
+    cert_expiry: str | None = None
+    csr_name: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -40,9 +40,9 @@ class UserRead(BaseModel):
 
 
 class UserWithCredentials(UserRead):
-    private_key_pem: Optional[str] = None
-    certificate_pem: Optional[str] = None
-    vault_path: Optional[str] = None
+    private_key_pem: str | None = None
+    certificate_pem: str | None = None
+    vault_path: str | None = None
 
 
 class UserList(BaseModel):

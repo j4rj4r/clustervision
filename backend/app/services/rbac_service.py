@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
@@ -51,7 +50,7 @@ class RbacService:
         self,
         include_system: bool = False,
         limit: int = 500,
-        _continue: Optional[str] = None,
+        _continue: str | None = None,
     ) -> dict:
         kwargs: dict = {"limit": limit}
         if _continue:
@@ -115,7 +114,7 @@ class RbacService:
         self,
         namespace: str,
         limit: int = 500,
-        _continue: Optional[str] = None,
+        _continue: str | None = None,
     ) -> dict:
         kwargs: dict = {"limit": limit}
         if _continue:
@@ -172,7 +171,7 @@ class RbacService:
     def list_cluster_role_bindings(
         self,
         limit: int = 500,
-        _continue: Optional[str] = None,
+        _continue: str | None = None,
     ) -> dict:
         kwargs: dict = {"limit": limit}
         if _continue:
@@ -347,8 +346,8 @@ class RbacService:
         user_kind: str,
         role_name: str,
         role_kind: str,
-        namespace: Optional[str] = None,
-        sa_namespace: Optional[str] = None,
+        namespace: str | None = None,
+        sa_namespace: str | None = None,
     ):
         """Assign a role to a user. Creates or patches the appropriate binding.
 
@@ -386,7 +385,7 @@ class RbacService:
         self,
         username: str,
         role_name: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """Remove a user from all bindings referencing the given role."""
         binding_name = f"clustervision-{username}-{role_name}"
@@ -473,9 +472,9 @@ class RbacService:
         user: str,
         verb: str,
         resource: str,
-        namespace: Optional[str],
+        namespace: str | None,
         api_group: str = "",
-        groups: Optional[list[str]] = None,
+        groups: list[str] | None = None,
     ) -> dict:
         sar = self.auth_v1.create_subject_access_review(
             client.V1SubjectAccessReview(

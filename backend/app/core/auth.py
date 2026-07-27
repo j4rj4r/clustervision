@@ -1,7 +1,8 @@
 import os
-import jwt
+from datetime import UTC, datetime, timedelta
+
 import bcrypt
-from datetime import datetime, timedelta, timezone
+import jwt
 from fastapi import HTTPException, status
 
 _JWT_SECRET = os.environ.get("CV_JWT_SECRET", "")
@@ -27,7 +28,7 @@ def create_access_token(username: str, role: str) -> str:
     payload = {
         "sub": username,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES),
+        "exp": datetime.now(UTC) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES),
         "type": "access",
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
@@ -37,7 +38,7 @@ def create_refresh_token(username: str, role: str) -> str:
     payload = {
         "sub": username,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS),
+        "exp": datetime.now(UTC) + timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
@@ -48,7 +49,7 @@ def create_register_token(cluster_name: str) -> str:
     a single remote-cluster registration (scoped to the cluster name)."""
     payload = {
         "sub": cluster_name,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=_REGISTER_TOKEN_EXPIRE_MINUTES),
+        "exp": datetime.now(UTC) + timedelta(minutes=_REGISTER_TOKEN_EXPIRE_MINUTES),
         "type": "cluster_register",
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)

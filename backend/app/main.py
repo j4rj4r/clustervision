@@ -1,25 +1,25 @@
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from kubernetes.client.exceptions import ApiException
 
-from .core.exceptions import (
-    kubernetes_exception_handler,
-    user_not_found_handler,
-    user_exists_handler,
-    imported_user_handler,
-    UserNotFoundError,
-    UserAlreadyExistsError,
-    ImportedUserError,
-)
 from .config import get_settings
-from .core.kubernetes_client import get_api_client
 from .core.dependencies import auth_gate
-from .routers import users, rbac, kubeconfig, cluster, tokens
+from .core.exceptions import (
+    ImportedUserError,
+    UserAlreadyExistsError,
+    UserNotFoundError,
+    imported_user_handler,
+    kubernetes_exception_handler,
+    user_exists_handler,
+    user_not_found_handler,
+)
+from .core.kubernetes_client import get_api_client
 from .routers import auth as auth_router
+from .routers import cluster, kubeconfig, rbac, tokens, users
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
 

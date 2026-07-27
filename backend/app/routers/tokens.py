@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from ..services.token_service import TokenService
-from ..dependencies import get_token_service
 from ..core.async_utils import run_sync
+from ..dependencies import get_token_service
+from ..services.token_service import TokenService
 
 router = APIRouter(prefix="/api/v1/tokens", tags=["tokens"])
 

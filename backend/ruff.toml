@@ -1,0 +1,26 @@
+target-version = "py312"
+
+[lint]
+# E/F: pycodestyle errors + pyflakes — baseline correctness checks.
+# I: import sorting.
+# UP: pyupgrade — modernize typing/syntax for the target Python version.
+# RUF: ruff's own rules.
+#
+# Deliberately NOT enabled:
+# - B008 (bugbear): flags `Depends(...)` in argument defaults, which is
+#   FastAPI's own dependency-injection idiom, used throughout this codebase.
+# - BLE (blind-except): every `except Exception` in this codebase is a
+#   deliberate resilience/rollback boundary (best-effort cleanup, "don't crash
+#   startup", "roll back on any failure") — the broad catch is the point.
+select = ["E", "F", "I", "UP", "RUF"]
+# The codebase has never followed a line-length convention (long FastAPI
+# `description=` strings especially) — enforcing one now would mean
+# reformatting ~140 unrelated lines for no functional benefit.
+ignore = [
+    "E501",
+    # PEP 695 generic syntax needs Python 3.12.0+ exactly — these unsafe
+    # fixes buy no functional benefit over TypeVar/Generic and would remove
+    # any margin to run the code under an older interpreter (e.g. locally).
+    "UP046",
+    "UP047",
+]

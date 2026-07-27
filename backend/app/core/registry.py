@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
@@ -26,7 +26,7 @@ class RegistryMixin:
                     )
                 )
 
-    def _read_registry(self) -> tuple[list[dict], Optional[str]]:
+    def _read_registry(self) -> tuple[list[dict], str | None]:
         """Return (users, resourceVersion) — resourceVersion is None if the
         ConfigMap does not exist yet."""
         try:
@@ -52,7 +52,7 @@ class RegistryMixin:
         cycle is retried, so `mutate` must be safe to re-run and should perform
         its own consistency checks (duplicates, existence) against its input.
         """
-        last_exc: Optional[ApiException] = None
+        last_exc: ApiException | None = None
         for _ in range(_MAX_CONFLICT_RETRIES):
             users, rv = self._read_registry()
             updated = mutate(users)

@@ -1,7 +1,7 @@
 import json
-import uuid
 import logging
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from kubernetes import client
@@ -77,9 +77,9 @@ class TokenService:
             "user": user,
             "user_type": user_type,
             "namespace": namespace,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
-        self._update_history(lambda history: (history + [entry])[-500:])
+        self._update_history(lambda history: ([*history, entry])[-500:])
 
     def list_history(self) -> list[dict]:
         return list(reversed(self._load_history()))

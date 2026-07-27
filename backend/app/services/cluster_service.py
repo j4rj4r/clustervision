@@ -1,15 +1,14 @@
 import base64
 import json
 import logging
+import os
 import tempfile
 import threading
 import time
-import os
-from typing import Optional
 
 from kubernetes import client
-from kubernetes.client.exceptions import ApiException
 from kubernetes.client.configuration import Configuration
+from kubernetes.client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class ClusterService:
 
     # ── Registry ────────────────────────────────────────────────────────────
 
-    def _read_configs(self) -> tuple[list[dict], Optional[str]]:
+    def _read_configs(self) -> tuple[list[dict], str | None]:
         try:
             secret = self._core_v1.read_namespaced_secret(self._secret_name, self._namespace)
             raw_b64 = (secret.data or {}).get("clusters.json")
@@ -106,7 +105,7 @@ class ClusterService:
         def _append(configs: list[dict]) -> list[dict]:
             if any(c["name"] == name for c in configs):
                 raise ValueError(f"Cluster '{name}' already exists")
-            return configs + [{"name": name, "api_url": api_url, "ca_data": ca_data, "token": token}]
+            return [*configs, {"name": name, "api_url": api_url, "ca_data": ca_data, "token": token}]
 
         self._update_configs(_append)
         logger.info("Registered remote cluster: %s", name)
@@ -136,8 +135,8 @@ class ClusterService:
         if old is not None:
             try:
                 old.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing stale API client for %s: %s", name, e)
         ca_file = self._ca_files.pop(name, None)
         if ca_file and os.path.exists(ca_file):
             os.unlink(ca_file)
@@ -148,9 +147,8 @@ class ClusterService:
 
         # Write CA cert to a temp file (required by urllib3)
         ca_pem = base64.b64decode(cfg["ca_data"]).decode()
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f"-{name}.crt", mode="w")
-        tmp.write(ca_pem)
-        tmp.close()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f"-{name}.crt", mode="w") as tmp:
+            tmp.write(ca_pem)
         self._ca_files[name] = tmp.name
         configuration.ssl_ca_cert = tmp.name
         configuration.verify_ssl = True
@@ -215,14 +213,14 @@ class ClusterService:
 
 # ── Singleton ────────────────────────────────────────────────────────────────
 
-_instance: Optional[ClusterService] = None
+_instance: ClusterService | None = None
 
 
 def get_cluster_service() -> ClusterService:
     global _instance
     if _instance is None:
-        from ..core.kubernetes_client import get_local_api_client
         from ..config import get_settings
+        from ..core.kubernetes_client import get_local_api_client
         settings = get_settings()
         local_core_v1 = client.CoreV1Api(get_local_api_client())
         _instance = ClusterService(local_core_v1, settings.registry_namespace, settings.clusters_secret)
