@@ -14,6 +14,7 @@ const routeLabels: Record<string, string> = {
   '/rbac':       'Permissions',
   '/kubeconfig': 'Kubeconfig',
   '/tokens':     'Tokens',
+  '/access-requests': 'Access Requests',
   '/clusters':   'Clusters',
   '/settings':   'Settings',
 }

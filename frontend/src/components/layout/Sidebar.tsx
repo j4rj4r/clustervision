@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Shield, FileCode2, Server, Key, Settings } from 'lucide-react'
+import { Users, Shield, FileCode2, Server, Key, Settings, Clock } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
 const links = [
-  { to: '/users',      icon: Users,     label: 'Users',       desc: 'Manage cluster users'    },
-  { to: '/rbac',       icon: Shield,    label: 'Permissions', desc: 'Roles & bindings'        },
-  { to: '/kubeconfig', icon: FileCode2,  label: 'Kubeconfig',  desc: 'Generate access config'  },
-  { to: '/tokens',     icon: Key,       label: 'History',     desc: 'Kubeconfig generations'  },
-  { to: '/clusters',   icon: Server,    label: 'Clusters',    desc: 'Connected clusters'      },
+  { to: '/users',            icon: Users,     label: 'Users',           desc: 'Manage cluster users'    },
+  { to: '/rbac',             icon: Shield,    label: 'Permissions',     desc: 'Roles & bindings'        },
+  { to: '/access-requests',  icon: Clock,     label: 'Access Requests', desc: 'Time-boxed role grants'  },
+  { to: '/kubeconfig',       icon: FileCode2, label: 'Kubeconfig',      desc: 'Generate access config'  },
+  { to: '/tokens',           icon: Key,       label: 'History',         desc: 'Kubeconfig generations'  },
+  { to: '/clusters',         icon: Server,    label: 'Clusters',        desc: 'Connected clusters'      },
 ]
 
 export default function Sidebar() {

@@ -50,6 +50,19 @@ backend:
       cpu: 500m
       memory: 256Mi
 
+  # Revokes JIT access-request bindings past their expiry — runs across the
+  # local cluster and every registered remote cluster.
+  jitCleanup:
+    enabled: true
+    schedule: "*/5 * * * *"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
   service:
     type: ClusterIP
     port: 8000

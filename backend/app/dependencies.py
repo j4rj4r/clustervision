@@ -2,6 +2,7 @@ from fastapi import Depends, Query
 from kubernetes import client
 
 from .core.kubernetes_client import get_local_api_client
+from .services.access_request_service import AccessRequestService
 from .services.certificate_service import CertificateService
 from .services.cluster_service import get_cluster_service
 from .services.kubeconfig_service import KubeconfigService
@@ -34,3 +35,7 @@ def get_kubeconfig_service(api_client: client.ApiClient = Depends(get_api_client
 
 def get_token_service(api_client: client.ApiClient = Depends(get_api_client)) -> TokenService:
     return TokenService(api_client)
+
+
+def get_access_request_service(api_client: client.ApiClient = Depends(get_api_client)) -> AccessRequestService:
+    return AccessRequestService(api_client)

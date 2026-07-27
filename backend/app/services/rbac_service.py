@@ -194,12 +194,18 @@ class RbacService:
         }
 
     def create_cluster_role_binding(
-        self, name: str, role_name: str, subjects: list[Subject]
+        self,
+        name: str,
+        role_name: str,
+        subjects: list[Subject],
+        extra_labels: dict | None = None,
+        extra_annotations: dict | None = None,
     ) -> dict:
         crb = client.V1ClusterRoleBinding(
             metadata=client.V1ObjectMeta(
                 name=name,
-                labels={"managed-by": "clustervision"},
+                labels={"managed-by": "clustervision", **(extra_labels or {})},
+                annotations=extra_annotations or None,
             ),
             role_ref=client.V1RoleRef(
                 api_group="rbac.authorization.k8s.io",
@@ -254,13 +260,16 @@ class RbacService:
         role_name: str,
         role_kind: str,
         subjects: list[Subject],
+        extra_labels: dict | None = None,
+        extra_annotations: dict | None = None,
     ) -> dict:
         self._ensure_namespace(namespace)
         rb = client.V1RoleBinding(
             metadata=client.V1ObjectMeta(
                 name=name,
                 namespace=namespace,
-                labels={"managed-by": "clustervision"},
+                labels={"managed-by": "clustervision", **(extra_labels or {})},
+                annotations=extra_annotations or None,
             ),
             role_ref=client.V1RoleRef(
                 api_group="rbac.authorization.k8s.io",
