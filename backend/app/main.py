@@ -29,12 +29,16 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from .core.async_utils import run_sync
+    from .db.session import init_db
+
     # Eagerly initialize the K8s client on startup to surface config errors early
     try:
         get_api_client()
         logger.info("Kubernetes client initialized successfully")
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
+    await run_sync(init_db)
     ensure_default_admin()
     from .services.vault_service import init_vault_from_env
     await init_vault_from_env()

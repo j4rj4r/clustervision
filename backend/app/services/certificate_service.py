@@ -10,8 +10,8 @@ from cryptography.x509.oid import NameOID
 from fastapi import HTTPException
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from sqlalchemy.orm import Session
 
-from ..config import get_settings
 from ..core.exceptions import (
     CertificateTimeoutError,
     ImportedUserError,
@@ -26,10 +26,10 @@ REGISTRY_ANNOTATION = "clustervision.io/managed"
 
 
 class CertificateService(RegistryMixin):
-    def __init__(self, api_client: client.ApiClient):
+    def __init__(self, api_client: client.ApiClient, db: Session):
         self.certs_api = client.CertificatesV1Api(api_client)
         self.core_v1 = client.CoreV1Api(api_client)
-        self.settings = get_settings()
+        self.db = db
 
     # ── Public API ──────────────────────────────────────────────────────────
 

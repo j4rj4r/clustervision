@@ -13,6 +13,7 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from ..core.kubernetes_client import get_local_api_client
+from ..db.session import init_db, new_session
 from ..services.access_request_service import (
     EXPIRES_ANNOTATION,
     JIT_LABEL,
@@ -62,15 +63,12 @@ def _reconcile(api_client: client.ApiClient, cluster_label: str) -> int:
             if e.status != 404:
                 raise
 
-    if revoked:
-        # Keep the request registry's status in sync with reality, so the UI
-        # doesn't keep showing "approved/active" for a binding that's gone.
-        AccessRequestService(api_client).mark_expired()
-
     return revoked
 
 
 def main() -> None:
+    init_db()
+
     total = _reconcile(get_local_api_client(), "local")
 
     cluster_svc = get_cluster_service()
@@ -79,6 +77,18 @@ def main() -> None:
             total += _reconcile(cluster_svc.get_api_client(c["name"]), c["name"])
         except Exception:
             logger.exception("Failed to reconcile cluster %s", c["name"])
+
+    # The request registry is a single central database (unlike the old
+    # per-cluster ConfigMaps), so this only needs to run once regardless of
+    # how many clusters were reconciled above.
+    if total:
+        db = new_session()
+        try:
+            # api_client isn't used by mark_expired() — the local client is
+            # enough to satisfy the constructor.
+            AccessRequestService(get_local_api_client(), db).mark_expired()
+        finally:
+            db.close()
 
     logger.info("JIT access cleanup complete — %d binding(s) revoked", total)
 

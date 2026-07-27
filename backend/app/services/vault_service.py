@@ -1,7 +1,5 @@
-import base64
 import json
 import logging
-import os
 import ssl
 import threading
 import time
@@ -87,60 +85,51 @@ class VaultService:
         return self._cached_healthy, self._cached_error
 
 
-# ── Config persistence (K8s Secret) ──────────────────────────────────────────
+# ── Config persistence (database) ─────────────────────────────────────────────
 # The runtime Vault config must survive pod restarts AND be visible to every
 # gunicorn worker/replica — an in-memory singleton alone only affects the one
-# worker that handled the PUT. The Secret is the source of truth; each worker
-# re-syncs from it at most every _SYNC_INTERVAL seconds.
-
-_CONFIG_SECRET = "clustervision-vault-config"
-
-try:
-    with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as _f:
-        _NAMESPACE = _f.read().strip()
-except FileNotFoundError:
-    _NAMESPACE = os.environ.get("NAMESPACE", "default")
+# worker that handled the PUT. The `vault_config` row is the source of truth;
+# each worker re-syncs from it at most every _SYNC_INTERVAL seconds.
 
 
-def _core_v1():
-    from kubernetes import client as k8s_client
-
-    from ..core.kubernetes_client import get_local_api_client
-    return k8s_client.CoreV1Api(api_client=get_local_api_client())
-
-
-def _read_config_secret() -> dict | None:
-    """None if the Secret does not exist; {"enabled": False} marks an explicit
-    runtime disable; anything else is a full config dict."""
-    from kubernetes.client.exceptions import ApiException
+def _read_config_row() -> dict | None:
+    """None if never configured; {"enabled": False} marks an explicit runtime
+    disable; anything else is a full config dict."""
+    from ..db.models import VaultConfigRow
+    from ..db.session import new_session
+    db = new_session()
     try:
-        secret = _core_v1().read_namespaced_secret(_CONFIG_SECRET, _NAMESPACE)
-        raw = (secret.data or {}).get("config.json", "")
-        return json.loads(base64.b64decode(raw).decode()) if raw else None
-    except ApiException as e:
-        if e.status == 404:
+        row = db.get(VaultConfigRow, 1)
+        if row is None:
             return None
-        raise
+        d = row.to_dict()
+        return d if d.pop("enabled") else {"enabled": False}
+    finally:
+        db.close()
 
 
-def _write_config_secret(cfg: dict) -> None:
-    from kubernetes import client as k8s_client
-    from kubernetes.client.exceptions import ApiException
-    encoded = base64.b64encode(json.dumps(cfg).encode()).decode()
-    body = k8s_client.V1Secret(
-        metadata=k8s_client.V1ObjectMeta(name=_CONFIG_SECRET, namespace=_NAMESPACE),
-        data={"config.json": encoded},
-    )
+def _write_config_row(cfg: dict) -> None:
+    from ..db.models import VaultConfigRow
+    from ..db.session import new_session
+    db = new_session()
     try:
-        _core_v1().replace_namespaced_secret(_CONFIG_SECRET, _NAMESPACE, body)
-    except ApiException as e:
-        if e.status == 404:
-            _core_v1().create_namespaced_secret(_NAMESPACE, body)
-        else:
-            raise
+        row = db.get(VaultConfigRow, 1)
+        if row is None:
+            row = VaultConfigRow(id=1)
+            db.add(row)
+        row.enabled = cfg.get("enabled", True) is not False
+        row.addr = cfg.get("addr", "")
+        row.token = cfg.get("token", "")
+        row.mount = cfg.get("mount", "secret")
+        row.base_path = cfg.get("base_path", "clustervision/users")
+        row.namespace = cfg.get("namespace", "")
+        row.tls_skip_verify = bool(cfg.get("tls_skip_verify", False))
+        db.commit()
+    finally:
+        db.close()
 
 
-# ── Singleton, synchronized across workers via the config Secret ─────────────
+# ── Singleton, synchronized across workers via the config row ─────────────
 
 _vault_svc: VaultService | None = None
 _lock = threading.Lock()
@@ -188,7 +177,7 @@ def _apply_config(cfg: dict | None) -> None:
 
 
 def _sync(force: bool = False) -> None:
-    """Re-read the config Secret so this worker converges on the shared state.
+    """Re-read the config row so this worker converges on the shared state.
     Blocking (K8s read) — must run in a thread, not on the event loop."""
     global _last_sync
     now = time.monotonic()
@@ -196,9 +185,9 @@ def _sync(force: bool = False) -> None:
         return
     _last_sync = now
     try:
-        cfg = _read_config_secret()
+        cfg = _read_config_row()
     except Exception as e:
-        logger.warning("Could not read Vault config secret: %s", e)
+        logger.warning("Could not read Vault config: %s", e)
         # Keep the current state; bootstrap from env if we have nothing yet
         if _vault_svc is None:
             _apply_config(_env_config())
@@ -225,7 +214,7 @@ def configure_vault(addr: str, token: str, mount: str, base_path: str, namespace
         "tls_skip_verify": tls_skip_verify,
     }
     with _lock:
-        _write_config_secret(cfg)  # persist first — other workers pick it up
+        _write_config_row(cfg)  # persist first — other workers pick it up
         _apply_config(cfg)
         _last_sync = time.monotonic()
     return _vault_svc
@@ -235,7 +224,7 @@ def disable_vault():
     global _vault_svc, _last_sync
     with _lock:
         # Explicit marker: an absent Secret would fall back to the env config
-        _write_config_secret({"enabled": False})
+        _write_config_row({"enabled": False})
         _vault_svc = None
         _last_sync = time.monotonic()
 

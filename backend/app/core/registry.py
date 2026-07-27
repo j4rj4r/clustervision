@@ -1,90 +1,60 @@
-import json
 from collections.abc import Callable
+from datetime import UTC, datetime
 
-from kubernetes import client
-from kubernetes.client.exceptions import ApiException
+from sqlalchemy import delete, select
 
-_MAX_CONFLICT_RETRIES = 5
+from ..db.models import ManagedUser
 
 
 class RegistryMixin:
-    """ConfigMap-backed user registry.
+    """Managed-user registry (certificate + ServiceAccount users), backed by
+    the `managed_users` table.
 
     Requires subclasses to expose:
-      - self.core_v1  : client.CoreV1Api
-      - self.settings : Settings
+      - self.db : sqlalchemy.orm.Session
     """
 
-    def _ensure_namespace(self):
-        try:
-            self.core_v1.read_namespace(self.settings.registry_namespace)
-        except ApiException as e:
-            if e.status == 404:
-                self.core_v1.create_namespace(
-                    client.V1Namespace(
-                        metadata=client.V1ObjectMeta(name=self.settings.registry_namespace)
-                    )
-                )
-
-    def _read_registry(self) -> tuple[list[dict], str | None]:
-        """Return (users, resourceVersion) — resourceVersion is None if the
-        ConfigMap does not exist yet."""
-        try:
-            cm = self.core_v1.read_namespaced_config_map(
-                self.settings.registry_configmap,
-                self.settings.registry_namespace,
-            )
-            users = json.loads((cm.data or {}).get("users.json", "[]"))
-            return users, cm.metadata.resource_version
-        except ApiException as e:
-            if e.status == 404:
-                return [], None
-            raise
-
     def _load_registry(self) -> list[dict]:
-        return self._read_registry()[0]
+        rows = self.db.scalars(select(ManagedUser)).all()
+        return [r.to_dict() for r in rows]
 
     def _update_registry(self, mutate: Callable[[list[dict]], list[dict]]) -> list[dict]:
-        """Atomically update the registry with optimistic locking.
+        """Replace the registry with `mutate(current)`. `mutate` receives the
+        current user list and returns the new one — same contract as the
+        ConfigMap-backed version this replaces, so callers (which do their own
+        consistency checks — duplicates, existence — against the input) don't
+        need to change.
 
-        `mutate` receives the freshly-loaded user list and returns the new one.
-        On a resourceVersion conflict (concurrent writer) the load+mutate+write
-        cycle is retried, so `mutate` must be safe to re-run and should perform
-        its own consistency checks (duplicates, existence) against its input.
+        Diffs the before/after lists into targeted inserts/updates/deletes
+        rather than truncating the table, so concurrent unrelated writes don't
+        race each other away.
         """
-        last_exc: ApiException | None = None
-        for _ in range(_MAX_CONFLICT_RETRIES):
-            users, rv = self._read_registry()
-            updated = mutate(users)
-            data = {"users.json": json.dumps(updated, indent=2)}
-            try:
-                if rv is None:
-                    self._ensure_namespace()
-                    self.core_v1.create_namespaced_config_map(
-                        self.settings.registry_namespace,
-                        client.V1ConfigMap(
-                            metadata=client.V1ObjectMeta(
-                                name=self.settings.registry_configmap,
-                                namespace=self.settings.registry_namespace,
-                            ),
-                            data=data,
-                        ),
-                    )
-                else:
-                    self.core_v1.patch_namespaced_config_map(
-                        self.settings.registry_configmap,
-                        self.settings.registry_namespace,
-                        client.V1ConfigMap(
-                            metadata=client.V1ObjectMeta(resource_version=rv),
-                            data=data,
-                        ),
-                    )
-                return updated
-            except ApiException as e:
-                # 409 = conflict: either the resourceVersion changed under us
-                # or the ConfigMap was created concurrently — reload and retry
-                if e.status == 409:
-                    last_exc = e
-                    continue
-                raise
-        raise last_exc
+        before = {(u["name"], u.get("namespace", "default")): u for u in self._load_registry()}
+        after_list = mutate(list(before.values()))
+        after = {(u["name"], u.get("namespace", "default")): u for u in after_list}
+
+        for key in before.keys() - after.keys():
+            name, namespace = key
+            self.db.execute(delete(ManagedUser).where(ManagedUser.name == name, ManagedUser.namespace == namespace))
+
+        for key, u in after.items():
+            name, namespace = key
+            created_at = u.get("created_at")
+            cert_expiry = u.get("cert_expiry")
+            values = {
+                "type": u["type"],
+                "groups_csv": ",".join(u.get("groups") or []),
+                "created_at": datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
+                "csr_name": u.get("csr_name"),
+                "cert_expiry": datetime.fromisoformat(cert_expiry) if cert_expiry else None,
+                "imported": bool(u.get("imported", False)),
+            }
+            existing = self.db.get(ManagedUser, (name, namespace))
+            if existing is None:
+                self.db.add(ManagedUser(name=name, namespace=namespace, **values))
+            elif before.get(key) != u:
+                for k, v in values.items():
+                    setattr(existing, k, v)
+
+        self.db.commit()
+        return after_list

@@ -8,9 +8,6 @@ class Settings(BaseSettings):
     app_version: str = "dev"
     cluster_name: str = "kubernetes"
     cluster_api_url: str = ""
-    registry_namespace: str = "clustervision"
-    registry_configmap: str = "user-registry"
-    clusters_secret: str = "clustervision-clusters"
     cors_origins: list[str] = []
     # Public URL used in bootstrap scripts — auto-detected from request if empty
     public_url: str = ""
@@ -23,6 +20,13 @@ class Settings(BaseSettings):
     vault_base_path: str = "clustervision/users"
     vault_namespace: str = ""
     vault_tls_skip_verify: bool = False
+
+    # Required PostgreSQL database — all ClusterVision application state
+    # (local login accounts, managed user registry, token history, cluster
+    # registry, Vault runtime config, access requests) is stored here. Native
+    # Kubernetes objects the app manages (RBAC objects, CSRs, ServiceAccount
+    # token Secrets) are unaffected — those must remain in Kubernetes.
+    database_url: str
 
     @field_validator("cors_origins", mode="before")
     @classmethod

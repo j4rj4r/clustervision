@@ -40,12 +40,18 @@ spec:
               value: {{ .Values.backend.env.clusterName | quote }}
             - name: CLUSTER_API_URL
               value: {{ .Values.backend.env.clusterApiUrl | quote }}
-            - name: REGISTRY_NAMESPACE
-              value: {{ .Values.backend.env.registryNamespace | quote }}
             - name: CORS_ORIGINS
               value: {{ .Values.backend.env.corsOrigins | toJson | quote }}
             - name: PUBLIC_URL
               value: {{ .Values.backend.env.publicUrl | quote }}
+            {{- if not (or .Values.backend.env.database.url .Values.backend.env.database.existingSecret) }}
+            {{- fail "backend.env.database.url or backend.env.database.existingSecret is required — ClusterVision needs a PostgreSQL database" }}
+            {{- end }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.env.database.existingSecret | default (printf "%s-database" (include "clustervision.fullname" .)) }}
+                  key: {{ .Values.backend.env.database.existingSecretKey }}
             - name: NAMESPACE
               valueFrom:
                 fieldRef:

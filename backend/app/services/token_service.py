@@ -1,94 +1,48 @@
-import json
 import logging
-import uuid
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
-from ..config import get_settings
+from ..db.models import TokenHistoryEntry
 
 logger = logging.getLogger(__name__)
 
-HISTORY_CONFIGMAP = "clustervision-token-history"
-
 
 class TokenService:
-    def __init__(self, api_client: client.ApiClient):
+    def __init__(self, api_client: client.ApiClient, db: Session):
         self.core_v1 = client.CoreV1Api(api_client)
-        self.settings = get_settings()
+        self.db = db
 
     # ── History ───────────────────────────────────────────────────────────────
 
-    def _read_history(self) -> tuple[list[dict], str | None]:
-        try:
-            cm = self.core_v1.read_namespaced_config_map(
-                HISTORY_CONFIGMAP, self.settings.registry_namespace
-            )
-            return json.loads((cm.data or {}).get("history.json", "[]")), cm.metadata.resource_version
-        except ApiException as e:
-            if e.status == 404:
-                return [], None
-            raise
-
-    def _load_history(self) -> list[dict]:
-        return self._read_history()[0]
-
-    def _update_history(self, mutate):
-        """Atomically update the history ConfigMap with optimistic locking —
-        retried on resourceVersion conflicts."""
-        last_exc = None
-        for _ in range(5):
-            history, rv = self._read_history()
-            data = {"history.json": json.dumps(mutate(history), indent=2)}
-            try:
-                if rv is None:
-                    self.core_v1.create_namespaced_config_map(
-                        self.settings.registry_namespace,
-                        client.V1ConfigMap(
-                            metadata=client.V1ObjectMeta(
-                                name=HISTORY_CONFIGMAP,
-                                namespace=self.settings.registry_namespace,
-                            ),
-                            data=data,
-                        ),
-                    )
-                else:
-                    self.core_v1.patch_namespaced_config_map(
-                        HISTORY_CONFIGMAP,
-                        self.settings.registry_namespace,
-                        client.V1ConfigMap(
-                            metadata=client.V1ObjectMeta(resource_version=rv),
-                            data=data,
-                        ),
-                    )
-                return
-            except ApiException as e:
-                if e.status == 409:
-                    last_exc = e
-                    continue
-                raise
-        raise last_exc
-
     def record_generation(self, user: str, user_type: str, namespace: str):
-        entry = {
-            "id": str(uuid.uuid4()),
-            "user": user,
-            "user_type": user_type,
-            "namespace": namespace,
-            "generated_at": datetime.now(UTC).isoformat(),
-        }
-        self._update_history(lambda history: ([*history, entry])[-500:])
+        self.db.add(TokenHistoryEntry(
+            user=user, user_type=user_type, namespace=namespace, generated_at=datetime.now(UTC),
+        ))
+        # Same 500-entry retention the ConfigMap version had — old entries are
+        # pure audit noise past that point.
+        ids = self.db.scalars(
+            select(TokenHistoryEntry.id).order_by(TokenHistoryEntry.generated_at.desc()).offset(500)
+        ).all()
+        if ids:
+            self.db.execute(delete(TokenHistoryEntry).where(TokenHistoryEntry.id.in_(ids)))
+        self.db.commit()
 
     def list_history(self) -> list[dict]:
-        return list(reversed(self._load_history()))
+        rows = self.db.scalars(select(TokenHistoryEntry).order_by(TokenHistoryEntry.generated_at.desc()))
+        return [r.to_dict() for r in rows]
 
     def delete_history_entry(self, entry_id: str):
-        self._update_history(lambda history: [e for e in history if e.get("id") != entry_id])
+        self.db.execute(delete(TokenHistoryEntry).where(TokenHistoryEntry.id == entry_id))
+        self.db.commit()
 
     def clear_history(self):
-        self._update_history(lambda history: [])
+        self.db.execute(delete(TokenHistoryEntry))
+        self.db.commit()
 
     # ── SA token secrets ──────────────────────────────────────────────────────
 

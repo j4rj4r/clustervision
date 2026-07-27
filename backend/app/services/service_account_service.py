@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from sqlalchemy.orm import Session
 
-from ..config import get_settings
 from ..core.exceptions import UserAlreadyExistsError, UserNotFoundError
 from ..core.registry import RegistryMixin
 
@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceAccountService(RegistryMixin):
-    def __init__(self, api_client: client.ApiClient):
+    def __init__(self, api_client: client.ApiClient, db: Session):
         self.core_v1 = client.CoreV1Api(api_client)
-        self.settings = get_settings()
+        self.db = db
 
     def list_users(self) -> list[dict]:
         return [u for u in self._load_registry() if u.get("type") == "service_account"]

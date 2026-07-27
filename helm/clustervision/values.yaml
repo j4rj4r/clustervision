@@ -14,13 +14,23 @@ backend:
   env:
     clusterName: "kubernetes"
     clusterApiUrl: ""        # Auto-detected in-cluster if empty
-    registryNamespace: "clustervision"
     # corsOrigins: restrict to your frontend host, e.g. https://clustervision.example.com
     # Leave empty to deny all cross-origin requests (nginx Ingress handles routing)
     corsOrigins: []
     # publicUrl: canonical URL used in bootstrap scripts (prevents Host header injection)
     # e.g. https://clustervision.example.com — auto-detected from request if empty
     publicUrl: ""
+
+    # Required PostgreSQL database — all ClusterVision application state lives
+    # here (local login accounts, managed user registry, token history,
+    # cluster registry, Vault runtime config, access requests). Native
+    # Kubernetes objects the app manages (RBAC objects, CSRs, ServiceAccount
+    # token Secrets) are unaffected and stay in Kubernetes.
+    # Priority: existingSecret > url — one of the two is required.
+    database:
+      url: ""              # e.g. postgresql+psycopg://user:pass@host:5432/clustervision
+      existingSecret: ""    # name of an existing Secret containing the URL
+      existingSecretKey: "database-url"
 
     auth:
       # JWT signing secret.

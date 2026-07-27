@@ -1,7 +1,11 @@
+from collections.abc import Generator
+
 from fastapi import Depends, Query
 from kubernetes import client
+from sqlalchemy.orm import Session
 
 from .core.kubernetes_client import get_local_api_client
+from .db.session import new_session
 from .services.access_request_service import AccessRequestService
 from .services.certificate_service import CertificateService
 from .services.cluster_service import get_cluster_service
@@ -17,12 +21,26 @@ def get_api_client(cluster: str = Query("local")) -> client.ApiClient:
     return get_cluster_service().get_api_client(cluster)
 
 
-def get_cert_service(api_client: client.ApiClient = Depends(get_api_client)) -> CertificateService:
-    return CertificateService(api_client)
+def get_db_session() -> Generator[Session, None, None]:
+    session = new_session()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
-def get_sa_service(api_client: client.ApiClient = Depends(get_api_client)) -> ServiceAccountService:
-    return ServiceAccountService(api_client)
+def get_cert_service(
+    api_client: client.ApiClient = Depends(get_api_client),
+    db: Session = Depends(get_db_session),
+) -> CertificateService:
+    return CertificateService(api_client, db)
+
+
+def get_sa_service(
+    api_client: client.ApiClient = Depends(get_api_client),
+    db: Session = Depends(get_db_session),
+) -> ServiceAccountService:
+    return ServiceAccountService(api_client, db)
 
 
 def get_rbac_service(api_client: client.ApiClient = Depends(get_api_client)) -> RbacService:
@@ -33,9 +51,15 @@ def get_kubeconfig_service(api_client: client.ApiClient = Depends(get_api_client
     return KubeconfigService(api_client)
 
 
-def get_token_service(api_client: client.ApiClient = Depends(get_api_client)) -> TokenService:
-    return TokenService(api_client)
+def get_token_service(
+    api_client: client.ApiClient = Depends(get_api_client),
+    db: Session = Depends(get_db_session),
+) -> TokenService:
+    return TokenService(api_client, db)
 
 
-def get_access_request_service(api_client: client.ApiClient = Depends(get_api_client)) -> AccessRequestService:
-    return AccessRequestService(api_client)
+def get_access_request_service(
+    api_client: client.ApiClient = Depends(get_api_client),
+    db: Session = Depends(get_db_session),
+) -> AccessRequestService:
+    return AccessRequestService(api_client, db)

@@ -1,5 +1,4 @@
 import base64
-import json
 import logging
 import os
 import tempfile
@@ -9,6 +8,10 @@ import time
 from kubernetes import client
 from kubernetes.client.configuration import Configuration
 from kubernetes.client.exceptions import ApiException
+from sqlalchemy import select
+
+from ..db.models import RegisteredCluster
+from ..db.session import new_session
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +25,7 @@ class ClusterConnectionError(Exception):
 
 
 class ClusterService:
-    def __init__(self, local_core_v1: client.CoreV1Api, namespace: str, secret_name: str):
-        self._core_v1 = local_core_v1
-        self._namespace = namespace
-        self._secret_name = secret_name
+    def __init__(self):
         self._clients: dict[str, client.ApiClient] = {}
         self._client_cfgs: dict[str, dict] = {}  # config each cached client was built from
         self._ca_files: dict[str, str] = {}  # cluster -> tmp file path
@@ -33,58 +33,44 @@ class ClusterService:
         self._last_reload = 0.0
 
     # ── Registry ────────────────────────────────────────────────────────────
-
-    def _read_configs(self) -> tuple[list[dict], str | None]:
-        try:
-            secret = self._core_v1.read_namespaced_secret(self._secret_name, self._namespace)
-            raw_b64 = (secret.data or {}).get("clusters.json")
-            configs = json.loads(base64.b64decode(raw_b64).decode()) if raw_b64 else []
-            return configs, secret.metadata.resource_version
-        except ApiException as e:
-            if e.status == 404:
-                return [], None
-            raise
+    # ClusterService is a long-lived singleton (not request-scoped), so each
+    # call opens and closes its own short-lived DB session rather than holding
+    # one for the process lifetime.
 
     def _load_configs(self) -> list[dict]:
-        return self._read_configs()[0]
+        db = new_session()
+        try:
+            return [c.to_dict() for c in db.scalars(select(RegisteredCluster))]
+        finally:
+            db.close()
 
     def _update_configs(self, mutate) -> None:
-        """Atomically update the clusters secret with optimistic locking —
-        retried on resourceVersion conflicts, so `mutate` must re-check its
-        preconditions against its input."""
-        last_exc = None
-        for _ in range(5):
-            configs, rv = self._read_configs()
-            updated = mutate(configs)
-            encoded = base64.b64encode(json.dumps(updated).encode()).decode()
-            data = {"clusters.json": encoded}
-            try:
-                if rv is None:
-                    self._core_v1.create_namespaced_secret(
-                        self._namespace,
-                        client.V1Secret(
-                            metadata=client.V1ObjectMeta(
-                                name=self._secret_name, namespace=self._namespace
-                            ),
-                            data=data,
-                        ),
-                    )
-                else:
-                    self._core_v1.patch_namespaced_secret(
-                        self._secret_name,
-                        self._namespace,
-                        client.V1Secret(
-                            metadata=client.V1ObjectMeta(resource_version=rv),
-                            data=data,
-                        ),
-                    )
-                return
-            except ApiException as e:
-                if e.status == 409:
-                    last_exc = e
-                    continue
-                raise
-        raise last_exc
+        """Replace the registry with `mutate(current)` — same contract as
+        before, so callers' own consistency checks (duplicates, existence)
+        against the input still apply."""
+        db = new_session()
+        try:
+            before = {c["name"]: c for c in self._load_configs()}
+            after_list = mutate(list(before.values()))
+            after = {c["name"]: c for c in after_list}
+
+            for name in before.keys() - after.keys():
+                existing = db.get(RegisteredCluster, name)
+                if existing is not None:
+                    db.delete(existing)
+
+            for name, cfg in after.items():
+                existing = db.get(RegisteredCluster, name)
+                if existing is None:
+                    db.add(RegisteredCluster(name=name, api_url=cfg["api_url"], ca_data=cfg["ca_data"], token=cfg["token"]))
+                elif before.get(name) != cfg:
+                    existing.api_url = cfg["api_url"]
+                    existing.ca_data = cfg["ca_data"]
+                    existing.token = cfg["token"]
+
+            db.commit()
+        finally:
+            db.close()
 
     # ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -219,9 +205,5 @@ _instance: ClusterService | None = None
 def get_cluster_service() -> ClusterService:
     global _instance
     if _instance is None:
-        from ..config import get_settings
-        from ..core.kubernetes_client import get_local_api_client
-        settings = get_settings()
-        local_core_v1 = client.CoreV1Api(get_local_api_client())
-        _instance = ClusterService(local_core_v1, settings.registry_namespace, settings.clusters_secret)
+        _instance = ClusterService()
     return _instance
