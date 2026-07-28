@@ -98,7 +98,7 @@ jobs:
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-unit-test-secret-not-for-production
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
 
       - name: Alembic migration smoke test (real Postgres)
         run: |
@@ -108,7 +108,7 @@ jobs:
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-migration-test-secret-not-for-production
-          DATABASE_URL: postgresql+psycopg://postgres:test@localhost:5432/clustervision
+          DATABASE_URL: "postgresql+psycopg://postgres:test@localhost:5432/clustervision"
 
   # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
