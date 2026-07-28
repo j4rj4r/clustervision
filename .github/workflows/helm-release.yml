@@ -40,6 +40,7 @@ jobs:
           helm template clustervision helm/clustervision \
             --set backend.image.tag=sha-test \
             --set frontend.image.tag=sha-test \
+            --set backend.env.database.url=postgresql+psycopg://test:test@localhost:5432/test \
             --debug \
             > /dev/null
 

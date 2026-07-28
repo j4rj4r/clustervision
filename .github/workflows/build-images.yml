@@ -39,7 +39,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.16.0
 
       - name: Ruff check (backend)
         run: ruff check backend/
@@ -58,10 +58,62 @@ jobs:
         run: npx tsc --noEmit
         working-directory: frontend
 
+  # ── Backend tests: unit suite (SQLite) + a real Alembic migration smoke
+  # test (Postgres) — the latter is what would have caught the "upgrading an
+  # already-existing pre-Alembic schema needs a stamp first" failure mode.
+  test-backend:
+    name: Backend tests
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: clustervision
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: backend
+
+      - name: Unit test suite (SQLite, no external services)
+        run: python -m pytest tests/ -v
+        working-directory: backend
+        env:
+          CV_JWT_SECRET: ci-unit-test-secret-not-for-production
+          DATABASE_URL: sqlite:///:memory:
+
+      - name: Alembic migration smoke test (real Postgres)
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+        working-directory: backend
+        env:
+          CV_JWT_SECRET: ci-migration-test-secret-not-for-production
+          DATABASE_URL: postgresql+psycopg://postgres:test@localhost:5432/clustervision
+
   # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
     name: Backend (${{ matrix.platform }})
-    needs: lint
+    needs: [lint, test-backend]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
