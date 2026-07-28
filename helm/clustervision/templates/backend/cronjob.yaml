@@ -21,6 +21,13 @@ spec:
             app.kubernetes.io/name: {{ include "clustervision.name" . }}
             app.kubernetes.io/instance: {{ .Release.Name }}
             app.kubernetes.io/component: jit-cleanup
+            {{- with .Values.backend.podLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.backend.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         spec:
           restartPolicy: OnFailure
           serviceAccountName: {{ include "clustervision.serviceAccountName" . }}
@@ -29,6 +36,18 @@ spec:
             runAsUser: 1000
           {{- with .Values.global.imagePullSecrets }}
           imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.affinity }}
+          affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           containers:

@@ -11,6 +11,14 @@ backend:
 
   replicaCount: 1
 
+  # Scheduling and metadata overrides — also applied to the jitCleanup CronJob
+  # pods (same workload family, same image).
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  podLabels: {}
+
   env:
     clusterName: "kubernetes"
     clusterApiUrl: ""        # Auto-detected in-cluster if empty
@@ -52,6 +60,24 @@ backend:
       # Set to "false" when serving over plain HTTP (development only).
       secureCookie: true
 
+    # LDAP / Active Directory integration (optional). On-prem Windows Server
+    # AD speaks LDAP natively — this binds directly, no ADFS or other broker
+    # needed. Login accounts are provisioned just-in-time on first successful
+    # bind and their role is re-derived from AD group membership on every
+    # subsequent login (see the Users list in Settings, "source" column).
+    ldap:
+      enabled: false
+      url: ""                  # e.g. ldaps://dc01.company.local:636
+      bindDn: ""                # service account DN used to search for the user's DN
+      bindPassword: ""           # inline value — Helm creates a managed Secret
+      existingSecret: ""         # name of an existing Secret containing the bind password
+      existingSecretKey: "bind-password"
+      userSearchBase: ""         # e.g. OU=Users,DC=company,DC=local
+      userSearchFilter: "(sAMAccountName={username})"
+      adminGroupDn: ""           # members of this group get the admin role
+      viewerGroupDn: ""          # empty = any successful bind gets viewer
+      tlsSkipVerify: false
+
   resources:
     requests:
       cpu: 100m
@@ -84,6 +110,12 @@ frontend:
     pullPolicy: IfNotPresent
 
   replicaCount: 1
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  podLabels: {}
 
   resources:
     requests:

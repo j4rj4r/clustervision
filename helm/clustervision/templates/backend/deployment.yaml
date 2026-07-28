@@ -19,6 +19,13 @@ spec:
         app.kubernetes.io/name: {{ include "clustervision.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: backend
+        {{- with .Values.backend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.backend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "clustervision.serviceAccountName" . }}
       securityContext:
@@ -26,6 +33,18 @@ spec:
         runAsUser: 1000
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
@@ -92,6 +111,32 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.vault.existingSecret | default (printf "%s-vault" (include "clustervision.fullname" .)) }}
                   key: {{ .Values.vault.existingSecretKey }}
+            {{- end }}
+            {{- if .Values.backend.env.ldap.enabled }}
+            {{- if and (not .Values.backend.env.ldap.bindPassword) (not .Values.backend.env.ldap.existingSecret) }}
+            {{- fail "backend.env.ldap.enabled=true requires backend.env.ldap.bindPassword or backend.env.ldap.existingSecret" }}
+            {{- end }}
+            - name: LDAP_ENABLED
+              value: "true"
+            - name: LDAP_URL
+              value: {{ .Values.backend.env.ldap.url | quote }}
+            - name: LDAP_BIND_DN
+              value: {{ .Values.backend.env.ldap.bindDn | quote }}
+            - name: LDAP_USER_SEARCH_BASE
+              value: {{ .Values.backend.env.ldap.userSearchBase | quote }}
+            - name: LDAP_USER_SEARCH_FILTER
+              value: {{ .Values.backend.env.ldap.userSearchFilter | quote }}
+            - name: LDAP_ADMIN_GROUP_DN
+              value: {{ .Values.backend.env.ldap.adminGroupDn | quote }}
+            - name: LDAP_VIEWER_GROUP_DN
+              value: {{ .Values.backend.env.ldap.viewerGroupDn | quote }}
+            - name: LDAP_TLS_SKIP_VERIFY
+              value: {{ .Values.backend.env.ldap.tlsSkipVerify | default false | quote }}
+            - name: LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.env.ldap.existingSecret | default (printf "%s-ldap" (include "clustervision.fullname" .)) }}
+                  key: {{ .Values.backend.env.ldap.existingSecretKey }}
             {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
