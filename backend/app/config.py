@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     # token Secrets) are unaffected — those must remain in Kubernetes.
     database_url: str
 
+    # LDAP / Active Directory integration (optional)
+    ldap_enabled: bool = False
+    ldap_url: str = ""                     # e.g. ldaps://dc01.company.local:636
+    ldap_bind_dn: str = ""                 # service account used to search for the user's DN
+    ldap_bind_password: str = ""
+    ldap_user_search_base: str = ""        # e.g. OU=Users,DC=company,DC=local
+    ldap_user_search_filter: str = "(sAMAccountName={username})"
+    ldap_admin_group_dn: str = ""          # members of this group get the admin role
+    ldap_viewer_group_dn: str = ""         # empty = any successful bind gets viewer
+    ldap_tls_skip_verify: bool = False
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

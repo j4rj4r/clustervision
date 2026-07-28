@@ -201,12 +201,15 @@ export default function AdminPage() {
               <tr className="border-b border-surface-600 bg-surface-900/60">
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Username</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Source</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Last login</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-surface-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-700">
               {users.map((user) => {
                 const isSelf = user.username === currentUser?.username
+                const isLdap = user.source === 'ldap'
                 return (
                   <tr key={user.username} className="hover:bg-surface-700/40 transition-colors">
                     <td className="px-4 py-3 font-mono text-surface-100 font-medium">
@@ -219,12 +222,18 @@ export default function AdminPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
+                      <Badge variant={isLdap ? 'warning' : 'default'}>{isLdap ? 'LDAP' : 'Local'}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-surface-400 text-xs">
+                      {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : '—'}
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           size="sm"
                           variant="secondary"
-                          disabled={isSelf}
-                          title={user.role === 'admin' ? 'Demote to viewer' : 'Promote to admin'}
+                          disabled={isSelf || isLdap}
+                          title={isLdap ? 'Role is managed via AD group membership' : user.role === 'admin' ? 'Demote to viewer' : 'Promote to admin'}
                           onClick={() => toggleRole.mutate(user)}
                         >
                           {user.role === 'admin'
@@ -234,6 +243,8 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="secondary"
+                          disabled={isLdap}
+                          title={isLdap ? 'LDAP-managed account has no local password' : undefined}
                           onClick={() => setResetTarget(user)}
                         >
                           <KeyRound size={12} /> Password
@@ -241,7 +252,8 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          aria-label="Delete user"
+                          aria-label={isLdap ? 'Revoke user' : 'Delete user'}
+                          title={isLdap ? 'Revoke — re-provisioned automatically on next LDAP login' : 'Delete'}
                           disabled={isSelf}
                           className="text-red-400 hover:text-red-300 hover:bg-red-950/30"
                           onClick={() => setDeleteTarget(user)}
@@ -261,10 +273,25 @@ export default function AdminPage() {
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <ResetPasswordModal user={resetTarget} onClose={() => setResetTarget(null)} />
 
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete user" size="sm">
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={deleteTarget?.source === 'ldap' ? 'Revoke access' : 'Delete user'}
+        size="sm"
+      >
         <p className="text-sm text-surface-300 mb-6">
-          Delete <span className="font-mono text-surface-100">{deleteTarget?.username}</span>?
-          They will immediately lose access to ClusterVision.
+          {deleteTarget?.source === 'ldap' ? (
+            <>
+              Revoke <span className="font-mono text-surface-100">{deleteTarget?.username}</span>'s access?
+              They lose access immediately, but will be re-provisioned automatically — with a role freshly
+              derived from their AD group membership — the next time they sign in via LDAP.
+            </>
+          ) : (
+            <>
+              Delete <span className="font-mono text-surface-100">{deleteTarget?.username}</span>?
+              They will immediately lose access to ClusterVision.
+            </>
+          )}
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" size="sm" className="flex-1" onClick={() => setDeleteTarget(null)}>
@@ -277,7 +304,7 @@ export default function AdminPage() {
             loading={deleteUser.isPending}
             onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.username)}
           >
-            Delete
+            {deleteTarget?.source === 'ldap' ? 'Revoke' : 'Delete'}
           </Button>
         </div>
       </Modal>

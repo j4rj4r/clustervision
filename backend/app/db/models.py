@@ -52,13 +52,21 @@ class AccessRequestRecord(Base):
 
 class LocalUser(Base):
     """ClusterVision's own login accounts (admin/viewer) — independent from the
-    Kubernetes-managed users tracked in ManagedUser."""
+    Kubernetes-managed users tracked in ManagedUser.
+
+    `source="local"` accounts have a real password_hash, created through the
+    Settings page. `source="ldap"` accounts are provisioned just-in-time on
+    first successful LDAP bind, have no password_hash (auth happens against
+    the directory every time, nothing to compare locally), and have their
+    `role` re-derived from AD group membership on every login."""
 
     __tablename__ = "local_users"
 
     username: Mapped[str] = mapped_column(String(253), primary_key=True)
-    password_hash: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(16))
+    source: Mapped[str] = mapped_column(String(16), default="local")
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ManagedUser(Base):

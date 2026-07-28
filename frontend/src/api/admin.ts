@@ -3,6 +3,8 @@ import client from './client'
 export interface CvUser {
   username: string
   role: 'admin' | 'viewer'
+  source: 'local' | 'ldap'
+  last_login_at?: string
 }
 
 export const adminApi = {

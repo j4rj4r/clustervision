@@ -13,6 +13,7 @@ A web UI for managing Kubernetes users, RBAC permissions, and kubeconfig generat
 - **JWT authentication** — admin/viewer roles, 15-min access tokens, 7-day httpOnly refresh cookie
 - **Vault integration** — store certificate private keys in HashiCorp Vault KV v2
 - **Just-in-time access** — self-service, time-boxed role requests with admin approval and automatic expiry
+- **LDAP / Active Directory login** — bind directly against on-prem AD, role derived from group membership, no ADFS or other broker required
 
 Requires a PostgreSQL database — all ClusterVision application state (login accounts, managed user registry, token history, cluster registry, Vault runtime config, access requests) lives there. Native Kubernetes objects ClusterVision manages (RBAC objects, CSRs, ServiceAccount token Secrets) are unaffected and remain in Kubernetes.
 
@@ -77,12 +78,46 @@ Vault can also be configured at runtime from the Settings → Integrations panel
 | `backend.env.database.existingSecret` | `""` | Use a pre-existing Secret containing the URL |
 | `backend.env.database.existingSecretKey` | `database-url` | Key holding the URL in that Secret |
 
-One of `database.url` or `database.existingSecret` is required — the chart fails at template time otherwise, and the backend won't start without `DATABASE_URL` set. Schema creation is automatic on startup (a plain `create_all`, no separate migration step to run).
+One of `database.url` or `database.existingSecret` is required — the chart fails at template time otherwise, and the backend won't start without `DATABASE_URL` set.
 
 Bring your own PostgreSQL instance — this chart does not deploy one. Native Kubernetes objects ClusterVision manages (RBAC objects, CSRs, ServiceAccount token Secrets) are not affected by this database and remain in Kubernetes as real cluster resources.
 
+#### Schema migrations (Alembic)
+
+Every pod runs `alembic upgrade head` on startup — safe to leave as-is on every deploy, a no-op once the database is already current.
+
+> **One-time step if you deployed before this version** — earlier releases created the schema with a plain `create_all()` and never wrote an `alembic_version` table. Run `alembic upgrade head` against that database without preparing it first and it will fail (`relation "local_users" already exists"`), because Alembic assumes an empty database and tries to recreate tables that are already there. Before upgrading, tell Alembic the schema is already at the pre-LDAP baseline — this records the version, it does not touch any table or data:
+> ```bash
+> cd backend
+> DATABASE_URL=postgresql+psycopg://user:pass@host:5432/clustervision \
+>   alembic stamp 0001_initial_schema
+> ```
+> Run this once, from anywhere with network access to that database and the backend's Python environment (e.g. `kubectl exec` into a running backend pod, or locally with the same `DATABASE_URL`). After that, deploying the new version runs `alembic upgrade head` automatically and applies only what's actually new (currently: `local_users.source`, `local_users.last_login_at`, making `local_users.password_hash` nullable) — existing rows and accounts are preserved.
+
 > **Precedence** — the runtime configuration is persisted in the `clustervision-vault-config` Secret and takes priority over Helm values. Once Vault has been configured (or disabled) from the UI, later `helm upgrade` changes to `vault.*` are ignored. To hand control back to Helm, delete that Secret:
 > `kubectl delete secret clustervision-vault-config -n <namespace>`
+
+### LDAP / Active Directory integration (optional)
+
+| Helm value | Default | Description |
+|---|---|---|
+| `backend.env.ldap.enabled` | `false` | Enable LDAP login |
+| `backend.env.ldap.url` | `""` | e.g. `ldaps://dc01.company.local:636` |
+| `backend.env.ldap.bindDn` | `""` | Service account DN used to search for the user's DN |
+| `backend.env.ldap.bindPassword` | `""` | Bind password (creates a managed Secret) |
+| `backend.env.ldap.existingSecret` | `""` | Use a pre-existing Secret containing the bind password |
+| `backend.env.ldap.existingSecretKey` | `bind-password` | Key holding the password in that Secret |
+| `backend.env.ldap.userSearchBase` | `""` | e.g. `OU=Users,DC=company,DC=local` |
+| `backend.env.ldap.userSearchFilter` | `(sAMAccountName={username})` | LDAP filter, `{username}` is substituted |
+| `backend.env.ldap.adminGroupDn` | `""` | Members of this group DN get the `admin` role |
+| `backend.env.ldap.viewerGroupDn` | `""` | Members get `viewer`; empty means any successful bind gets `viewer` |
+| `backend.env.ldap.tlsSkipVerify` | `false` | Skip TLS certificate verification (self-signed AD CA) |
+
+`ldap.enabled=true` requires `ldap.bindPassword` or `ldap.existingSecret` — the chart fails at template time otherwise.
+
+This binds directly against on-premises Active Directory (LDAP/LDAPS) — no ADFS or other OIDC/SAML broker needed. Login is search-then-bind: ClusterVision binds as the service account to find the user's DN and group membership, then re-binds as the user with their password to verify credentials. The local login form is unchanged — no new page, no redirect flow. A local account (`source="local"`) always takes priority for its own username; everyone else is checked against LDAP if enabled.
+
+Accounts are provisioned just-in-time on first successful login and re-validated against AD on every subsequent one — nothing is cached or trusted locally. Their role is re-derived from group membership every time, so a group change or a disabled AD account takes effect on the next login. LDAP-sourced accounts appear in Settings → Users with a `LDAP` badge; their password and role can't be edited there (managed in AD), and removing one only revokes access until they sign in again.
 
 ## Security
 
