@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from .core.kubernetes_client import get_local_api_client
 from .db.session import new_session
 from .services.access_request_service import AccessRequestService
+from .services.audit_service import AuditService
 from .services.certificate_service import CertificateService
 from .services.cluster_service import get_cluster_service
 from .services.kubeconfig_service import KubeconfigService
@@ -63,3 +64,7 @@ def get_access_request_service(
     db: Session = Depends(get_db_session),
 ) -> AccessRequestService:
     return AccessRequestService(api_client, db)
+
+
+def get_audit_service(db: Session = Depends(get_db_session)) -> AuditService:
+    return AuditService(db)

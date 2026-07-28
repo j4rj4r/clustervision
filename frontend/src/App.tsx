@@ -9,6 +9,7 @@ import ClustersPage from './pages/ClustersPage'
 import TokensPage from './pages/TokensPage'
 import AccessRequestsPage from './pages/AccessRequestsPage'
 import AdminPage from './pages/AdminPage'
+import AuditLogPage from './pages/AuditLogPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="access-requests" element={<AccessRequestsPage />} />
             <Route path="clusters" element={<ClustersPage />} />
             <Route path="settings" element={<AdminPage />} />
+            <Route path="audit-log" element={<AuditLogPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -163,4 +163,39 @@ class VaultConfigRow(Base):
             "base_path": self.base_path,
             "namespace": self.namespace,
             "tls_skip_verify": self.tls_skip_verify,
+        }
+
+
+class AuditLogEntry(Base):
+    """Append-only record of administrative mutations made through the API —
+    covers RBAC, managed-user, token, cluster-registry and Vault-config
+    endpoints. Nothing in the app ever updates or deletes a row here; that
+    immutability is the whole point of an audit trail."""
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    # Best-effort: the acting user's JWT, decoded leniently by the capturing
+    # middleware. Null if the request had no valid token (e.g. the cluster
+    # bootstrap-registration endpoint, authenticated by a register token instead).
+    actor: Mapped[str | None] = mapped_column(String(253), nullable=True, index=True)
+    actor_role: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    method: Mapped[str] = mapped_column(String(8))
+    path: Mapped[str] = mapped_column(String(500))
+    status_code: Mapped[int] = mapped_column(Integer)
+    # The request body (JSON only), with password/token/secret-like keys
+    # redacted — see audit_middleware._redact().
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "actor": self.actor,
+            "actor_role": self.actor_role,
+            "method": self.method,
+            "path": self.path,
+            "status_code": self.status_code,
+            "payload": self.payload,
         }

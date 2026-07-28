@@ -14,6 +14,7 @@ A web UI for managing Kubernetes users, RBAC permissions, and kubeconfig generat
 - **Vault integration** — store certificate private keys in HashiCorp Vault KV v2
 - **Just-in-time access** — self-service, time-boxed role requests with admin approval and automatic expiry
 - **LDAP / Active Directory login** — bind directly against on-prem AD, role derived from group membership, no ADFS or other broker required
+- **Audit log** — every mutating request against RBAC, users, tokens, cluster registry and Vault config is recorded (actor, action, outcome), successful or denied
 
 Requires a PostgreSQL database — all ClusterVision application state (login accounts, managed user registry, token history, cluster registry, Vault runtime config, access requests) lives there. Native Kubernetes objects ClusterVision manages (RBAC objects, CSRs, ServiceAccount token Secrets) are unaffected and remain in Kubernetes.
 
@@ -155,6 +156,7 @@ Obtain a token via `POST /api/v1/auth/login`.
 | `cluster` | `/api/v1/cluster` | All authenticated |
 | `admin` | `/api/v1/admin` | Admin only |
 | `access-requests` | `/api/v1/access-requests` | All authenticated (approve/deny/revoke: admin) |
+| `audit` | `/api/v1/audit` | Admin only |
 
 ## Development
 

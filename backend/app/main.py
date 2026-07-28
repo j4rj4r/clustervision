@@ -7,6 +7,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from kubernetes.client.exceptions import ApiException
 
 from .config import get_settings
+from .core.audit_middleware import AuditLogMiddleware
 from .core.dependencies import auth_gate, get_current_user
 from .core.exceptions import (
     ImportedUserError,
@@ -18,7 +19,7 @@ from .core.exceptions import (
     user_not_found_handler,
 )
 from .core.kubernetes_client import get_api_client
-from .routers import access_requests, cluster, kubeconfig, rbac, tokens, users
+from .routers import access_requests, audit, cluster, kubeconfig, rbac, tokens, users
 from .routers import auth as auth_router
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
@@ -109,6 +110,13 @@ openapi_tags = [
             "resulting binding is annotated with its expiry — a periodic cleanup job deletes it automatically."
         ),
     },
+    {
+        "name": "audit",
+        "description": (
+            "Admin-only. Every mutating request against RBAC, users, tokens, cluster-registry and "
+            "Vault-config endpoints, successful or not — who, what, and when."
+        ),
+    },
 ]
 
 app = FastAPI(
@@ -152,6 +160,7 @@ instead of being returned inline. Configure at `PUT /api/v1/admin/vault/config`.
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(AuditLogMiddleware)
 
 _settings = get_settings()
 app.add_middleware(
@@ -181,6 +190,7 @@ app.include_router(vault_admin_router.router, dependencies=_auth_dep)
 # Any authenticated user (viewer included) can list/create requests — approval
 # is gated per-endpoint via require_admin, not at the router level.
 app.include_router(access_requests.router, dependencies=[Depends(get_current_user)])
+app.include_router(audit.router, dependencies=_auth_dep)
 
 
 @app.get("/health")
