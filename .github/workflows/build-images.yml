@@ -102,9 +102,9 @@ jobs:
 
       - name: Alembic migration smoke test (real Postgres)
         run: |
-          alembic upgrade head
-          alembic downgrade base
-          alembic upgrade head
+          python -m alembic upgrade head
+          python -m alembic downgrade base
+          python -m alembic upgrade head
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-migration-test-secret-not-for-production
