@@ -22,8 +22,6 @@ from ..core.registry import RegistryMixin
 
 logger = logging.getLogger(__name__)
 
-REGISTRY_ANNOTATION = "clustervision.io/managed"
-
 
 class CertificateService(RegistryMixin):
     def __init__(self, api_client: client.ApiClient, db: Session):

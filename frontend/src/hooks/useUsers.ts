@@ -11,11 +11,6 @@ export const useUsers = () => {
   return useQuery({ queryKey: ['users', cluster], queryFn: usersApi.list })
 }
 
-export const useUser = (username: string) => {
-  const cluster = useCluster()
-  return useQuery({ queryKey: ['users', cluster, username], queryFn: () => usersApi.get(username) })
-}
-
 export const useCreateUser = (onSuccess?: (data: Awaited<ReturnType<typeof usersApi.create>>) => void) => {
   const qc = useQueryClient()
   const cluster = useCluster()

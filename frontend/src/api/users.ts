@@ -17,9 +17,6 @@ export const usersApi = {
   import: (payload: ImportUserPayload): Promise<User> =>
     client.post('/users/import', payload).then((r) => r.data),
 
-  get: (username: string): Promise<User> =>
-    client.get(`/users/${username}`).then((r) => r.data),
-
   create: (payload: CreateUserPayload): Promise<UserWithCredentials> =>
     client.post('/users', payload).then((r) => r.data),
 
