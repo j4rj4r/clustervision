@@ -1,0 +1,8 @@
+# Values overrides used by `ct lint`/`ct install` (chart-testing) in CI.
+# chart-testing auto-discovers every file under ci/ and templates/installs
+# the chart once per file — this just supplies the now-mandatory database
+# connection so the lint job doesn't need a real Postgres instance.
+backend:
+  env:
+    database:
+      url: postgresql+psycopg://test:test@localhost:5432/test
