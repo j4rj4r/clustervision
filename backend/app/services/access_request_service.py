@@ -48,8 +48,20 @@ class AccessRequestService:
     def get_request(self, request_id: str) -> dict:
         return self._get_or_404(request_id).to_dict()
 
-    def _get_or_404(self, request_id: str) -> AccessRequestRecord:
-        record = self.db.get(AccessRequestRecord, request_id)
+    def _get_or_404(self, request_id: str, *, for_update: bool = False) -> AccessRequestRecord:
+        if for_update:
+            # Row lock so concurrent approve/deny/revoke calls on the same
+            # request serialize instead of racing: two admins clicking
+            # approve/deny at once must not both pass the "pending" check
+            # before either commits — the second one blocks here until the
+            # first transaction commits, then re-reads the now-updated status
+            # and correctly rejects instead of silently overwriting it (or,
+            # for approve/approve, both hitting Kubernetes with the same
+            # deterministic binding name).
+            stmt = select(AccessRequestRecord).where(AccessRequestRecord.id == request_id).with_for_update()
+            record = self.db.scalars(stmt).one_or_none()
+        else:
+            record = self.db.get(AccessRequestRecord, request_id)
         if not record:
             raise AccessRequestNotFoundError(f"Access request '{request_id}' not found")
         return record
@@ -132,7 +144,7 @@ class AccessRequestService:
         return record.to_dict()
 
     def approve_request(self, request_id: str, reviewer: str) -> dict:
-        record = self._get_or_404(request_id)
+        record = self._get_or_404(request_id, for_update=True)
         if record.status != "pending":
             raise AccessRequestError(f"Request is '{record.status}', not pending")
         if record.requester == reviewer:
@@ -176,7 +188,7 @@ class AccessRequestService:
         return record.to_dict()
 
     def deny_request(self, request_id: str, reviewer: str) -> dict:
-        record = self._get_or_404(request_id)
+        record = self._get_or_404(request_id, for_update=True)
         if record.status != "pending":
             raise AccessRequestError(f"Request is '{record.status}', not pending")
 
@@ -188,7 +200,7 @@ class AccessRequestService:
         return record.to_dict()
 
     def revoke_request(self, request_id: str, reviewer: str) -> dict:
-        record = self._get_or_404(request_id)
+        record = self._get_or_404(request_id, for_update=True)
         if record.status != "approved":
             raise AccessRequestError(f"Request is '{record.status}', not an active grant")
 
