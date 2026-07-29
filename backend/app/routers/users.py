@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..core.async_utils import run_sync
@@ -33,10 +31,12 @@ async def list_users(
     cert_svc: CertificateService = Depends(get_cert_service),
     sa_svc: ServiceAccountService = Depends(get_sa_service),
 ):
-    cert_users, sa_users = await asyncio.gather(
-        run_sync(cert_svc.list_users),
-        run_sync(sa_svc.list_users),
-    )
+    # Sequential, not asyncio.gather — cert_svc and sa_svc share the same
+    # request-scoped SQLAlchemy Session (both depend on get_db_session, which
+    # FastAPI caches per request), and a Session is not safe to use
+    # concurrently from two executor threads at once.
+    cert_users = await run_sync(cert_svc.list_users)
+    sa_users = await run_sync(sa_svc.list_users)
     all_users = cert_users + sa_users
     return {"users": all_users, "total": len(all_users)}
 
