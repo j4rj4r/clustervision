@@ -166,6 +166,29 @@ class VaultConfigRow(Base):
         }
 
 
+class JitRolePolicy(Base):
+    """Optional per-role override for JIT access requests. Absence of a row
+    for (role_kind, role_name) means the default applies: eligible, capped
+    at the global MAX_TTL_MINUTES. An explicit row can mark a role
+    ineligible for self-service JIT entirely (e.g. cluster-admin), or
+    tighten its TTL cap below the global default."""
+
+    __tablename__ = "jit_role_policies"
+
+    role_kind: Mapped[str] = mapped_column(String(32), primary_key=True)
+    role_name: Mapped[str] = mapped_column(String(253), primary_key=True)
+    eligible: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_ttl_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "role_kind": self.role_kind,
+            "role_name": self.role_name,
+            "eligible": self.eligible,
+            "max_ttl_minutes": self.max_ttl_minutes,
+        }
+
+
 class AuditLogEntry(Base):
     """Append-only record of administrative mutations made through the API —
     covers RBAC, managed-user, token, cluster-registry and Vault-config

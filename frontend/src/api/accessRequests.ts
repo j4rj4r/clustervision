@@ -1,5 +1,10 @@
 import client from './client'
-import type { AccessRequest, AccessRequestCreatePayload } from '../types/accessRequest'
+import type {
+  AccessRequest,
+  AccessRequestCreatePayload,
+  JitRolePolicy,
+  JitRolePolicySetPayload,
+} from '../types/accessRequest'
 
 export const accessRequestsApi = {
   list: (): Promise<AccessRequest[]> =>
@@ -16,4 +21,13 @@ export const accessRequestsApi = {
 
   revoke: (id: string): Promise<AccessRequest> =>
     client.post(`/access-requests/${id}/revoke`).then((r) => r.data),
+
+  listPolicies: (): Promise<JitRolePolicy[]> =>
+    client.get('/access-requests/policies').then((r) => r.data),
+
+  setPolicy: (roleKind: string, roleName: string, payload: JitRolePolicySetPayload): Promise<JitRolePolicy> =>
+    client.put(`/access-requests/policies/${roleKind}/${roleName}`, payload).then((r) => r.data),
+
+  deletePolicy: (roleKind: string, roleName: string): Promise<void> =>
+    client.delete(`/access-requests/policies/${roleKind}/${roleName}`).then(() => undefined),
 }

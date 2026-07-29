@@ -1,9 +1,16 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..core.async_utils import run_sync
 from ..core.dependencies import get_current_user, require_admin
 from ..dependencies import get_access_request_service
-from ..models.access_request import AccessRequestCreate, AccessRequestRead
+from ..models.access_request import (
+    AccessRequestCreate,
+    AccessRequestRead,
+    JitRolePolicyRead,
+    JitRolePolicySet,
+)
 from ..models.auth import UserInfo
 from ..services.access_request_service import (
     AccessRequestError,
@@ -102,6 +109,52 @@ async def deny_access_request(
         raise HTTPException(status_code=404, detail=str(e))
     except AccessRequestError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get(
+    "/policies",
+    response_model=list[JitRolePolicyRead],
+    summary="List JIT role policy overrides",
+    description=(
+        "Roles with no override are eligible for JIT with the default TTL cap. "
+        "An override can mark a role ineligible entirely, or tighten its TTL cap."
+    ),
+)
+async def list_jit_policies(
+    _: UserInfo = Depends(require_admin),
+    svc: AccessRequestService = Depends(get_access_request_service),
+):
+    return await run_sync(svc.list_policies)
+
+
+@router.put(
+    "/policies/{role_kind}/{role_name}",
+    response_model=JitRolePolicyRead,
+    summary="Set a JIT role policy override",
+)
+async def set_jit_policy(
+    role_kind: Literal["ClusterRole", "Role"],
+    role_name: str,
+    payload: JitRolePolicySet,
+    _: UserInfo = Depends(require_admin),
+    svc: AccessRequestService = Depends(get_access_request_service),
+):
+    return await run_sync(svc.set_policy, role_kind, role_name, payload.eligible, payload.max_ttl_minutes)
+
+
+@router.delete(
+    "/policies/{role_kind}/{role_name}",
+    status_code=204,
+    summary="Remove a JIT role policy override",
+    description="Reverts the role to the default: eligible, capped at the global TTL limit.",
+)
+async def delete_jit_policy(
+    role_kind: Literal["ClusterRole", "Role"],
+    role_name: str,
+    _: UserInfo = Depends(require_admin),
+    svc: AccessRequestService = Depends(get_access_request_service),
+):
+    await run_sync(svc.delete_policy, role_kind, role_name)
 
 
 @router.post(

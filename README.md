@@ -12,7 +12,7 @@ A web UI for managing Kubernetes users, RBAC permissions, and kubeconfig generat
 - **Multi-cluster** — manage multiple clusters from a single instance; add them with a generated bootstrap script or manually (connectivity is verified at registration)
 - **JWT authentication** — admin/viewer roles, 15-min access tokens, 7-day httpOnly refresh cookie
 - **Vault integration** — store certificate private keys in HashiCorp Vault KV v2
-- **Just-in-time access** — self-service, time-boxed role requests with admin approval and automatic expiry
+- **Just-in-time access** — self-service, time-boxed role requests with admin approval and automatic expiry; admins can block specific roles from self-service entirely or cap their max TTL below the global default
 - **LDAP / Active Directory login** — bind directly against on-prem AD, role derived from group membership, no ADFS or other broker required
 - **Audit log** — every mutating request against RBAC, users, tokens, cluster registry and Vault config is recorded (actor, action, outcome), successful or denied
 

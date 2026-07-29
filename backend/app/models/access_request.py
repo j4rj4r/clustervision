@@ -38,3 +38,15 @@ class AccessRequestRead(BaseModel):
     reviewed_at: str | None = None
     expires_at: str | None = None
     binding_name: str | None = None
+
+
+class JitRolePolicyRead(BaseModel):
+    role_kind: Literal["ClusterRole", "Role"]
+    role_name: str
+    eligible: bool
+    max_ttl_minutes: int | None = None
+
+
+class JitRolePolicySet(BaseModel):
+    eligible: bool = True
+    max_ttl_minutes: int | None = Field(None, ge=MIN_TTL_MINUTES, le=MAX_TTL_MINUTES)

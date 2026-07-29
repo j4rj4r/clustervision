@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 # /api/v1/auth/users (not the whole /api/v1/auth prefix) covers ClusterVision
 # login-account create/delete/role-change/password-reset without also
 # capturing every login/refresh/logout call, which is a much higher-volume,
-# different kind of event.
+# different kind of event. /api/v1/access-requests/policies is the exception
+# to the access-requests exclusion — policy overrides have no reviewer trail
+# of their own, unlike individual request approve/deny/revoke.
 _AUDITED_PREFIXES = (
     "/api/v1/rbac",
     "/api/v1/users",
@@ -25,6 +27,7 @@ _AUDITED_PREFIXES = (
     "/api/v1/cluster",
     "/api/v1/admin",
     "/api/v1/auth/users",
+    "/api/v1/access-requests/policies",
 )
 _AUDITED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _REDACT_KEYS = {"password", "token", "secret", "bind_password", "ca_data", "new_password", "current_password"}

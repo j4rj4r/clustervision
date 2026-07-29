@@ -127,6 +127,66 @@ def test_revoke_deletes_namespaced_binding_when_namespaced(svc):
     svc.rbac.delete_cluster_role_binding.assert_not_called()
 
 
+def test_default_policy_allows_any_role_within_global_max(svc):
+    record = _create(svc, role_name="edit", ttl_minutes=1440)  # global max
+    assert record["status"] == "pending"
+
+
+def test_default_policy_rejects_ttl_above_global_max(svc):
+    with pytest.raises(AccessRequestError):
+        _create(svc, role_name="edit", ttl_minutes=1441)
+
+
+def test_ineligible_role_blocks_request_creation(svc):
+    svc.set_policy("ClusterRole", "cluster-admin", eligible=False, max_ttl_minutes=None)
+    with pytest.raises(AccessRequestError):
+        _create(svc, role_name="cluster-admin")
+
+
+def test_eligible_role_with_lower_ttl_cap_rejects_longer_requests(svc):
+    svc.set_policy("ClusterRole", "edit", eligible=True, max_ttl_minutes=60)
+    with pytest.raises(AccessRequestError):
+        _create(svc, role_name="edit", ttl_minutes=120)
+    # exactly at the cap is fine
+    record = _create(svc, role_name="edit", ttl_minutes=60)
+    assert record["status"] == "pending"
+
+
+def test_policy_is_scoped_by_role_kind(svc):
+    """A ClusterRole policy must not affect a Role of the same name."""
+    svc.set_policy("ClusterRole", "edit", eligible=False, max_ttl_minutes=None)
+    record = _create(svc, role_name="edit", role_kind="Role", namespace="team-a")
+    assert record["status"] == "pending"
+
+
+def test_approve_reraises_if_policy_tightened_after_request(svc):
+    record = _create(svc, role_name="edit", ttl_minutes=120)
+    svc.set_policy("ClusterRole", "edit", eligible=True, max_ttl_minutes=60)
+    with pytest.raises(AccessRequestError):
+        svc.approve_request(record["id"], reviewer="admin1")
+    assert svc.get_request(record["id"])["status"] == "pending"
+
+
+def test_set_policy_upserts(svc):
+    first = svc.set_policy("ClusterRole", "view", eligible=True, max_ttl_minutes=30)
+    assert first == {"role_kind": "ClusterRole", "role_name": "view", "eligible": True, "max_ttl_minutes": 30}
+    second = svc.set_policy("ClusterRole", "view", eligible=False, max_ttl_minutes=None)
+    assert second["eligible"] is False
+    assert len(svc.list_policies()) == 1
+
+
+def test_delete_policy_reverts_to_default(svc):
+    svc.set_policy("ClusterRole", "cluster-admin", eligible=False, max_ttl_minutes=None)
+    svc.delete_policy("ClusterRole", "cluster-admin")
+    assert svc.list_policies() == []
+    record = _create(svc, role_name="cluster-admin")
+    assert record["status"] == "pending"
+
+
+def test_delete_nonexistent_policy_is_a_noop(svc):
+    svc.delete_policy("ClusterRole", "does-not-exist")  # must not raise
+
+
 def test_mark_expired_only_touches_approved_and_past_expiry(svc, db_session):
     now = datetime.now(UTC)
 

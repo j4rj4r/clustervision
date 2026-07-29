@@ -7,7 +7,8 @@ from kubernetes.client.exceptions import ApiException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db.models import AccessRequestRecord
+from ..db.models import AccessRequestRecord, JitRolePolicy
+from ..models.access_request import MAX_TTL_MINUTES
 from ..models.rbac import Subject, SubjectKind
 from .rbac_service import RbacService
 
@@ -53,6 +54,45 @@ class AccessRequestService:
             raise AccessRequestNotFoundError(f"Access request '{request_id}' not found")
         return record
 
+    def _check_policy(self, role_kind: str, role_name: str, ttl_minutes: int) -> None:
+        """Absence of a policy row means the default applies (eligible, capped at
+        MAX_TTL_MINUTES) — this is a denylist/cap model, not an allowlist, so
+        existing JIT usage keeps working unless an admin explicitly restricts a role."""
+        policy = self.db.get(JitRolePolicy, (role_kind, role_name))
+        if policy and not policy.eligible:
+            raise AccessRequestError(f"{role_kind} '{role_name}' is not eligible for JIT access requests")
+        max_ttl = policy.max_ttl_minutes if policy and policy.max_ttl_minutes is not None else MAX_TTL_MINUTES
+        if ttl_minutes > max_ttl:
+            raise AccessRequestError(
+                f"Requested duration ({ttl_minutes} min) exceeds the {max_ttl}-minute limit for "
+                f"{role_kind} '{role_name}'"
+            )
+
+    def list_policies(self) -> list[dict]:
+        stmt = select(JitRolePolicy).order_by(JitRolePolicy.role_kind, JitRolePolicy.role_name)
+        return [p.to_dict() for p in self.db.scalars(stmt)]
+
+    def set_policy(self, role_kind: str, role_name: str, eligible: bool, max_ttl_minutes: int | None) -> dict:
+        policy = self.db.get(JitRolePolicy, (role_kind, role_name))
+        if policy is None:
+            policy = JitRolePolicy(role_kind=role_kind, role_name=role_name)
+            self.db.add(policy)
+        policy.eligible = eligible
+        policy.max_ttl_minutes = max_ttl_minutes
+        self.db.commit()
+        logger.info(
+            "JIT policy set for %s '%s': eligible=%s max_ttl_minutes=%s",
+            role_kind, role_name, eligible, max_ttl_minutes,
+        )
+        return policy.to_dict()
+
+    def delete_policy(self, role_kind: str, role_name: str) -> None:
+        policy = self.db.get(JitRolePolicy, (role_kind, role_name))
+        if policy:
+            self.db.delete(policy)
+            self.db.commit()
+            logger.info("JIT policy override removed for %s '%s'", role_kind, role_name)
+
     def create_request(
         self,
         requester: str,
@@ -67,6 +107,7 @@ class AccessRequestService:
     ) -> dict:
         if role_kind == "Role" and not namespace:
             raise AccessRequestError("namespace is required when requesting a Role")
+        self._check_policy(role_kind, role_name, ttl_minutes)
 
         record = AccessRequestRecord(
             id=str(uuid.uuid4()),
@@ -96,6 +137,9 @@ class AccessRequestService:
             raise AccessRequestError(f"Request is '{record.status}', not pending")
         if record.requester == reviewer:
             raise AccessRequestError("Cannot approve your own request")
+        # Re-validate in case policy tightened between request and approval —
+        # never silently truncate what was requested, fail loudly instead.
+        self._check_policy(record.role_kind, record.role_name, record.ttl_minutes)
 
         now = datetime.now(UTC)
         expires_at = now + timedelta(minutes=record.ttl_minutes)

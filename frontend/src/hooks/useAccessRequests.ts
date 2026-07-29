@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { accessRequestsApi } from '../api/accessRequests'
 import { useClusterStore } from '../store/clusterStore'
-import type { AccessRequestCreatePayload } from '../types/accessRequest'
+import type { AccessRequestCreatePayload, JitRolePolicySetPayload } from '../types/accessRequest'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
@@ -67,6 +67,39 @@ export const useRevokeAccessRequest = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['access-requests', cluster] })
       toast.success('Access revoked')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useJitPolicies = () =>
+  useQuery({
+    queryKey: ['jit-policies'],
+    queryFn: accessRequestsApi.listPolicies,
+    staleTime: 15_000,
+  })
+
+export const useSetJitPolicy = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleKind, roleName, payload }: { roleKind: string; roleName: string; payload: JitRolePolicySetPayload }) =>
+      accessRequestsApi.setPolicy(roleKind, roleName, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jit-policies'] })
+      toast.success('Policy saved')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
+
+export const useDeleteJitPolicy = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleKind, roleName }: { roleKind: string; roleName: string }) =>
+      accessRequestsApi.deletePolicy(roleKind, roleName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jit-policies'] })
+      toast.success('Policy override removed')
     },
     onError: (err: Error) => toast.error(err.message),
   })

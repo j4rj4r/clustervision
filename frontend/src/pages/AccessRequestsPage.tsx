@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Plus, Check, X, RotateCcw, ShieldCheck, RefreshCw } from 'lucide-react'
+import { Plus, Check, X, RotateCcw, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
 import RequestAccessModal from '../components/access/RequestAccessModal'
+import JitPolicyModal from '../components/access/JitPolicyModal'
 import { useAuthStore } from '../store/authStore'
 import {
   useAccessRequests,
@@ -35,6 +36,7 @@ export default function AccessRequestsPage() {
   const { data: requests = [], isLoading, refetch } = useAccessRequests()
 
   const [requestOpen, setRequestOpen] = useState(false)
+  const [policiesOpen, setPoliciesOpen] = useState(false)
   const [confirm, setConfirm] = useState<{ action: 'approve' | 'revoke'; request: AccessRequest } | null>(null)
 
   const approve = useApproveAccessRequest()
@@ -62,6 +64,11 @@ export default function AccessRequestsPage() {
           <Button variant="ghost" size="sm" onClick={() => refetch()}>
             <RefreshCw size={13} />
           </Button>
+          {isAdmin && (
+            <Button variant="secondary" size="sm" onClick={() => setPoliciesOpen(true)}>
+              <Settings2 size={13} /> Policies
+            </Button>
+          )}
           <Button size="sm" onClick={() => setRequestOpen(true)}>
             <Plus size={13} /> Request access
           </Button>
@@ -150,6 +157,7 @@ export default function AccessRequestsPage() {
       </div>
 
       {requestOpen && <RequestAccessModal onClose={() => setRequestOpen(false)} />}
+      {policiesOpen && <JitPolicyModal onClose={() => setPoliciesOpen(false)} />}
 
       <Modal
         open={!!confirm}

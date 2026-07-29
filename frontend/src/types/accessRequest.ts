@@ -29,3 +29,15 @@ export interface AccessRequestCreatePayload {
   ttl_minutes: number
   reason: string
 }
+
+export interface JitRolePolicy {
+  role_kind: 'ClusterRole' | 'Role'
+  role_name: string
+  eligible: boolean
+  max_ttl_minutes: number | null
+}
+
+export interface JitRolePolicySetPayload {
+  eligible: boolean
+  max_ttl_minutes: number | null
+}
