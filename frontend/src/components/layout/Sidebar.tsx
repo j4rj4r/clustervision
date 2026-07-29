@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Shield, FileCode2, Server, Key, Settings, Clock, ScrollText } from 'lucide-react'
+import { Users, Shield, FileCode2, Server, Key, Settings, Clock, ScrollText, LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useAccessRequests } from '../../hooks/useAccessRequests'
 
 const links = [
+  { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard', desc: 'Overview'                 },
   { to: '/users',            icon: Users,     label: 'Users',           desc: 'Manage cluster users'    },
   { to: '/rbac',             icon: Shield,    label: 'Permissions',     desc: 'Roles & bindings'        },
   { to: '/access-requests',  icon: Clock,     label: 'Access Requests', desc: 'Time-boxed role grants'  },
