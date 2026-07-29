@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import Modal from '../components/ui/Modal'
-import { useAuditLog } from '../hooks/useAudit'
+import { useAuditLog, useExportAuditLog } from '../hooks/useAudit'
 import type { AuditLogEntry } from '../types/audit'
 
 const PAGE_SIZE = 25
@@ -26,6 +26,8 @@ export default function AuditLogPage() {
   const qc = useQueryClient()
   const [actor, setActor] = useState('')
   const [pathContains, setPathContains] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [offset, setOffset] = useState(0)
   const [payloadTarget, setPayloadTarget] = useState<AuditLogEntry | null>(null)
 
@@ -37,6 +39,8 @@ export default function AuditLogPage() {
   })
   const items = data?.items ?? []
   const total = data?.total ?? 0
+
+  const exportCsv = useExportAuditLog()
 
   const resetAndFilter = (fn: () => void) => {
     setOffset(0)
@@ -57,7 +61,7 @@ export default function AuditLogPage() {
         </Button>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <div className="w-56">
           <Input
             placeholder="Filter by actor..."
@@ -72,6 +76,23 @@ export default function AuditLogPage() {
             onChange={(e) => resetAndFilter(() => setPathContains(e.target.value))}
           />
         </div>
+        <Input label="From" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />
+        <Input label="To" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={exportCsv.isPending}
+          onClick={() =>
+            exportCsv.mutate({
+              from: fromDate || undefined,
+              to: toDate || undefined,
+              actor: actor || undefined,
+              path_contains: pathContains || undefined,
+            })
+          }
+        >
+          <Download size={13} /> Export CSV
+        </Button>
       </div>
 
       {isLoading ? (

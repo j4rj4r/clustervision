@@ -20,3 +20,10 @@ export interface AuditLogQuery {
   actor?: string
   path_contains?: string
 }
+
+export interface AuditLogExportQuery {
+  from?: string
+  to?: string
+  actor?: string
+  path_contains?: string
+}

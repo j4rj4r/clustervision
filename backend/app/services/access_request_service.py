@@ -48,6 +48,16 @@ class AccessRequestService:
     def get_request(self, request_id: str) -> dict:
         return self._get_or_404(request_id).to_dict()
 
+    def export_requests(self, since: datetime | None = None, until: datetime | None = None) -> list[dict]:
+        """Unpaginated — for CSV export (access-review evidence), not the list view."""
+        filters = []
+        if since:
+            filters.append(AccessRequestRecord.requested_at >= since)
+        if until:
+            filters.append(AccessRequestRecord.requested_at <= until)
+        stmt = select(AccessRequestRecord).where(*filters).order_by(AccessRequestRecord.requested_at)
+        return [r.to_dict() for r in self.db.scalars(stmt)]
+
     def _get_or_404(self, request_id: str, *, for_update: bool = False) -> AccessRequestRecord:
         if for_update:
             # Row lock so concurrent approve/deny/revoke calls on the same

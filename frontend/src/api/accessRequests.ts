@@ -2,6 +2,7 @@ import client from './client'
 import type {
   AccessRequest,
   AccessRequestCreatePayload,
+  AccessRequestExportQuery,
   JitRolePolicy,
   JitRolePolicySetPayload,
 } from '../types/accessRequest'
@@ -30,4 +31,7 @@ export const accessRequestsApi = {
 
   deletePolicy: (roleKind: string, roleName: string): Promise<void> =>
     client.delete(`/access-requests/policies/${roleKind}/${roleName}`).then(() => undefined),
+
+  export: (query: AccessRequestExportQuery): Promise<Blob> =>
+    client.get('/access-requests/export', { params: query, responseType: 'blob' }).then((r) => r.data),
 }

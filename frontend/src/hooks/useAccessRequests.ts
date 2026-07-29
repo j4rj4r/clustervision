@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { accessRequestsApi } from '../api/accessRequests'
+import { downloadBlob } from '../lib/downloadBlob'
 import { useClusterStore } from '../store/clusterStore'
-import type { AccessRequestCreatePayload, JitRolePolicySetPayload } from '../types/accessRequest'
+import type {
+  AccessRequestCreatePayload,
+  AccessRequestExportQuery,
+  JitRolePolicySetPayload,
+} from '../types/accessRequest'
 
 const useCluster = () => useClusterStore((s) => s.activeCluster)
 
@@ -91,6 +96,13 @@ export const useSetJitPolicy = () => {
     onError: (err: Error) => toast.error(err.message),
   })
 }
+
+export const useExportAccessRequests = () =>
+  useMutation({
+    mutationFn: (query: AccessRequestExportQuery) => accessRequestsApi.export(query),
+    onSuccess: (blob) => downloadBlob(blob, 'clustervision-access-requests.csv'),
+    onError: (err: Error) => toast.error(err.message),
+  })
 
 export const useDeleteJitPolicy = () => {
   const qc = useQueryClient()

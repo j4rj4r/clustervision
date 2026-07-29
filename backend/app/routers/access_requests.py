@@ -1,8 +1,11 @@
+from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from ..core.async_utils import run_sync
+from ..core.csv_export import as_utc, rows_to_csv
 from ..core.dependencies import get_current_user, require_admin
 from ..dependencies import get_access_request_service
 from ..models.access_request import (
@@ -22,6 +25,11 @@ router = APIRouter(prefix="/api/v1/access-requests", tags=["access-requests"])
 
 _400 = {400: {"description": "Invalid request or state transition"}}
 _404 = {404: {"description": "Access request not found"}}
+_EXPORT_COLUMNS = [
+    "id", "requester", "target_username", "user_kind", "sa_namespace", "role_name", "role_kind",
+    "namespace", "ttl_minutes", "reason", "status", "requested_at", "reviewed_by", "reviewed_at",
+    "expires_at", "binding_name",
+]
 
 
 @router.get(
@@ -36,6 +44,30 @@ async def list_access_requests(
 ):
     requester_filter = None if user.role == "admin" else user.username
     return await run_sync(svc.list_requests, requester_filter)
+
+
+@router.get(
+    "/export",
+    summary="Export access requests as CSV",
+    description=(
+        "Unpaginated CSV export for access-review evidence — every request, "
+        "requester, approver, role, and outcome. `from`/`to` filter on request date."
+    ),
+    responses={200: {"content": {"text/csv": {}}, "description": "CSV file"}},
+)
+async def export_access_requests(
+    from_: datetime | None = Query(default=None, alias="from"),
+    to: datetime | None = Query(default=None),
+    _: UserInfo = Depends(require_admin),
+    svc: AccessRequestService = Depends(get_access_request_service),
+):
+    rows = await run_sync(svc.export_requests, as_utc(from_), as_utc(to))
+    csv_body = rows_to_csv(rows, _EXPORT_COLUMNS)
+    return Response(
+        content=csv_body,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="clustervision-access-requests.csv"'},
+    )
 
 
 @router.post(

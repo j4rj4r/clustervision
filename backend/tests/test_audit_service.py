@@ -69,3 +69,37 @@ def test_list_entries_includes_denied_attempts(db_session):
     items, total = AuditService(db_session).list_entries()
     assert total == 1
     assert items[0]["status_code"] == 403
+
+
+def test_export_entries_is_unpaginated(db_session):
+    for i in range(60):
+        _entry(db_session, actor="alice", path=f"/api/v1/rbac/roles/{i}", minutes_ago=i)
+    rows = AuditService(db_session).export_entries()
+    assert len(rows) == 60
+
+
+def test_export_entries_orders_oldest_first(db_session):
+    _entry(db_session, actor="alice", path="/newer", minutes_ago=1)
+    _entry(db_session, actor="alice", path="/older", minutes_ago=10)
+    rows = AuditService(db_session).export_entries()
+    assert rows[0]["path"] == "/older"
+    assert rows[1]["path"] == "/newer"
+
+
+def test_export_entries_filters_by_date_range(db_session):
+    from datetime import UTC, datetime, timedelta
+
+    _entry(db_session, actor="alice", path="/in-range", minutes_ago=60)
+    _entry(db_session, actor="alice", path="/too-old", minutes_ago=200)
+    now = datetime.now(UTC)
+    rows = AuditService(db_session).export_entries(since=now - timedelta(minutes=90))
+    assert [r["path"] for r in rows] == ["/in-range"]
+
+
+def test_export_entries_filters_by_actor_and_path(db_session):
+    _entry(db_session, actor="alice", path="/api/v1/rbac/roles")
+    _entry(db_session, actor="bob", path="/api/v1/rbac/roles")
+    _entry(db_session, actor="alice", path="/api/v1/tokens/xyz")
+    rows = AuditService(db_session).export_entries(actor="alice", path_contains="rbac")
+    assert len(rows) == 1
+    assert rows[0]["actor"] == "alice"

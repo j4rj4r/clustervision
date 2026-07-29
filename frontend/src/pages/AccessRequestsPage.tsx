@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Plus, Check, X, RotateCcw, ShieldCheck, RefreshCw, Settings2 } from 'lucide-react'
+import { Plus, Check, X, RotateCcw, ShieldCheck, RefreshCw, Settings2, Download } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import Input from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
 import RequestAccessModal from '../components/access/RequestAccessModal'
 import JitPolicyModal from '../components/access/JitPolicyModal'
@@ -10,6 +11,7 @@ import {
   useAccessRequests,
   useApproveAccessRequest,
   useDenyAccessRequest,
+  useExportAccessRequests,
   useRevokeAccessRequest,
 } from '../hooks/useAccessRequests'
 import type { AccessRequest, AccessRequestStatus } from '../types/accessRequest'
@@ -37,11 +39,15 @@ export default function AccessRequestsPage() {
 
   const [requestOpen, setRequestOpen] = useState(false)
   const [policiesOpen, setPoliciesOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
   const [confirm, setConfirm] = useState<{ action: 'approve' | 'revoke'; request: AccessRequest } | null>(null)
 
   const approve = useApproveAccessRequest()
   const deny = useDenyAccessRequest()
   const revoke = useRevokeAccessRequest()
+  const exportCsv = useExportAccessRequests()
 
   const handleConfirm = () => {
     if (!confirm) return
@@ -67,6 +73,11 @@ export default function AccessRequestsPage() {
           {isAdmin && (
             <Button variant="secondary" size="sm" onClick={() => setPoliciesOpen(true)}>
               <Settings2 size={13} /> Policies
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
+              <Download size={13} /> Export
             </Button>
           )}
           <Button size="sm" onClick={() => setRequestOpen(true)}>
@@ -158,6 +169,33 @@ export default function AccessRequestsPage() {
 
       {requestOpen && <RequestAccessModal onClose={() => setRequestOpen(false)} />}
       {policiesOpen && <JitPolicyModal onClose={() => setPoliciesOpen(false)} />}
+
+      <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Export access requests" size="sm">
+        <div className="space-y-4">
+          <p className="text-xs text-surface-500">
+            Every request in range — requester, approver, role, and outcome. Leave dates blank to export everything.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="From" type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
+            <Input label="To" type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" className="flex-1" onClick={() => setExportOpen(false)}>Cancel</Button>
+            <Button
+              className="flex-1"
+              loading={exportCsv.isPending}
+              onClick={() =>
+                exportCsv.mutate(
+                  { from: exportFrom || undefined, to: exportTo || undefined },
+                  { onSuccess: () => setExportOpen(false) },
+                )
+              }
+            >
+              <Download size={13} /> Export CSV
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={!!confirm}

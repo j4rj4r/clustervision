@@ -15,6 +15,7 @@ A web UI for managing Kubernetes users, RBAC permissions, and kubeconfig generat
 - **Just-in-time access** — self-service, time-boxed role requests with admin approval and automatic expiry; admins can block specific roles from self-service entirely or cap their max TTL below the global default
 - **LDAP / Active Directory login** — bind directly against on-prem AD, role derived from group membership, no ADFS or other broker required
 - **Audit log** — every mutating request against RBAC, users, tokens, cluster registry and Vault config is recorded (actor, action, outcome), successful or denied
+- **Compliance exports** — CSV export of the audit log and the access-request history (requester, approver, role, outcome), date-range filterable, for access-review evidence
 
 Requires a PostgreSQL database — all ClusterVision application state (login accounts, managed user registry, token history, cluster registry, Vault runtime config, access requests) lives there. Native Kubernetes objects ClusterVision manages (RBAC objects, CSRs, ServiceAccount token Secrets) are unaffected and remain in Kubernetes.
 

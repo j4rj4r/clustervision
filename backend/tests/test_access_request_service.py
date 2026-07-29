@@ -187,6 +187,33 @@ def test_delete_nonexistent_policy_is_a_noop(svc):
     svc.delete_policy("ClusterRole", "does-not-exist")  # must not raise
 
 
+def test_export_requests_is_unpaginated_and_ordered(svc):
+    for i in range(5):
+        _create(svc, role_name=f"edit-{i}")
+    rows = svc.export_requests()
+    assert len(rows) == 5
+    assert rows == sorted(rows, key=lambda r: r["requested_at"])
+
+
+def test_export_requests_filters_by_date_range(svc, db_session):
+    now = datetime.now(UTC)
+    in_range = AccessRequestRecord(
+        id="in-range", requester="a", target_username="t", user_kind="User",
+        role_name="view", role_kind="ClusterRole", ttl_minutes=60, reason="x",
+        status="pending", requested_at=now - timedelta(hours=1),
+    )
+    too_old = AccessRequestRecord(
+        id="too-old", requester="a", target_username="t", user_kind="User",
+        role_name="view", role_kind="ClusterRole", ttl_minutes=60, reason="x",
+        status="pending", requested_at=now - timedelta(days=10),
+    )
+    db_session.add_all([in_range, too_old])
+    db_session.commit()
+
+    rows = svc.export_requests(since=now - timedelta(hours=2))
+    assert [r["id"] for r in rows] == ["in-range"]
+
+
 def test_mark_expired_only_touches_approved_and_past_expiry(svc, db_session):
     now = datetime.now(UTC)
 

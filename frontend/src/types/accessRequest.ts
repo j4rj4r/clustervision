@@ -41,3 +41,8 @@ export interface JitRolePolicySetPayload {
   eligible: boolean
   max_ttl_minutes: number | null
 }
+
+export interface AccessRequestExportQuery {
+  from?: string
+  to?: string
+}
