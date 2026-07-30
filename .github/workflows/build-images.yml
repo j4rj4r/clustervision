@@ -66,7 +66,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # pushes the Allure report to gh-pages
     services:
       postgres:
         image: postgres:16
@@ -94,7 +94,12 @@ jobs:
         working-directory: backend
 
       - name: Unit test suite (SQLite, no external services)
-        run: python -m pytest tests/ -v
+        id: unit_tests
+        # continue-on-error: a red suite must still produce an Allure report to
+        # look at — the explicit "Fail job on test failure" step below is what
+        # actually gates build-backend, not this step's own conclusion.
+        continue-on-error: true
+        run: python -m pytest tests/ -v --alluredir=allure-results
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-unit-test-secret-not-for-production
@@ -109,6 +114,38 @@ jobs:
         env:
           CV_JWT_SECRET: ci-migration-test-secret-not-for-production
           DATABASE_URL: "postgresql+psycopg://postgres:test@localhost:5432/clustervision"
+
+      # ── Allure report: publish to gh-pages, with trend history across runs ──
+      - name: Get previous Allure history
+        if: always()
+        continue-on-error: true  # first-ever run: gh-pages doesn't exist yet
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate Allure report
+        if: always()
+        uses: simple-elf/allure-report-action@v1.15
+        with:
+          allure_results: backend/allure-results
+          allure_history: allure-history
+          gh_pages: gh-pages
+          keep_reports: 20
+
+      - name: Publish Allure report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+
+      - name: Fail job on test failure
+        if: steps.unit_tests.outcome == 'failure'
+        run: |
+          echo "Unit test suite failed — see the Allure report for details." >&2
+          exit 1
 
   # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
