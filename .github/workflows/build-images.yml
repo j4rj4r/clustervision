@@ -140,6 +140,13 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+          # Sidesteps "Remote branch gh-pages not found" on the very first
+          # deploy (this action tries to track the existing remote branch
+          # otherwise). Safe here — the actual trend history across runs is
+          # already merged at the file level by simple-elf/allure-report-action
+          # above, so there's nothing lost by not keeping this branch's own
+          # git history.
+          force_orphan: true
 
       - name: Fail job on test failure
         if: steps.unit_tests.outcome == 'failure'
