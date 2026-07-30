@@ -10,9 +10,9 @@ container) — there's nothing to run this against otherwise.
 import os
 
 import pytest
-from alembic import command
 from alembic.config import Config
 
+from alembic import command
 from app.db.session import _ALEMBIC_INI
 
 pytestmark = pytest.mark.skipif(
