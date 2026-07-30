@@ -133,6 +133,19 @@ jobs:
           gh_pages: gh-pages
           keep_reports: 20
 
+      # simple-elf/allure-report-action runs as root in a Docker container and
+      # leaves a root-owned .git dir inside allure-history/ (copied along with
+      # the gh-pages history it merges). peaceiris/actions-gh-pages can't
+      # delete it (permission denied) before initializing its own orphan repo,
+      # so it silently copies this stale .git over the fresh one — the commit
+      # then lands on the wrong branch and the push fails with "src refspec
+      # gh-pages does not match any". Strip it ourselves first.
+      - name: Strip embedded git metadata from Allure history output
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" allure-history
+          rm -rf allure-history/.git
+
       - name: Publish Allure report to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
