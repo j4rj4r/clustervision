@@ -34,6 +34,7 @@ _FEATURE_BY_MODULE = {
     "test_audit_middleware": "Audit Log",
     "test_audit_service": "Audit Log",
     "test_csv_export": "Compliance Exports",
+    "test_alembic_migrations": "Database Migrations",
 }
 
 _CRITICAL_MODULES = {
@@ -41,6 +42,7 @@ _CRITICAL_MODULES = {
     "test_auth_service",
     "test_ldap_service",
     "test_audit_middleware",
+    "test_alembic_migrations",
 }
 
 _SEVERITY_OVERRIDES = {

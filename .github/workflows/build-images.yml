@@ -99,17 +99,16 @@ jobs:
         # look at — the explicit "Fail job on test failure" step below is what
         # actually gates build-backend, not this step's own conclusion.
         continue-on-error: true
-        run: python -m pytest tests/ -v --alluredir=allure-results
+        run: python -m pytest tests/ -v --alluredir=allure-results --ignore=tests/test_alembic_migrations.py
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-unit-test-secret-not-for-production
           DATABASE_URL: "sqlite:///:memory:"
 
       - name: Alembic migration smoke test (real Postgres)
-        run: |
-          python -m alembic upgrade head
-          python -m alembic downgrade base
-          python -m alembic upgrade head
+        id: migration_test
+        continue-on-error: true
+        run: python -m pytest tests/test_alembic_migrations.py -v --alluredir=allure-results
         working-directory: backend
         env:
           CV_JWT_SECRET: ci-migration-test-secret-not-for-production
@@ -174,9 +173,9 @@ jobs:
           force_orphan: true
 
       - name: Fail job on test failure
-        if: steps.unit_tests.outcome == 'failure'
+        if: steps.unit_tests.outcome == 'failure' || steps.migration_test.outcome == 'failure'
         run: |
-          echo "Unit test suite failed — see the Allure report for details." >&2
+          echo "Test suite failed — see the Allure report for details." >&2
           exit 1
 
   # ── Backend: build per platform on native runners, then merge ───────────────
