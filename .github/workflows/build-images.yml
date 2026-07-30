@@ -116,6 +116,18 @@ jobs:
           DATABASE_URL: "postgresql+psycopg://postgres:test@localhost:5432/clustervision"
 
       # ── Allure report: publish to gh-pages, with trend history across runs ──
+      - name: Write Allure environment info
+        if: always()
+        run: |
+          cat > allure-results/environment.properties <<EOF
+          Python.Version=3.12
+          Database=PostgreSQL 16 (unit suite: SQLite in-memory; migration smoke test: real Postgres)
+          Git.Commit=${{ github.sha }}
+          Git.Branch=${{ github.ref_name }}
+          CI.RunNumber=${{ github.run_number }}
+          EOF
+        working-directory: backend
+
       - name: Get previous Allure history
         if: always()
         continue-on-error: true  # first-ever run: gh-pages doesn't exist yet
