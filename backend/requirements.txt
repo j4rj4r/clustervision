@@ -10,5 +10,5 @@ PyJWT==2.13.0
 bcrypt==4.3.0
 SQLAlchemy==2.0.51
 psycopg[binary]==3.3.4
-alembic==1.18.5
+alembic==1.19.1
 ldap3==2.9.1
