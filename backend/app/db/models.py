@@ -189,6 +189,19 @@ class JitRolePolicy(Base):
         }
 
 
+class LoginAttempt(Base):
+    """Sliding-window log of /auth/login attempts per client IP, used to rate
+    limit that endpoint. Persisted in Postgres — rather than kept in an
+    in-process dict — so the limit is shared across backend replicas and
+    survives pod restarts instead of resetting on every deploy."""
+
+    __tablename__ = "login_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    ip: Mapped[str] = mapped_column(String(64), index=True)
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class AuditLogEntry(Base):
     """Append-only record of administrative mutations made through the API —
     covers RBAC, managed-user, token, cluster-registry and Vault-config

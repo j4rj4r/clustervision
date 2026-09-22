@@ -1,17 +1,56 @@
 import logging
 import os
-from datetime import UTC, datetime
+import uuid
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..core.auth import hash_password, verify_password
-from ..db.models import LocalUser
+from ..db.models import LocalUser, LoginAttempt
 from ..db.session import new_session
 from . import ldap_service
 
 logger = logging.getLogger(__name__)
 
 _DUMMY_HASH = "$2b$12$Kix0GsNjGUDMHlTGtqKhCOSVRAf5Y/LNmXZnkgDlJwO7hzf5Q7Psy"
+
+_LOGIN_RATE_LIMIT = 10       # max attempts
+_LOGIN_RATE_WINDOW = timedelta(minutes=5)
+
+
+def check_login_rate_limit(ip: str) -> None:
+    """Raise 429 if `ip` has made too many login attempts in the trailing
+    window. Backed by Postgres (the `login_attempts` table) rather than an
+    in-process dict, so the limit holds across backend replicas and doesn't
+    reset every time a pod restarts."""
+    from fastapi import HTTPException, status
+
+    now = datetime.now(UTC)
+    window_start = now - _LOGIN_RATE_WINDOW
+
+    db = new_session()
+    try:
+        # Prune this IP's expired attempts first so the table stays bounded —
+        # mirrors the stale-bucket cleanup the in-memory version did.
+        db.query(LoginAttempt).filter(
+            LoginAttempt.ip == ip, LoginAttempt.attempted_at < window_start
+        ).delete()
+
+        count = db.scalar(
+            select(func.count()).select_from(LoginAttempt).where(LoginAttempt.ip == ip)
+        )
+        if count >= _LOGIN_RATE_LIMIT:
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts — try again later",
+                headers={"Retry-After": str(int(_LOGIN_RATE_WINDOW.total_seconds()))},
+            )
+
+        db.add(LoginAttempt(id=str(uuid.uuid4()), ip=ip, attempted_at=now))
+        db.commit()
+    finally:
+        db.close()
 
 
 def ensure_default_admin() -> None:
