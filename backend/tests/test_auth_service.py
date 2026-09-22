@@ -1,8 +1,11 @@
 import os
+import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
 
+from app.db.models import LoginAttempt
 from app.services import auth_service
 from app.services.ldap_service import LdapAuthResult
 
@@ -158,3 +161,37 @@ def test_change_role_rejected_for_ldap_account(db_session, monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         auth_service.change_role("alice", "admin")
     assert exc_info.value.status_code == 400
+
+
+def test_check_login_rate_limit_allows_up_to_the_limit(db_session):
+    for _ in range(10):
+        auth_service.check_login_rate_limit("203.0.113.1")  # doesn't raise
+
+
+def test_check_login_rate_limit_blocks_after_limit(db_session):
+    for _ in range(10):
+        auth_service.check_login_rate_limit("203.0.113.2")
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth_service.check_login_rate_limit("203.0.113.2")
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.headers["Retry-After"] == "300"
+
+
+def test_check_login_rate_limit_is_per_ip(db_session):
+    for _ in range(10):
+        auth_service.check_login_rate_limit("203.0.113.3")
+
+    auth_service.check_login_rate_limit("203.0.113.4")  # separate bucket, doesn't raise
+
+
+def test_check_login_rate_limit_ignores_attempts_outside_the_window(db_session):
+    stale = datetime.now(UTC) - timedelta(minutes=10)
+    for _ in range(10):
+        db_session.add(LoginAttempt(id=str(uuid.uuid4()), ip="203.0.113.5", attempted_at=stale))
+    db_session.commit()
+
+    auth_service.check_login_rate_limit("203.0.113.5")  # stale attempts don't count, doesn't raise
+
+    remaining = db_session.query(LoginAttempt).filter(LoginAttempt.ip == "203.0.113.5").all()
+    assert len(remaining) == 1  # the 10 stale rows were pruned, only the fresh one remains

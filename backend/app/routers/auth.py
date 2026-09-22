@@ -1,7 +1,4 @@
 import os
-import time
-from collections import defaultdict
-from threading import Lock
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
@@ -16,6 +13,7 @@ from ..services.auth_service import (
     authenticate,
     change_password,
     change_role,
+    check_login_rate_limit,
     create_user,
     delete_user,
     get_user_entry,
@@ -23,12 +21,6 @@ from ..services.auth_service import (
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-
-# ── Login rate limiting ────────────────────────────────────────────────────
-_RATE_LIMIT = 10        # max attempts
-_RATE_WINDOW = 300      # per 5 minutes
-_rate_lock = Lock()
-_rate_buckets: dict[str, list[float]] = defaultdict(list)
 
 
 def _client_ip(request: Request) -> str:
@@ -45,24 +37,6 @@ def _client_ip(request: Request) -> str:
         return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
-
-def _check_rate_limit(ip: str) -> None:
-    now = time.monotonic()
-    with _rate_lock:
-        if len(_rate_buckets) > 1024:
-            stale = [k for k, v in _rate_buckets.items() if not v or now - v[-1] >= _RATE_WINDOW]
-            for k in stale:
-                del _rate_buckets[k]
-        attempts = [t for t in _rate_buckets[ip] if now - t < _RATE_WINDOW]
-        if len(attempts) >= _RATE_LIMIT:
-            _rate_buckets[ip] = attempts
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many login attempts — try again later",
-                headers={"Retry-After": str(_RATE_WINDOW)},
-            )
-        attempts.append(now)
-        _rate_buckets[ip] = attempts
 
 _REFRESH_COOKIE = "cv_refresh"
 _REFRESH_MAX_AGE = 7 * 86400
@@ -84,7 +58,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, request: Request, response: Response):
-    _check_rate_limit(_client_ip(request))
+    await run_sync(check_login_rate_limit, _client_ip(request))
     # bcrypt + K8s secret read are blocking — keep them off the event loop
     user = await run_sync(authenticate, body.username, body.password)
     if not user:
