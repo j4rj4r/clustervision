@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Download, RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import Button from '../components/ui/Button'
@@ -26,26 +26,33 @@ export default function AuditLogPage() {
   const qc = useQueryClient()
   const [actor, setActor] = useState('')
   const [pathContains, setPathContains] = useState('')
+  const [debouncedActor, setDebouncedActor] = useState('')
+  const [debouncedPathContains, setDebouncedPathContains] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [offset, setOffset] = useState(0)
   const [payloadTarget, setPayloadTarget] = useState<AuditLogEntry | null>(null)
 
+  // Debounce the text filters so typing doesn't fire a request per keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedActor(actor)
+      setDebouncedPathContains(pathContains)
+      setOffset(0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [actor, pathContains])
+
   const { data, isLoading } = useAuditLog({
     limit: PAGE_SIZE,
     offset,
-    actor: actor || undefined,
-    path_contains: pathContains || undefined,
+    actor: debouncedActor || undefined,
+    path_contains: debouncedPathContains || undefined,
   })
   const items = data?.items ?? []
   const total = data?.total ?? 0
 
   const exportCsv = useExportAuditLog()
-
-  const resetAndFilter = (fn: () => void) => {
-    setOffset(0)
-    fn()
-  }
 
   return (
     <div className="space-y-6">
@@ -66,14 +73,14 @@ export default function AuditLogPage() {
           <Input
             placeholder="Filter by actor..."
             value={actor}
-            onChange={(e) => resetAndFilter(() => setActor(e.target.value))}
+            onChange={(e) => setActor(e.target.value)}
           />
         </div>
         <div className="w-72">
           <Input
             placeholder="Filter by path (contains)..."
             value={pathContains}
-            onChange={(e) => resetAndFilter(() => setPathContains(e.target.value))}
+            onChange={(e) => setPathContains(e.target.value)}
           />
         </div>
         <Input label="From" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />

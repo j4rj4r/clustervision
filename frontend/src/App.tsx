@@ -1,17 +1,19 @@
+import { lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import RequireAuth from './components/auth/RequireAuth'
 import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import UsersPage from './pages/UsersPage'
-import RbacPage from './pages/RbacPage'
-import KubeconfigPage from './pages/KubeconfigPage'
-import ClustersPage from './pages/ClustersPage'
-import TokensPage from './pages/TokensPage'
-import AccessRequestsPage from './pages/AccessRequestsPage'
-import AdminPage from './pages/AdminPage'
-import AuditLogPage from './pages/AuditLogPage'
-import NotFoundPage from './pages/NotFoundPage'
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const UsersPage = lazy(() => import('./pages/UsersPage'))
+const RbacPage = lazy(() => import('./pages/RbacPage'))
+const KubeconfigPage = lazy(() => import('./pages/KubeconfigPage'))
+const ClustersPage = lazy(() => import('./pages/ClustersPage'))
+const TokensPage = lazy(() => import('./pages/TokensPage'))
+const AccessRequestsPage = lazy(() => import('./pages/AccessRequestsPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 export default function App() {
   return (
