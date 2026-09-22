@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Fragment } from 'react'
 import { Shield, Trash2, FileCode2, ChevronDown, ChevronRight, ChevronsUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
@@ -46,13 +46,13 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
     setPage(0)
   }
 
-  const sorted = [...users].sort((a, b) => {
+  const sorted = useMemo(() => [...users].sort((a, b) => {
     let cmp = 0
     if (sortCol === 'name') cmp = a.name.localeCompare(b.name)
     else if (sortCol === 'type') cmp = a.user_type.localeCompare(b.user_type)
     else if (sortCol === 'created_at') cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     return sortDir === 'asc' ? cmp : -cmp
-  })
+  }), [users, sortCol, sortDir])
 
   const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 

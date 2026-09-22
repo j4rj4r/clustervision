@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { ServerCrash } from 'lucide-react'
 import Sidebar from './Sidebar'
@@ -41,7 +42,9 @@ export default function Layout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <Suspense fallback={<div className="text-sm text-surface-400">Loading...</div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

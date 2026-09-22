@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, ChevronsUpDown, ArrowUp, ArrowDown, ShieldOff, Plus } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
@@ -38,13 +38,13 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
     setPage(0)
   }
 
-  const sorted = [...roles].sort((a, b) => {
+  const sorted = useMemo(() => [...roles].sort((a, b) => {
     let cmp = 0
     if (sortCol === 'name') cmp = a.name.localeCompare(b.name)
     else if (sortCol === 'rules') cmp = (a.rules?.length ?? 0) - (b.rules?.length ?? 0)
     else if (sortCol === 'status') cmp = Number(a.is_system) - Number(b.is_system)
     return sortDir === 'asc' ? cmp : -cmp
-  })
+  }), [roles, sortCol, sortDir])
 
   const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
