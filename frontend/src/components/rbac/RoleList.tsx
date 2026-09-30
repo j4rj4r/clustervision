@@ -117,7 +117,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
                       <button
                         aria-label="Copy role"
                         onClick={() => onCopy(role)}
-                        className="p-1 text-surface-500 hover:text-surface-200 transition-colors"
+                        className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-surface-700 hover:border-surface-500 hover:text-surface-100 transition-colors"
                       >
                         <Copy size={13} />
                       </button>
@@ -126,7 +126,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
                       <button
                         aria-label="Edit role"
                         onClick={() => onEdit(role)}
-                        className="p-1 text-surface-500 hover:text-surface-200 transition-colors"
+                        className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-surface-700 hover:border-surface-500 hover:text-surface-100 transition-colors"
                       >
                         <Pencil size={13} />
                       </button>
@@ -135,7 +135,7 @@ export default function RoleList({ roles, title, onEdit, onCopy, onDelete, onCre
                       <button
                         aria-label="Delete role"
                         onClick={() => onDelete(role)}
-                        className="p-1 text-surface-500 hover:text-red-400 transition-colors"
+                        className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                       >
                         <Trash2 size={13} />
                       </button>

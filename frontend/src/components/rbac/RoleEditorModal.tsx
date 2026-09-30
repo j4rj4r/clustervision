@@ -58,8 +58,12 @@ function RuleRow({
             placeholder='pods, deployments'
           />
         </div>
-        <button aria-label="Remove rule" onClick={onRemove} className="self-end text-surface-500 hover:text-red-400 transition-colors pb-1">
-          <Trash2 size={14} />
+        <button
+          aria-label="Remove rule"
+          onClick={onRemove}
+          className="self-end mb-1 p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
+        >
+          <Trash2 size={13} />
         </button>
       </div>
       <div>

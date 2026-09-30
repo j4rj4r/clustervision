@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { RefreshCw, Search } from 'lucide-react'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import Select from '../ui/Select'
 import { useNamespaceAccess, useNamespaces } from '../../hooks/useRbac'
 import { useQueryClient } from '@tanstack/react-query'
@@ -66,12 +67,13 @@ export default function NamespaceAccessPanel() {
             />
           </div>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => { qc.invalidateQueries({ queryKey: ['namespace-access', cluster, namespace] }); refetch() }}
-          className="pb-0.5 text-surface-400 hover:text-surface-200 transition-colors"
         >
-          <RefreshCw size={14} />
-        </button>
+          <RefreshCw size={13} />
+        </Button>
       </div>
 
       {/* Table */}

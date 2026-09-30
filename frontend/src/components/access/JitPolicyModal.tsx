@@ -76,10 +76,10 @@ export default function JitPolicyModal({ onClose }: Props) {
                     <td className="px-3 py-2 text-right">
                       <button
                         onClick={() => deletePolicy.mutate({ roleKind: p.role_kind, roleName: p.role_name })}
-                        className="text-surface-400 hover:text-red-400 transition-colors"
+                        className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                         title="Remove override"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </td>
                   </tr>

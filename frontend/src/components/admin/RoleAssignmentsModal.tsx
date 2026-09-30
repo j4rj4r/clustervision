@@ -86,7 +86,7 @@ export default function RoleAssignmentsModal({ username, onClose }: Props) {
                     <td className="px-3 py-2 text-right">
                       <button
                         onClick={() => deleteRole.mutate(r.scope)}
-                        className="text-surface-400 hover:text-red-400 transition-colors"
+                        className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                         title="Remove role"
                       >
                         <Trash2 size={14} />

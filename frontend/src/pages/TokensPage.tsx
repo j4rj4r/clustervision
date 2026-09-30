@@ -122,10 +122,10 @@ export default function TokensPage() {
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setDeleteTarget(entry)}
-                            className="text-surface-400 hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                             title="Delete entry"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </td>
                       )}
@@ -177,17 +177,17 @@ export default function TokensPage() {
                           <div className="flex justify-end gap-3">
                             <button
                               onClick={() => setRotateTarget(t)}
-                              className="text-surface-400 hover:text-brand-400 transition-colors"
+                              className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-brand-950/40 hover:border-brand-500/50 hover:text-brand-400 transition-colors"
                               title="Rotate token"
                             >
-                              <RotateCcw size={14} />
+                              <RotateCcw size={13} />
                             </button>
                             <button
                               onClick={() => setRevokeTarget(t)}
-                              className="text-surface-400 hover:text-red-400 transition-colors"
+                              className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                               title="Revoke token"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </td>
