@@ -133,21 +133,23 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     {isPrivileged ? (
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => setApproveTarget(r)}
                           disabled={isOwnRequest}
                           title={isOwnRequest ? 'Cannot approve your own request' : 'Approve'}
-                          className="text-surface-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-surface-400 transition-colors"
+                          aria-label="Approve"
+                          className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-emerald-950/40 hover:border-emerald-500/50 hover:text-emerald-400 disabled:opacity-30 disabled:hover:bg-surface-800 disabled:hover:border-surface-600 disabled:hover:text-surface-300 transition-colors"
                         >
-                          <Check size={15} />
+                          <Check size={14} />
                         </button>
                         <button
                           onClick={() => deny.mutate(r.id)}
                           title="Deny"
-                          className="text-surface-400 hover:text-red-400 transition-colors"
+                          aria-label="Deny"
+                          className="p-1.5 rounded-md bg-surface-800 border border-surface-600 text-surface-300 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-400 transition-colors"
                         >
-                          <X size={15} />
+                          <X size={14} />
                         </button>
                       </div>
                     ) : (

@@ -130,34 +130,38 @@ export default function AccessRequestsPage() {
                     </td>
                     {isPrivileged && (
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-3">
+                        <div className="flex justify-end gap-2">
                           {r.status === 'pending' && (
                             <>
-                              <button
-                                onClick={() => setConfirm({ action: 'approve', request: r })}
+                              <Button
+                                size="sm"
+                                variant="secondary"
                                 disabled={isOwnRequest}
-                                title={isOwnRequest ? 'Cannot approve your own request' : 'Approve'}
-                                className="text-surface-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-surface-400 transition-colors"
+                                title={isOwnRequest ? 'Cannot approve your own request' : undefined}
+                                className="text-emerald-400 border-emerald-600/40 hover:bg-emerald-950/30 hover:text-emerald-300 hover:border-emerald-500/60"
+                                onClick={() => setConfirm({ action: 'approve', request: r })}
                               >
-                                <Check size={14} />
-                              </button>
-                              <button
+                                <Check size={13} /> Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="text-red-400 border-red-600/40 hover:bg-red-950/30 hover:text-red-300 hover:border-red-500/60"
                                 onClick={() => deny.mutate(r.id)}
-                                title="Deny"
-                                className="text-surface-400 hover:text-red-400 transition-colors"
                               >
-                                <X size={14} />
-                              </button>
+                                <X size={13} /> Deny
+                              </Button>
                             </>
                           )}
                           {r.status === 'approved' && (
-                            <button
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="text-red-400 border-red-600/40 hover:bg-red-950/30 hover:text-red-300 hover:border-red-500/60"
                               onClick={() => setConfirm({ action: 'revoke', request: r })}
-                              title="Revoke now"
-                              className="text-surface-400 hover:text-red-400 transition-colors"
                             >
-                              <RotateCcw size={14} />
-                            </button>
+                              <RotateCcw size={13} /> Revoke
+                            </Button>
                           )}
                         </div>
                       </td>
