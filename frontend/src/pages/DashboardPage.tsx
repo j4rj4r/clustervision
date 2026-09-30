@@ -92,7 +92,7 @@ export default function DashboardPage() {
         <Link to="/access-requests">
           <Button size="sm" variant="secondary"><Plus size={13} /> Request access</Button>
         </Link>
-        {myLink && (
+        {myLink && canWrite && (
           <Link to={`/kubeconfig?user=${encodeURIComponent(myLink.name)}&namespace=${encodeURIComponent(myLink.namespace)}`}>
             <Button size="sm" variant="secondary"><FileCode2 size={13} /> My kubeconfig</Button>
           </Link>

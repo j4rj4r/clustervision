@@ -125,6 +125,12 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Form */}
       <div className="space-y-4">
+        {!canWrite && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-300">
+            You need operator access on this cluster to generate a kubeconfig.
+          </div>
+        )}
+
         <Select
           label="User"
           value={selectedKey}
