@@ -137,6 +137,7 @@ jobs:
 
       - name: Generate Allure report
         if: always()
+        continue-on-error: true  # transient registry hiccups (e.g. public ECR rate limits) shouldn't fail a green test run
         uses: simple-elf/allure-report-action@v1.15
         with:
           allure_results: backend/allure-results
@@ -153,12 +154,13 @@ jobs:
       # gh-pages does not match any". Strip it ourselves first.
       - name: Strip embedded git metadata from Allure history output
         if: always()
+        continue-on-error: true  # no-op if the report step above didn't produce allure-history/
         run: |
           sudo chown -R "$(id -u):$(id -g)" allure-history
           rm -rf allure-history/.git
 
       - name: Publish Allure report to GitHub Pages
-        if: always()
+        if: always() && hashFiles('allure-history/**') != ''
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
