@@ -100,8 +100,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending access requests */}
-        <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
+        {/* Pending access requests — spans full width when Recent activity (admin-only) is absent */}
+        <div className={`bg-surface-900 border border-surface-600 rounded-xl overflow-hidden ${!isInstanceAdmin ? 'lg:col-span-2' : ''}`}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700/60">
             <h2 className="text-sm font-semibold text-surface-100">
               {isPrivileged ? 'Pending access requests' : 'Your pending requests'}
