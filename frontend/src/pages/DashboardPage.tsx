@@ -1,15 +1,18 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight, FileCode2 } from 'lucide-react'
+import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight, FileCode2, Check, X } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
+import Modal from '../components/ui/Modal'
 import { INSTANCE_SCOPE, useAuthStore } from '../store/authStore'
 import { useClusterStore } from '../store/clusterStore'
 import { useUsers } from '../hooks/useUsers'
 import { useClusterRoles } from '../hooks/useRbac'
 import { useClusters } from '../hooks/useCluster'
-import { useAccessRequests } from '../hooks/useAccessRequests'
+import { useAccessRequests, useApproveAccessRequest, useDenyAccessRequest } from '../hooks/useAccessRequests'
 import { useAuditLog } from '../hooks/useAudit'
 import { useMyLink } from '../hooks/useLink'
+import type { AccessRequest } from '../types/accessRequest'
 
 function StatTile({
   icon: Icon,
@@ -54,6 +57,9 @@ export default function DashboardPage() {
   const activeCluster = useClusterStore((s) => s.activeCluster)
   const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
   const { data: myLink } = useMyLink()
+  const [approveTarget, setApproveTarget] = useState<AccessRequest | null>(null)
+  const approve = useApproveAccessRequest()
+  const deny = useDenyAccessRequest()
 
   const { data: usersData, isLoading: loadingUsers } = useUsers()
   const { data: clusterRoles, isLoading: loadingRoles } = useClusterRoles(false, true)
@@ -116,17 +122,40 @@ export default function DashboardPage() {
             <div className="py-10 text-center text-sm text-surface-400">Nothing pending.</div>
           ) : (
             <ul className="divide-y divide-surface-700">
-              {(isPrivileged ? pending : myPending).slice(0, 6).map((r) => (
-                <li key={r.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-surface-200 font-mono truncate">{r.target_username}</p>
-                    <p className="text-xs text-surface-500 truncate">
-                      {r.role_name} · {r.ttl_minutes} min {isPrivileged ? `· requested by ${r.requester}` : ''}
-                    </p>
-                  </div>
-                  <Badge variant="warning" dot>pending</Badge>
-                </li>
-              ))}
+              {(isPrivileged ? pending : myPending).slice(0, 6).map((r) => {
+                const isOwnRequest = r.requester === username
+                return (
+                  <li key={r.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-surface-200 font-mono truncate">{r.target_username}</p>
+                      <p className="text-xs text-surface-500 truncate">
+                        {r.role_name} · {r.ttl_minutes} min {isPrivileged ? `· requested by ${r.requester}` : ''}
+                      </p>
+                    </div>
+                    {isPrivileged ? (
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => setApproveTarget(r)}
+                          disabled={isOwnRequest}
+                          title={isOwnRequest ? 'Cannot approve your own request' : 'Approve'}
+                          className="text-surface-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-surface-400 transition-colors"
+                        >
+                          <Check size={15} />
+                        </button>
+                        <button
+                          onClick={() => deny.mutate(r.id)}
+                          title="Deny"
+                          className="text-surface-400 hover:text-red-400 transition-colors"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ) : (
+                      <Badge variant="warning" dot>pending</Badge>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
@@ -165,6 +194,29 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      <Modal open={!!approveTarget} onClose={() => setApproveTarget(null)} title="Approve access request" size="sm">
+        {approveTarget && (
+          <div className="space-y-5">
+            <p className="text-sm text-surface-300">
+              Grant <span className="font-mono text-white">{approveTarget.target_username}</span> the role{' '}
+              <span className="font-mono text-white">{approveTarget.role_name}</span> for{' '}
+              <span className="text-white">{approveTarget.ttl_minutes} minutes</span>? It will be revoked
+              automatically when it expires.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setApproveTarget(null)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                loading={approve.isPending}
+                onClick={() => approve.mutate(approveTarget.id, { onSuccess: () => setApproveTarget(null) })}
+              >
+                Approve
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
