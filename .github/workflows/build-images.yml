@@ -66,7 +66,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # pushes the Allure report to gh-pages
+      contents: read
     services:
       postgres:
         image: postgres:16
@@ -114,7 +114,6 @@ jobs:
           CV_JWT_SECRET: ci-migration-test-secret-not-for-production
           DATABASE_URL: "postgresql+psycopg://postgres:test@localhost:5432/clustervision"
 
-      # ── Allure report: publish to gh-pages, with trend history across runs ──
       - name: Write Allure environment info
         if: always()
         run: |
@@ -127,8 +126,47 @@ jobs:
           EOF
         working-directory: backend
 
-      - name: Get previous Allure history
+      # Handed off to the allure-report job below, which runs in complete
+      # isolation from these steps — see that job for why.
+      - name: Upload Allure results
         if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results
+          path: backend/allure-results
+          retention-days: 1
+
+      - name: Fail job on test failure
+        if: steps.unit_tests.outcome == 'failure' || steps.migration_test.outcome == 'failure'
+        run: |
+          echo "Test suite failed — see the Allure report for details." >&2
+          exit 1
+
+  # ── Allure report: publish to gh-pages, with trend history across runs ──
+  # A separate job from test-backend on purpose: simple-elf/allure-report-action
+  # is a Docker action, and GitHub Actions builds a job's Docker actions
+  # *before* running any of its steps — including Checkout. When that build
+  # hits AWS public ECR's anonymous-pull rate limit (a recurring, not
+  # one-off, failure for this specific base image), every step in the job
+  # without `if: always()` gets silently skipped, Checkout included — the
+  # test suite never even runs, yet nothing surfaces that distinction.
+  # Isolating the flaky action in its own job means a report-generation
+  # failure can never again prevent the tests themselves from running.
+  allure-report:
+    name: Allure report
+    needs: test-backend
+    if: ${{ !cancelled() && needs.test-backend.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # pushes the Allure report to gh-pages
+    steps:
+      - name: Download Allure results
+        uses: actions/download-artifact@v8
+        with:
+          name: allure-results
+          path: backend/allure-results
+
+      - name: Get previous Allure history
         continue-on-error: true  # first-ever run: gh-pages doesn't exist yet
         uses: actions/checkout@v7
         with:
@@ -136,8 +174,7 @@ jobs:
           path: gh-pages
 
       - name: Generate Allure report
-        if: always()
-        continue-on-error: true  # transient registry hiccups (e.g. public ECR rate limits) shouldn't fail a green test run
+        continue-on-error: true  # transient registry hiccups (e.g. public ECR rate limits) shouldn't fail this job
         uses: simple-elf/allure-report-action@v1.15
         with:
           allure_results: backend/allure-results
@@ -153,14 +190,13 @@ jobs:
       # then lands on the wrong branch and the push fails with "src refspec
       # gh-pages does not match any". Strip it ourselves first.
       - name: Strip embedded git metadata from Allure history output
-        if: always()
         continue-on-error: true  # no-op if the report step above didn't produce allure-history/
         run: |
           sudo chown -R "$(id -u):$(id -g)" allure-history
           rm -rf allure-history/.git
 
       - name: Publish Allure report to GitHub Pages
-        if: always() && hashFiles('allure-history/**') != ''
+        if: hashFiles('allure-history/**') != ''
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -173,12 +209,6 @@ jobs:
           # above, so there's nothing lost by not keeping this branch's own
           # git history.
           force_orphan: true
-
-      - name: Fail job on test failure
-        if: steps.unit_tests.outcome == 'failure' || steps.migration_test.outcome == 'failure'
-        run: |
-          echo "Test suite failed — see the Allure report for details." >&2
-          exit 1
 
   # ── Backend: build per platform on native runners, then merge ───────────────
   build-backend:
