@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, KeyRound, ShieldCheck, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, KeyRound, ShieldCheck, RefreshCw, Link2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi, type CvUser } from '../api/admin'
 import { useAuthStore } from '../store/authStore'
@@ -10,6 +10,7 @@ import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import VaultConfigSection from '../components/admin/VaultConfigSection'
 import RoleAssignmentsModal from '../components/admin/RoleAssignmentsModal'
+import LinkManagedUserModal from '../components/admin/LinkManagedUserModal'
 
 // ── Create user modal ──────────────────────────────────────────────────────
 // Accounts start with no role anywhere — assign one via "Manage roles" after
@@ -131,6 +132,7 @@ export default function AdminPage() {
   const [resetTarget, setResetTarget] = useState<CvUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CvUser | null>(null)
   const [rolesTarget, setRolesTarget] = useState<CvUser | null>(null)
+  const [linkTarget, setLinkTarget] = useState<CvUser | null>(null)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['cv-users'],
@@ -175,6 +177,7 @@ export default function AdminPage() {
               <tr className="border-b border-surface-600 bg-surface-900/60">
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Username</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Roles</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Identity</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Source</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Last login</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-surface-400">Actions</th>
@@ -201,6 +204,13 @@ export default function AdminPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      {user.linked_managed_user ? (
+                        <Badge variant="success">{user.linked_managed_user.name}</Badge>
+                      ) : (
+                        <span className="text-xs text-surface-500">Not linked</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <Badge variant={isLdap ? 'warning' : 'default'}>{isLdap ? 'LDAP' : 'Local'}</Badge>
                     </td>
                     <td className="px-4 py-3 text-surface-400 text-xs">
@@ -216,6 +226,13 @@ export default function AdminPage() {
                           onClick={() => setRolesTarget(user)}
                         >
                           <ShieldCheck size={12} /> Roles
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setLinkTarget(user)}
+                        >
+                          <Link2 size={12} /> Identity
                         </Button>
                         <Button
                           size="sm"
@@ -251,6 +268,13 @@ export default function AdminPage() {
       <ResetPasswordModal user={resetTarget} onClose={() => setResetTarget(null)} />
       {rolesTarget && (
         <RoleAssignmentsModal username={rolesTarget.username} onClose={() => setRolesTarget(null)} />
+      )}
+      {linkTarget && (
+        <LinkManagedUserModal
+          username={linkTarget.username}
+          currentLink={linkTarget.linked_managed_user}
+          onClose={() => setLinkTarget(null)}
+        />
       )}
 
       <Modal

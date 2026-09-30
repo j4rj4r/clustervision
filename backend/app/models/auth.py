@@ -28,3 +28,13 @@ class TokenResponse(BaseModel):
 class UserInfo(BaseModel):
     username: str
     roles: dict[str, RoleName]
+
+
+class LinkedUserRead(BaseModel):
+    name: str
+    namespace: str
+
+
+class LinkedUserSet(BaseModel):
+    name: str
+    namespace: str = "default"

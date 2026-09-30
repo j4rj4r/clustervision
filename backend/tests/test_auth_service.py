@@ -62,6 +62,7 @@ def test_change_password_for_local_user(db_session):
 
 # ── Scope role assignments ───────────────────────────────────────────────────
 
+
 def test_set_and_list_scope_roles(db_session):
     auth_service.create_user("bob", "pw")
     auth_service.set_scope_role("bob", "prod", "operator")
@@ -70,7 +71,10 @@ def test_set_and_list_scope_roles(db_session):
         {"scope": "_instance", "role": "viewer"},
         {"scope": "prod", "role": "operator"},
     ]
-    assert auth_service.get_user_entry("bob")["roles"] == {"_instance": "viewer", "prod": "operator"}
+    assert auth_service.get_user_entry("bob")["roles"] == {
+        "_instance": "viewer",
+        "prod": "operator",
+    }
 
 
 def test_set_scope_role_upserts(db_session):
@@ -102,7 +106,8 @@ def test_scope_role_rejected_for_nonexistent_user(db_session):
 
 def test_scope_role_rejected_for_ldap_account(db_session, monkeypatch):
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="viewer"),
     )
     auth_service.authenticate("alice", "adpass")
@@ -112,10 +117,79 @@ def test_scope_role_rejected_for_ldap_account(db_session, monkeypatch):
     assert exc_info.value.status_code == 400
 
 
+def test_link_and_unlink_managed_user(db_session):
+    from app.db.models import ManagedUser
+
+    auth_service.create_user("bob", "pw")
+    db_session.add(
+        ManagedUser(
+            name="bob-cert",
+            namespace="default",
+            type="certificate",
+            created_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()
+
+    assert auth_service.get_linked_user("bob") is None
+
+    auth_service.set_linked_user("bob", "bob-cert", "default")
+    assert auth_service.get_linked_user("bob") == {
+        "name": "bob-cert",
+        "namespace": "default",
+    }
+    assert auth_service.get_user_entry("bob")["linked_managed_user"] == {
+        "name": "bob-cert",
+        "namespace": "default",
+    }
+
+    auth_service.clear_linked_user("bob")
+    assert auth_service.get_linked_user("bob") is None
+
+
+def test_link_rejected_for_nonexistent_account(db_session):
+    with pytest.raises(HTTPException) as exc_info:
+        auth_service.set_linked_user("nobody", "bob-cert", "default")
+    assert exc_info.value.status_code == 404
+
+
+def test_link_rejected_for_nonexistent_managed_user(db_session):
+    auth_service.create_user("bob", "pw")
+    with pytest.raises(HTTPException) as exc_info:
+        auth_service.set_linked_user("bob", "does-not-exist", "default")
+    assert exc_info.value.status_code == 404
+    assert auth_service.get_linked_user("bob") is None
+
+
+def test_clear_links_to_deleted_managed_user(db_session):
+    from app.db.models import ManagedUser
+
+    auth_service.create_user("bob", "pw")
+    auth_service.create_user("carol", "pw")
+    db_session.add(
+        ManagedUser(
+            name="shared-sa",
+            namespace="ci",
+            type="service_account",
+            created_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()
+    auth_service.set_linked_user("bob", "shared-sa", "ci")
+    auth_service.set_linked_user("carol", "shared-sa", "ci")
+
+    auth_service.clear_links_to("shared-sa", "ci")
+
+    assert auth_service.get_linked_user("bob") is None
+    assert auth_service.get_linked_user("carol") is None
+
+
 def test_list_scopes_includes_instance_local_and_registered_clusters(db_session):
     from app.db.models import RegisteredCluster
 
-    db_session.add(RegisteredCluster(name="prod", api_url="https://prod", ca_data="", token=""))
+    db_session.add(
+        RegisteredCluster(name="prod", api_url="https://prod", ca_data="", token="")
+    )
     db_session.commit()
     assert auth_service.list_scopes() == ["_instance", "local", "prod"]
 
@@ -124,7 +198,10 @@ def test_ensure_default_admin_creates_once(db_session, monkeypatch):
     monkeypatch.setenv("CV_ADMIN_PASSWORD", "bootstrap-pass-123")
     auth_service.ensure_default_admin()
     assert auth_service.authenticate("admin", "bootstrap-pass-123") is not None
-    assert auth_service.get_user_entry("admin")["roles"] == {"_instance": "admin", "local": "admin"}
+    assert auth_service.get_user_entry("admin")["roles"] == {
+        "_instance": "admin",
+        "local": "admin",
+    }
 
     # Second call must not reset an already-customized admin
     auth_service.change_password("admin", "changed-by-user-456")
@@ -141,13 +218,22 @@ def test_ensure_default_admin_noop_without_env(db_session, monkeypatch):
 
 # ── LDAP integration ─────────────────────────────────────────────────────────
 
+
 def test_ldap_first_login_provisions_local_user(db_session, monkeypatch):
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
-        lambda u, p: LdapAuthResult(username=u, role="viewer") if (u, p) == ("alice", "adpass") else None,
+        auth_service.ldap_service,
+        "authenticate",
+        lambda u, p: (
+            LdapAuthResult(username=u, role="viewer")
+            if (u, p) == ("alice", "adpass")
+            else None
+        ),
     )
     result = auth_service.authenticate("alice", "adpass")
-    assert result == {"username": "alice", "roles": {"_instance": "viewer", "local": "viewer"}}
+    assert result == {
+        "username": "alice",
+        "roles": {"_instance": "viewer", "local": "viewer"},
+    }
 
     users = {u["username"]: u for u in auth_service.list_users()}
     assert users["alice"]["source"] == "ldap"
@@ -156,34 +242,47 @@ def test_ldap_first_login_provisions_local_user(db_session, monkeypatch):
 
 def test_ldap_role_re_derived_on_every_login(db_session, monkeypatch):
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="viewer"),
     )
     auth_service.authenticate("alice", "adpass")
-    assert auth_service.get_user_entry("alice")["roles"] == {"_instance": "viewer", "local": "viewer"}
+    assert auth_service.get_user_entry("alice")["roles"] == {
+        "_instance": "viewer",
+        "local": "viewer",
+    }
 
     # AD group membership changed since — role must follow on next login,
     # not stay cached from the first provisioning
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="admin"),
     )
     auth_service.authenticate("alice", "adpass")
-    assert auth_service.get_user_entry("alice")["roles"] == {"_instance": "admin", "local": "admin"}
+    assert auth_service.get_user_entry("alice")["roles"] == {
+        "_instance": "admin",
+        "local": "admin",
+    }
 
 
 def test_ldap_role_resync_picks_up_registered_clusters(db_session, monkeypatch):
     from app.db.models import RegisteredCluster
 
-    db_session.add(RegisteredCluster(name="prod", api_url="https://prod", ca_data="", token=""))
+    db_session.add(
+        RegisteredCluster(name="prod", api_url="https://prod", ca_data="", token="")
+    )
     db_session.commit()
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="admin"),
     )
     auth_service.authenticate("alice", "adpass")
     assert auth_service.get_user_entry("alice")["roles"] == {
-        "_instance": "admin", "local": "admin", "prod": "admin",
+        "_instance": "admin",
+        "local": "admin",
+        "prod": "admin",
     }
 
 
@@ -211,7 +310,8 @@ def test_local_account_never_falls_back_to_ldap(db_session, monkeypatch):
 
 def test_cannot_create_local_account_shadowing_ldap_account(db_session, monkeypatch):
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="viewer"),
     )
     auth_service.authenticate("alice", "adpass")  # provisions alice as source=ldap
@@ -223,7 +323,8 @@ def test_cannot_create_local_account_shadowing_ldap_account(db_session, monkeypa
 
 def test_change_password_rejected_for_ldap_account(db_session, monkeypatch):
     monkeypatch.setattr(
-        auth_service.ldap_service, "authenticate",
+        auth_service.ldap_service,
+        "authenticate",
         lambda u, p: LdapAuthResult(username=u, role="viewer"),
     )
     auth_service.authenticate("alice", "adpass")
@@ -258,10 +359,18 @@ def test_check_login_rate_limit_is_per_ip(db_session):
 def test_check_login_rate_limit_ignores_attempts_outside_the_window(db_session):
     stale = datetime.now(UTC) - timedelta(minutes=10)
     for _ in range(10):
-        db_session.add(LoginAttempt(id=str(uuid.uuid4()), ip="203.0.113.5", attempted_at=stale))
+        db_session.add(
+            LoginAttempt(id=str(uuid.uuid4()), ip="203.0.113.5", attempted_at=stale)
+        )
     db_session.commit()
 
-    auth_service.check_login_rate_limit("203.0.113.5")  # stale attempts don't count, doesn't raise
+    auth_service.check_login_rate_limit(
+        "203.0.113.5"
+    )  # stale attempts don't count, doesn't raise
 
-    remaining = db_session.query(LoginAttempt).filter(LoginAttempt.ip == "203.0.113.5").all()
-    assert len(remaining) == 1  # the 10 stale rows were pruned, only the fresh one remains
+    remaining = (
+        db_session.query(LoginAttempt).filter(LoginAttempt.ip == "203.0.113.5").all()
+    )
+    assert (
+        len(remaining) == 1
+    )  # the 10 stale rows were pruned, only the fresh one remains

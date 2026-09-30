@@ -7,15 +7,24 @@ from fastapi.responses import JSONResponse
 from ..core.async_utils import run_sync
 from ..core.auth import create_access_token, create_refresh_token, decode_token
 from ..core.dependencies import get_current_user, require_admin
-from ..models.auth import LoginRequest, TokenResponse, UserInfo
+from ..models.auth import (
+    LinkedUserRead,
+    LinkedUserSet,
+    LoginRequest,
+    TokenResponse,
+    UserInfo,
+)
 from ..services.auth_service import (
     authenticate,
     change_password,
     check_login_rate_limit,
+    clear_linked_user,
     create_user,
     delete_user,
+    get_linked_user,
     get_user_entry,
     list_users,
+    set_linked_user,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -60,7 +69,9 @@ async def login(body: LoginRequest, request: Request, response: Response):
     # bcrypt + K8s secret read are blocking — keep them off the event loop
     user = await run_sync(authenticate, body.username, body.password)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
     access_token = create_access_token(user["username"], user["roles"])
     refresh_token = create_refresh_token(user["username"], user["roles"])
     _set_refresh_cookie(response, refresh_token)
@@ -74,7 +85,9 @@ async def login(body: LoginRequest, request: Request, response: Response):
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(cv_refresh: Annotated[str | None, Cookie()] = None):
     if not cv_refresh:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token"
+        )
     payload = decode_token(cv_refresh, expected_type="refresh")
     # Re-check the user store: a deleted user must not outlive their refresh
     # token, and a role change must apply immediately.
@@ -104,9 +117,15 @@ async def me(user: UserInfo = Depends(get_current_user)):
     return user
 
 
+@router.get("/me/link", response_model=LinkedUserRead | None)
+async def my_link(user: UserInfo = Depends(get_current_user)):
+    return get_linked_user(user.username)
+
+
 # ── Admin: manage CV users ─────────────────────────────────────────────────
 # Accounts are created with just username/password — scope role assignments
 # are managed separately via /api/v1/permissions (see routers/permissions.py).
+
 
 class CreateUserBody(LoginRequest):
     pass
@@ -137,3 +156,16 @@ async def reset_password(
     _: UserInfo = Depends(require_admin),
 ):
     change_password(username, body.password)
+
+
+@router.put("/users/{username}/link", response_model=LinkedUserRead)
+async def link_user(
+    username: str, body: LinkedUserSet, _: UserInfo = Depends(require_admin)
+):
+    set_linked_user(username, body.name, body.namespace)
+    return LinkedUserRead(name=body.name, namespace=body.namespace)
+
+
+@router.delete("/users/{username}/link", status_code=204)
+async def unlink_user(username: str, _: UserInfo = Depends(require_admin)):
+    clear_linked_user(username)

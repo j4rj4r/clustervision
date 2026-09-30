@@ -12,7 +12,9 @@ class Base(DeclarativeBase):
 class AccessRequestRecord(Base):
     __tablename__ = "access_requests"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     requester: Mapped[str] = mapped_column(String(253), index=True)
     target_username: Mapped[str] = mapped_column(String(253))
     user_kind: Mapped[str] = mapped_column(String(32))
@@ -25,8 +27,12 @@ class AccessRequestRecord(Base):
     status: Mapped[str] = mapped_column(String(16), index=True, default="pending")
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     reviewed_by: Mapped[str | None] = mapped_column(String(253), nullable=True)
-    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     binding_name: Mapped[str | None] = mapped_column(String(253), nullable=True)
 
     def to_dict(self) -> dict:
@@ -67,7 +73,18 @@ class LocalUser(Base):
     username: Mapped[str] = mapped_column(String(253), primary_key=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source: Mapped[str] = mapped_column(String(16), default="local")
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Optional link to a ManagedUser (name, namespace) — lets the account
+    # self-service its own kubeconfig without an admin having to point it
+    # out every time. Purely a convenience pointer, not a permissions grant:
+    # generating a kubeconfig for any managed user already only requires
+    # operator+ on the cluster, regardless of who it's linked to.
+    linked_managed_user: Mapped[str | None] = mapped_column(String(253), nullable=True)
+    linked_managed_user_namespace: Mapped[str | None] = mapped_column(
+        String(63), nullable=True
+    )
 
 
 class ScopeRoleAssignment(Base):
@@ -83,10 +100,14 @@ class ScopeRoleAssignment(Base):
     __tablename__ = "scope_role_assignments"
 
     username: Mapped[str] = mapped_column(
-        String(253), ForeignKey("local_users.username", ondelete="CASCADE"), primary_key=True
+        String(253),
+        ForeignKey("local_users.username", ondelete="CASCADE"),
+        primary_key=True,
     )
     scope: Mapped[str] = mapped_column(String(63), primary_key=True)
-    role: Mapped[str] = mapped_column(String(16))  # "viewer" | "operator" | "approver" | "admin"
+    role: Mapped[str] = mapped_column(
+        String(16)
+    )  # "viewer" | "operator" | "approver" | "admin"
 
     def to_dict(self) -> dict:
         return {"username": self.username, "scope": self.scope, "role": self.role}
@@ -103,12 +124,16 @@ class ManagedUser(Base):
     # certificate user's namespace is always "default", so this also lets two
     # ServiceAccounts of the same name coexist in different namespaces.
     name: Mapped[str] = mapped_column(String(253), primary_key=True)
-    namespace: Mapped[str] = mapped_column(String(63), primary_key=True, default="default")
+    namespace: Mapped[str] = mapped_column(
+        String(63), primary_key=True, default="default"
+    )
     type: Mapped[str] = mapped_column(String(32))  # "certificate" | "service_account"
     groups_csv: Mapped[str] = mapped_column(String(1000), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     csr_name: Mapped[str | None] = mapped_column(String(253), nullable=True)
-    cert_expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cert_expiry: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     imported: Mapped[bool] = mapped_column(Boolean, default=False)
 
     def to_dict(self) -> dict:
@@ -131,7 +156,9 @@ class ManagedUser(Base):
 class TokenHistoryEntry(Base):
     __tablename__ = "token_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     user: Mapped[str] = mapped_column(String(253))
     user_type: Mapped[str] = mapped_column(String(32))
     namespace: Mapped[str] = mapped_column(String(63))
@@ -159,7 +186,12 @@ class RegisteredCluster(Base):
     token: Mapped[str] = mapped_column(String)
 
     def to_dict(self) -> dict:
-        return {"name": self.name, "api_url": self.api_url, "ca_data": self.ca_data, "token": self.token}
+        return {
+            "name": self.name,
+            "api_url": self.api_url,
+            "ca_data": self.ca_data,
+            "token": self.token,
+        }
 
 
 class VaultConfigRow(Base):
@@ -220,7 +252,9 @@ class LoginAttempt(Base):
 
     __tablename__ = "login_attempts"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     ip: Mapped[str] = mapped_column(String(64), index=True)
     attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
@@ -233,7 +267,9 @@ class AuditLogEntry(Base):
 
     __tablename__ = "audit_log"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     # Best-effort: the acting user's JWT, decoded leniently by the capturing
     # middleware. Null if the request had no valid token (e.g. the cluster

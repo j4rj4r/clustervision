@@ -11,6 +11,7 @@ from ..models.user import (
     UserType,
     UserWithCredentials,
 )
+from ..services.auth_service import clear_links_to
 from ..services.certificate_service import CertificateService
 from ..services.rbac_service import RbacService
 from ..services.service_account_service import ServiceAccountService
@@ -145,6 +146,9 @@ async def delete_user(
 ):
     if user_type == UserType.certificate:
         await run_sync(cert_svc.delete_user, username)
+        linked_namespace = "default"
     else:
         await run_sync(sa_svc.delete_user, username, namespace)
+        linked_namespace = namespace
     await run_sync(rbac_svc.delete_user_bindings, username)
+    await run_sync(clear_links_to, username, linked_namespace)

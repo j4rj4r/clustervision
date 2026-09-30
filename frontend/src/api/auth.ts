@@ -1,6 +1,11 @@
 import axios from 'axios'
-import { formatApiError } from './client'
+import client, { formatApiError } from './client'
 import type { RoleName } from '../store/authStore'
+
+export interface LinkedUser {
+  name: string
+  namespace: string
+}
 
 export interface LoginResponse {
   access_token: string
@@ -29,4 +34,9 @@ export const authApi = {
 
   me: (): Promise<LoginResponse> =>
     authClient.get('/auth/me').then((r) => r.data),
+
+  // Uses the regular (Bearer-authenticated) client, not authClient — this
+  // needs the access token, unlike login/refresh/logout which run on the cookie.
+  myLink: (): Promise<LinkedUser | null> =>
+    client.get('/auth/me/link').then((r) => r.data),
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight } from 'lucide-react'
+import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight, FileCode2 } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { INSTANCE_SCOPE, useAuthStore } from '../store/authStore'
@@ -9,6 +9,7 @@ import { useClusterRoles } from '../hooks/useRbac'
 import { useClusters } from '../hooks/useCluster'
 import { useAccessRequests } from '../hooks/useAccessRequests'
 import { useAuditLog } from '../hooks/useAudit'
+import { useMyLink } from '../hooks/useLink'
 
 function StatTile({
   icon: Icon,
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const username = useAuthStore((s) => s.user?.username)
   const activeCluster = useClusterStore((s) => s.activeCluster)
   const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
+  const { data: myLink } = useMyLink()
 
   const { data: usersData, isLoading: loadingUsers } = useUsers()
   const { data: clusterRoles, isLoading: loadingRoles } = useClusterRoles(false, true)
@@ -90,6 +92,11 @@ export default function DashboardPage() {
         <Link to="/access-requests">
           <Button size="sm" variant="secondary"><Plus size={13} /> Request access</Button>
         </Link>
+        {myLink && (
+          <Link to={`/kubeconfig?user=${encodeURIComponent(myLink.name)}&namespace=${encodeURIComponent(myLink.namespace)}`}>
+            <Button size="sm" variant="secondary"><FileCode2 size={13} /> My kubeconfig</Button>
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
