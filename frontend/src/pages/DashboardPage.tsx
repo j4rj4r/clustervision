@@ -3,6 +3,7 @@ import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight } from 'luci
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import { INSTANCE_SCOPE, useAuthStore } from '../store/authStore'
+import { useClusterStore } from '../store/clusterStore'
 import { useUsers } from '../hooks/useUsers'
 import { useClusterRoles } from '../hooks/useRbac'
 import { useClusters } from '../hooks/useCluster'
@@ -49,6 +50,8 @@ export default function DashboardPage() {
   // on them) — everyone else sees only their own.
   const isPrivileged = isInstanceAdmin || instanceRole === 'approver'
   const username = useAuthStore((s) => s.user?.username)
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
 
   const { data: usersData, isLoading: loadingUsers } = useUsers()
   const { data: clusterRoles, isLoading: loadingRoles } = useClusterRoles(false, true)
@@ -79,9 +82,11 @@ export default function DashboardPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Link to="/users">
-          <Button size="sm" variant="secondary"><Plus size={13} /> Create user</Button>
-        </Link>
+        {canWrite && (
+          <Link to="/users">
+            <Button size="sm" variant="secondary"><Plus size={13} /> Create user</Button>
+          </Link>
+        )}
         <Link to="/access-requests">
           <Button size="sm" variant="secondary"><Plus size={13} /> Request access</Button>
         </Link>

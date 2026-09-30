@@ -6,10 +6,12 @@ import Modal from '../components/ui/Modal'
 import AddClusterModal from '../components/clusters/AddClusterModal'
 import { useClusters, useRemoveCluster } from '../hooks/useCluster'
 import { useClusterStore } from '../store/clusterStore'
+import { useAuthStore } from '../store/authStore'
 
 export default function ClustersPage() {
   const { data: clusters = [], isLoading } = useClusters()
   const { activeCluster, setActiveCluster } = useClusterStore()
+  const isInstanceAdmin = useAuthStore((s) => s.isInstanceAdmin())
   const remove = useRemoveCluster()
   const [addOpen, setAddOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<string | null>(null)
@@ -21,9 +23,11 @@ export default function ClustersPage() {
           <h1 className="text-xl font-semibold text-surface-100">Clusters</h1>
           <p className="text-sm text-surface-400 mt-0.5">Manage connected clusters</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus size={14} /> Add
-        </Button>
+        {isInstanceAdmin && (
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus size={14} /> Add
+          </Button>
+        )}
       </div>
 
       <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
@@ -52,7 +56,7 @@ export default function ClustersPage() {
                     <p className="text-xs text-surface-400 truncate mt-0.5">{c.api_url}</p>
                   )}
                 </div>
-                {!c.is_local && (
+                {!c.is_local && isInstanceAdmin && (
                   <Button
                     size="sm"
                     variant="ghost"

@@ -3,6 +3,8 @@ import { CheckCircle, XCircle, ShieldQuestion } from 'lucide-react'
 import Button from '../ui/Button'
 import Select from '../ui/Select'
 import { useCheckAccess, useNamespaces } from '../../hooks/useRbac'
+import { useAuthStore } from '../../store/authStore'
+import { useClusterStore } from '../../store/clusterStore'
 import type { CheckAccessResult } from '../../types/rbac'
 
 const COMMON_VERBS = ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete', 'deletecollection']
@@ -16,6 +18,8 @@ const COMMON_RESOURCES = [
 export default function AccessSimulatorPanel() {
   const { data: namespaces = [] } = useNamespaces()
   const checkAccess = useCheckAccess()
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
 
   const [user, setUser] = useState('')
   const [verb, setVerb] = useState('get')
@@ -116,7 +120,8 @@ export default function AccessSimulatorPanel() {
         <Button
           onClick={handleCheck}
           loading={checkAccess.isPending}
-          disabled={!user.trim() || !effectiveResource}
+          disabled={!user.trim() || !effectiveResource || !canWrite}
+          title={canWrite ? undefined : 'Requires operator access on this cluster'}
           className="w-full justify-center"
         >
           Check access

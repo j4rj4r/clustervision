@@ -12,12 +12,16 @@ import {
   useRevokeSaToken,
   useRotateSaToken,
 } from '../hooks/useTokens'
+import { useAuthStore } from '../store/authStore'
+import { useClusterStore } from '../store/clusterStore'
 import type { SaTokenInfo, TokenHistoryEntry } from '../types/token'
 
 type Tab = 'history' | 'sa-tokens'
 
 export default function TokensPage() {
   const qc = useQueryClient()
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
   const [tab, setTab] = useState<Tab>('history')
   const [clearConfirm, setClearConfirm] = useState(false)
   const [revokeTarget, setRevokeTarget] = useState<SaTokenInfo | null>(null)
@@ -73,16 +77,18 @@ export default function TokensPage() {
       {/* History tab */}
       {tab === 'history' && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={history.length === 0}
-              onClick={() => setClearConfirm(true)}
-            >
-              <Trash2 size={13} /> Clear all
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={history.length === 0}
+                onClick={() => setClearConfirm(true)}
+              >
+                <Trash2 size={13} /> Clear all
+              </Button>
+            </div>
+          )}
           {loadingHistory ? (
             <div className="text-sm text-surface-400 text-center py-8">Loading...</div>
           ) : history.length === 0 ? (
@@ -96,7 +102,7 @@ export default function TokensPage() {
                     <th className="px-4 py-3 text-left">Type</th>
                     <th className="px-4 py-3 text-left">Namespace</th>
                     <th className="px-4 py-3 text-left">Generated at</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    {canWrite && <th className="px-4 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-700">
@@ -112,15 +118,17 @@ export default function TokensPage() {
                       <td className="px-4 py-3 text-surface-400 text-xs">
                         {new Date(entry.generated_at).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => setDeleteTarget(entry)}
-                          className="text-surface-400 hover:text-red-400 transition-colors"
-                          title="Delete entry"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
+                      {canWrite && (
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => setDeleteTarget(entry)}
+                            className="text-surface-400 hover:text-red-400 transition-colors"
+                            title="Delete entry"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -147,7 +155,7 @@ export default function TokensPage() {
                     <th className="px-4 py-3 text-left">Namespace</th>
                     <th className="px-4 py-3 text-left">Created</th>
                     <th className="px-4 py-3 text-left">Token</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    {canWrite && <th className="px-4 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-700">
@@ -164,24 +172,26 @@ export default function TokensPage() {
                           {t.token_present ? 'present' : 'missing'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => setRotateTarget(t)}
-                            className="text-surface-400 hover:text-brand-400 transition-colors"
-                            title="Rotate token"
-                          >
-                            <RotateCcw size={14} />
-                          </button>
-                          <button
-                            onClick={() => setRevokeTarget(t)}
-                            className="text-surface-400 hover:text-red-400 transition-colors"
-                            title="Revoke token"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
+                      {canWrite && (
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => setRotateTarget(t)}
+                              className="text-surface-400 hover:text-brand-400 transition-colors"
+                              title="Rotate token"
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                            <button
+                              onClick={() => setRevokeTarget(t)}
+                              className="text-surface-400 hover:text-red-400 transition-colors"
+                              title="Revoke token"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

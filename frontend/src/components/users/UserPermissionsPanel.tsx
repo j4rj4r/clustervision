@@ -9,9 +9,10 @@ interface Props {
   username: string
   userType: string
   userNamespace?: string
+  canWrite: boolean
 }
 
-export default function UserPermissionsPanel({ username, userType, userNamespace }: Props) {
+export default function UserPermissionsPanel({ username, userType, userNamespace, canWrite }: Props) {
   const { data: perms, isLoading } = useUserPermissions(username)
   const { data: clusterRoles = [] } = useClusterRoles()
   const { data: namespaces = [] } = useNamespaces()
@@ -57,9 +58,11 @@ export default function UserPermissionsPanel({ username, userType, userNamespace
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-surface-300">Permissions</p>
-        <Button size="sm" variant="ghost" onClick={() => setShowAssign(!showAssign)}>
-          <Plus size={12} /> Assign role
-        </Button>
+        {canWrite && (
+          <Button size="sm" variant="ghost" onClick={() => setShowAssign(!showAssign)}>
+            <Plus size={12} /> Assign role
+          </Button>
+        )}
       </div>
 
       {showAssign && (
@@ -98,12 +101,14 @@ export default function UserPermissionsPanel({ username, userType, userNamespace
             <div key={b.name} className="flex items-center gap-1.5 bg-surface-800 border border-surface-600 rounded-md px-2 py-1">
               <span className="text-xs font-mono text-surface-200">{b.role_ref}</span>
               {b.namespace && <Badge variant="default">{b.namespace}</Badge>}
-              <button
-                onClick={() => revokeRole.mutate({ roleName: b.role_ref, namespace: b.namespace ?? undefined })}
-                className="text-surface-500 hover:text-red-400 transition-colors ml-0.5"
-              >
-                <X size={11} />
-              </button>
+              {canWrite && (
+                <button
+                  onClick={() => revokeRole.mutate({ roleName: b.role_ref, namespace: b.namespace ?? undefined })}
+                  className="text-surface-500 hover:text-red-400 transition-colors ml-0.5"
+                >
+                  <X size={11} />
+                </button>
+              )}
             </div>
           ))}
         </div>
