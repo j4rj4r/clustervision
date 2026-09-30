@@ -36,6 +36,9 @@ spec:
     - ports:
         - port: 443
         - port: 6443
+    # PostgreSQL (backend.env.database.url)
+    - ports:
+        - port: 5432
     # DNS
     - ports:
         - port: 53
