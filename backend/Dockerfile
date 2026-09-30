@@ -22,4 +22,4 @@ EXPOSE 8000
 # Default to 2 for in-cluster deployments; override via env if needed.
 ENV WEB_CONCURRENCY=2
 
-ENTRYPOINT ["sh", "-c", "exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker --workers $WEB_CONCURRENCY --bind 0.0.0.0:8000 --access-logfile - --error-logfile -"]
+ENTRYPOINT ["sh", "-c", "exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker --workers $WEB_CONCURRENCY --bind 0.0.0.0:8000 --access-logfile - --error-logfile - --no-control-socket"]
