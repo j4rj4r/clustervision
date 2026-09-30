@@ -24,20 +24,20 @@ def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
-def create_access_token(username: str, role: str) -> str:
+def create_access_token(username: str, roles: dict[str, str]) -> str:
     payload = {
         "sub": username,
-        "role": role,
+        "roles": roles,
         "exp": datetime.now(UTC) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES),
         "type": "access",
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
 
 
-def create_refresh_token(username: str, role: str) -> str:
+def create_refresh_token(username: str, roles: dict[str, str]) -> str:
     payload = {
         "sub": username,
-        "role": role,
+        "roles": roles,
         "exp": datetime.now(UTC) + timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS),
         "type": "refresh",
     }

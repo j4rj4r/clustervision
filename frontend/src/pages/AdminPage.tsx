@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, KeyRound, ShieldCheck, ShieldOff, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, KeyRound, ShieldCheck, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi, type CvUser } from '../api/admin'
 import { useAuthStore } from '../store/authStore'
@@ -9,23 +9,25 @@ import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import VaultConfigSection from '../components/admin/VaultConfigSection'
+import RoleAssignmentsModal from '../components/admin/RoleAssignmentsModal'
 
 // ── Create user modal ──────────────────────────────────────────────────────
+// Accounts start with no role anywhere — assign one via "Manage roles" after
+// creation (a new account with zero roles is intentionally powerless).
 
 function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'viewer' | 'admin'>('viewer')
   const [usernameError, setUsernameError] = useState('')
 
   const create = useMutation({
-    mutationFn: () => adminApi.createUser(username, password, role),
+    mutationFn: () => adminApi.createUser(username, password),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cv-users'] })
-      toast.success(`User "${username}" created`)
+      toast.success(`User "${username}" created — assign a role to grant access`)
       onClose()
-      setUsername(''); setPassword(''); setRole('viewer'); setUsernameError('')
+      setUsername(''); setPassword(''); setUsernameError('')
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -56,25 +58,6 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <div>
-          <label className="block text-xs font-medium text-surface-300 mb-2">Role</label>
-          <div className="grid grid-cols-2 gap-2">
-            {(['viewer', 'admin'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                className={`p-3 rounded-lg border text-left transition-colors ${
-                  role === r ? 'border-brand-500 bg-brand-500/10' : 'border-surface-600 hover:border-surface-500'
-                }`}
-              >
-                <p className="text-sm font-medium text-surface-100 capitalize">{r}</p>
-                <p className="text-xs text-surface-400 mt-0.5">
-                  {r === 'admin' ? 'Full read & write access' : 'Read-only access'}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="flex gap-3 pt-1">
           <Button variant="secondary" size="sm" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button
@@ -147,20 +130,11 @@ export default function AdminPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<CvUser | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CvUser | null>(null)
+  const [rolesTarget, setRolesTarget] = useState<CvUser | null>(null)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['cv-users'],
     queryFn: adminApi.listUsers,
-  })
-
-  const toggleRole = useMutation({
-    mutationFn: (user: CvUser) =>
-      adminApi.changeRole(user.username, user.role === 'admin' ? 'viewer' : 'admin'),
-    onSuccess: (_, user) => {
-      qc.invalidateQueries({ queryKey: ['cv-users'] })
-      toast.success(`Role updated for "${user.username}"`)
-    },
-    onError: (e: Error) => toast.error(e.message),
   })
 
   const deleteUser = useMutation({
@@ -200,7 +174,7 @@ export default function AdminPage() {
             <thead>
               <tr className="border-b border-surface-600 bg-surface-900/60">
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Username</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Roles</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Source</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-surface-400">Last login</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-surface-400">Actions</th>
@@ -210,6 +184,7 @@ export default function AdminPage() {
               {users.map((user) => {
                 const isSelf = user.username === currentUser?.username
                 const isLdap = user.source === 'ldap'
+                const roleCount = Object.keys(user.roles).length
                 return (
                   <tr key={user.username} className="hover:bg-surface-700/40 transition-colors">
                     <td className="px-4 py-3 font-mono text-surface-100 font-medium">
@@ -217,9 +192,13 @@ export default function AdminPage() {
                       {isSelf && <span className="ml-2 text-xs text-surface-500">(you)</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={user.role === 'admin' ? 'info' : 'default'} dot>
-                        {user.role}
-                      </Badge>
+                      {roleCount === 0 ? (
+                        <Badge variant="danger">no access</Badge>
+                      ) : (
+                        <Badge variant={user.roles._instance === 'admin' ? 'info' : 'default'} dot>
+                          {roleCount} scope{roleCount === 1 ? '' : 's'}
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={isLdap ? 'warning' : 'default'}>{isLdap ? 'LDAP' : 'Local'}</Badge>
@@ -232,13 +211,11 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          disabled={isSelf || isLdap}
-                          title={isLdap ? 'Role is managed via AD group membership' : user.role === 'admin' ? 'Demote to viewer' : 'Promote to admin'}
-                          onClick={() => toggleRole.mutate(user)}
+                          disabled={isLdap}
+                          title={isLdap ? 'Roles are managed via AD group membership' : 'Manage roles'}
+                          onClick={() => setRolesTarget(user)}
                         >
-                          {user.role === 'admin'
-                            ? <><ShieldOff size={12} /> Viewer</>
-                            : <><ShieldCheck size={12} /> Admin</>}
+                          <ShieldCheck size={12} /> Roles
                         </Button>
                         <Button
                           size="sm"
@@ -272,6 +249,9 @@ export default function AdminPage() {
 
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <ResetPasswordModal user={resetTarget} onClose={() => setResetTarget(null)} />
+      {rolesTarget && (
+        <RoleAssignmentsModal username={rolesTarget.username} onClose={() => setRolesTarget(null)} />
+      )}
 
       <Modal
         open={!!deleteTarget}

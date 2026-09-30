@@ -103,11 +103,13 @@ export default function TopBar() {
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-800 border border-surface-600">
               <span className="text-xs text-surface-300 font-mono">{user.username}</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                user.role === 'admin'
+                user.roles[activeCluster] === 'admin'
                   ? 'bg-brand-600/20 text-brand-400'
-                  : 'bg-surface-700 text-surface-400'
+                  : user.roles[activeCluster]
+                    ? 'bg-surface-700 text-surface-400'
+                    : 'bg-red-950/50 text-red-400'
               }`}>
-                {user.role}
+                {user.roles[activeCluster] ?? 'no access'}
               </span>
             </div>
             <button

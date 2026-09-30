@@ -6,7 +6,7 @@ import Input from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
 import RequestAccessModal from '../components/access/RequestAccessModal'
 import JitPolicyModal from '../components/access/JitPolicyModal'
-import { useAuthStore } from '../store/authStore'
+import { INSTANCE_SCOPE, useAuthStore } from '../store/authStore'
 import {
   useAccessRequests,
   useApproveAccessRequest,
@@ -33,7 +33,10 @@ function formatDate(iso?: string) {
 }
 
 export default function AccessRequestsPage() {
-  const isAdmin = useAuthStore((s) => s.isAdmin())
+  const instanceRole = useAuthStore((s) => s.roleFor(INSTANCE_SCOPE))
+  const isInstanceAdmin = instanceRole === 'admin'
+  // Approve/deny/revoke is approver-or-admin; policy config and export stay admin-only.
+  const isPrivileged = isInstanceAdmin || instanceRole === 'approver'
   const username = useAuthStore((s) => s.user?.username)
   const { data: requests = [], isLoading, refetch } = useAccessRequests()
 
@@ -61,21 +64,21 @@ export default function AccessRequestsPage() {
         <div>
           <h1 className="text-xl font-semibold text-surface-100">Access Requests</h1>
           <p className="text-sm text-surface-400 mt-0.5">
-            {isAdmin
+            {isPrivileged
               ? 'Review requests for temporary, time-boxed role grants.'
-              : 'Request temporary access — an admin must approve before anything is granted.'}
+              : 'Request temporary access — an admin or approver must approve before anything is granted.'}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => refetch()}>
             <RefreshCw size={13} />
           </Button>
-          {isAdmin && (
+          {isInstanceAdmin && (
             <Button variant="secondary" size="sm" onClick={() => setPoliciesOpen(true)}>
               <Settings2 size={13} /> Policies
             </Button>
           )}
-          {isAdmin && (
+          {isInstanceAdmin && (
             <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
               <Download size={13} /> Export
             </Button>
@@ -98,13 +101,13 @@ export default function AccessRequestsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface-800 text-surface-400 text-xs uppercase tracking-wide">
-                {isAdmin && <th className="px-4 py-3 text-left">Requester</th>}
+                {isPrivileged && <th className="px-4 py-3 text-left">Requester</th>}
                 <th className="px-4 py-3 text-left">Target</th>
                 <th className="px-4 py-3 text-left">Role</th>
                 <th className="px-4 py-3 text-left">Reason</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-left">Expires</th>
-                {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
+                {isPrivileged && <th className="px-4 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-700">
@@ -112,7 +115,7 @@ export default function AccessRequestsPage() {
                 const isOwnRequest = r.requester === username
                 return (
                   <tr key={r.id} className="hover:bg-surface-800/50 transition-colors align-top">
-                    {isAdmin && <td className="px-4 py-3 font-mono text-surface-200">{r.requester}</td>}
+                    {isPrivileged && <td className="px-4 py-3 font-mono text-surface-200">{r.requester}</td>}
                     <td className="px-4 py-3 font-mono text-surface-200">
                       {r.target_username}
                       <span className="text-surface-500 ml-1">({r.user_kind === 'ServiceAccount' ? 'SA' : 'User'})</span>
@@ -125,7 +128,7 @@ export default function AccessRequestsPage() {
                     <td className="px-4 py-3 text-surface-400 text-xs">
                       {r.status === 'approved' ? formatDate(r.expires_at) : r.status === 'pending' ? `${r.ttl_minutes} min requested` : '—'}
                     </td>
-                    {isAdmin && (
+                    {isPrivileged && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-3">
                           {r.status === 'pending' && (

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -51,22 +51,45 @@ class AccessRequestRecord(Base):
 
 
 class LocalUser(Base):
-    """ClusterVision's own login accounts (admin/viewer) — independent from the
-    Kubernetes-managed users tracked in ManagedUser.
+    """ClusterVision's own login accounts — independent from the
+    Kubernetes-managed users tracked in ManagedUser. Permissions live
+    separately in ScopeRoleAssignment, one row per (scope, role) the account
+    holds — there is no single global role on the account itself.
 
     `source="local"` accounts have a real password_hash, created through the
     Settings page. `source="ldap"` accounts are provisioned just-in-time on
     first successful LDAP bind, have no password_hash (auth happens against
     the directory every time, nothing to compare locally), and have their
-    `role` re-derived from AD group membership on every login."""
+    scope roles re-derived from AD group membership on every login."""
 
     __tablename__ = "local_users"
 
     username: Mapped[str] = mapped_column(String(253), primary_key=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(16))
     source: Mapped[str] = mapped_column(String(16), default="local")
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ScopeRoleAssignment(Base):
+    """Per-scope role assignment for a ClusterVision login account. `scope`
+    is either a real cluster name (RegisteredCluster.name, or the reserved
+    "local" for the in-cluster connection) or the reserved "_instance"
+    pseudo-scope for instance-wide settings (login accounts, cluster
+    registry, Vault config, audit log, JIT policy config).
+
+    Absence of a row for (username, scope) means no access to that scope at
+    all — deny by default, not "viewer"."""
+
+    __tablename__ = "scope_role_assignments"
+
+    username: Mapped[str] = mapped_column(
+        String(253), ForeignKey("local_users.username", ondelete="CASCADE"), primary_key=True
+    )
+    scope: Mapped[str] = mapped_column(String(63), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))  # "viewer" | "operator" | "approver" | "admin"
+
+    def to_dict(self) -> dict:
+        return {"username": self.username, "scope": self.scope, "role": self.role}
 
 
 class ManagedUser(Base):

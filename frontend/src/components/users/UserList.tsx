@@ -14,6 +14,7 @@ interface Props {
   onDelete: (user: User) => void
   onKubeconfig: (user: User) => void
   onCreateClick?: () => void
+  canWrite: boolean
 }
 
 function ExpiryBadge({ expiry }: { expiry: string }) {
@@ -34,7 +35,7 @@ function SortIcon({ col, sortCol, sortDir }: { col: SortCol; sortCol: SortCol; s
     : <ArrowDown size={12} className="ml-1 inline text-brand-400" />
 }
 
-export default function UserList({ users, onDelete, onKubeconfig, onCreateClick }: Props) {
+export default function UserList({ users, onDelete, onKubeconfig, onCreateClick, canWrite }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [sortCol, setSortCol] = useState<SortCol>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -64,7 +65,7 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
           <p className="text-sm font-medium text-surface-300">No users yet</p>
           <p className="text-xs text-surface-500 mt-1">Create a ServiceAccount or certificate user to get started.</p>
         </div>
-        {onCreateClick && (
+        {onCreateClick && canWrite && (
           <Button size="sm" onClick={onCreateClick}>
             <Plus size={13} /> Create user
           </Button>
@@ -133,15 +134,17 @@ export default function UserList({ users, onDelete, onKubeconfig, onCreateClick 
                   <Button size="sm" variant="secondary" onClick={() => onKubeconfig(user)}>
                     <FileCode2 size={12} /> Kubeconfig
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Delete user"
-                    onClick={() => onDelete(user)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-950/30"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
+                  {canWrite && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Delete user"
+                      onClick={() => onDelete(user)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-950/30"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

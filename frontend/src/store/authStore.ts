@@ -1,8 +1,15 @@
 import { create } from 'zustand'
 
+export type RoleName = 'viewer' | 'operator' | 'approver' | 'admin'
+
+// The instance pseudo-scope — governs login accounts, cluster registry,
+// Vault config, audit log, and JIT policy config. Real scopes are cluster
+// names (or "local"). No entry for a scope means no access to it at all.
+export const INSTANCE_SCOPE = '_instance'
+
 export interface AuthUser {
   username: string
-  role: 'admin' | 'viewer'
+  roles: Record<string, RoleName>
 }
 
 interface AuthStore {
@@ -11,7 +18,10 @@ interface AuthStore {
   setAuth: (user: AuthUser, token: string) => void
   setAccessToken: (token: string) => void
   clearAuth: () => void
-  isAdmin: () => boolean
+  isInstanceAdmin: () => boolean
+  roleFor: (scope: string) => RoleName | undefined
+  canWrite: (scope: string) => boolean
+  hasAnyClusterAccess: () => boolean
 }
 
 export const useAuthStore = create<AuthStore>()((set, get) => ({
@@ -20,5 +30,12 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   setAuth: (user, accessToken) => set({ user, accessToken }),
   setAccessToken: (accessToken) => set({ accessToken }),
   clearAuth: () => set({ user: null, accessToken: null }),
-  isAdmin: () => get().user?.role === 'admin',
+  isInstanceAdmin: () => get().user?.roles[INSTANCE_SCOPE] === 'admin',
+  roleFor: (scope) => get().user?.roles[scope],
+  canWrite: (scope) => {
+    const role = get().user?.roles[scope]
+    return role === 'operator' || role === 'admin'
+  },
+  hasAnyClusterAccess: () =>
+    Object.keys(get().user?.roles ?? {}).some((scope) => scope !== INSTANCE_SCOPE),
 }))

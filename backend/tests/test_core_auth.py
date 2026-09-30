@@ -15,18 +15,18 @@ def test_hash_password_roundtrip():
 
 
 def test_access_token_roundtrip():
-    token = auth.create_access_token("alice", "admin")
+    token = auth.create_access_token("alice", {"_instance": "admin"})
     payload = auth.decode_token(token, expected_type="access")
     assert payload["sub"] == "alice"
-    assert payload["role"] == "admin"
+    assert payload["roles"] == {"_instance": "admin"}
     assert payload["type"] == "access"
 
 
 def test_refresh_token_roundtrip():
-    token = auth.create_refresh_token("bob", "viewer")
+    token = auth.create_refresh_token("bob", {"local": "viewer"})
     payload = auth.decode_token(token, expected_type="refresh")
     assert payload["sub"] == "bob"
-    assert payload["role"] == "viewer"
+    assert payload["roles"] == {"local": "viewer"}
 
 
 def test_register_token_scoped_to_cluster_name():
@@ -36,7 +36,7 @@ def test_register_token_scoped_to_cluster_name():
 
 
 def test_decode_token_rejects_wrong_type():
-    token = auth.create_access_token("alice", "admin")
+    token = auth.create_access_token("alice", {"_instance": "admin"})
     with pytest.raises(HTTPException) as exc_info:
         auth.decode_token(token, expected_type="refresh")
     assert exc_info.value.status_code == 401

@@ -8,12 +8,16 @@ import DeleteUserModal from '../components/users/DeleteUserModal'
 import ImportUserModal from '../components/users/ImportUserModal'
 import { useUsers } from '../hooks/useUsers'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '../store/authStore'
+import { useClusterStore } from '../store/clusterStore'
 import type { User } from '../types/user'
 
 export default function UsersPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useUsers()
   const qc = useQueryClient()
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
 
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -32,12 +36,16 @@ export default function UsersPage() {
           <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['users'] })}>
             <RefreshCw size={13} />
           </Button>
-          <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <FileInput size={14} /> Import
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={14} /> Create
-          </Button>
+          {canWrite && (
+            <>
+              <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                <FileInput size={14} /> Import
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus size={14} /> Create
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -54,6 +62,7 @@ export default function UsersPage() {
             users={data?.users ?? []}
             onDelete={setToDelete}
             onCreateClick={() => setCreateOpen(true)}
+            canWrite={canWrite}
             onKubeconfig={(user) => {
               const params = new URLSearchParams({ user: user.name })
               // Always include the namespace — SA names alone are ambiguous

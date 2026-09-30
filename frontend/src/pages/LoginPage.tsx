@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await authApi.login(username, password)
-      setAuth({ username: data.username, role: data.role }, data.access_token)
+      setAuth({ username: data.username, roles: data.roles }, data.access_token)
       navigate('/', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''

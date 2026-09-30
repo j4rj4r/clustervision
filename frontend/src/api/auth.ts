@@ -1,10 +1,11 @@
 import axios from 'axios'
 import { formatApiError } from './client'
+import type { RoleName } from '../store/authStore'
 
 export interface LoginResponse {
   access_token: string
   token_type: string
-  role: 'admin' | 'viewer'
+  roles: Record<string, RoleName>
   username: string
 }
 

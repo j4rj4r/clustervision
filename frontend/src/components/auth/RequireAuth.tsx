@@ -12,7 +12,7 @@ export default function RequireAuth() {
     authApi
       .refresh()
       .then((data) =>
-        setAuth({ username: data.username, role: data.role }, data.access_token)
+        setAuth({ username: data.username, roles: data.roles }, data.access_token)
       )
       .catch(() => {
         // No valid refresh cookie — will redirect to /login

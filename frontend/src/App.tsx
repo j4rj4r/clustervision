@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import RequireAuth from './components/auth/RequireAuth'
+import RequireInstanceAdmin from './components/auth/RequireInstanceAdmin'
 import LoginPage from './pages/LoginPage'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -30,8 +31,10 @@ export default function App() {
             <Route path="tokens" element={<TokensPage />} />
             <Route path="access-requests" element={<AccessRequestsPage />} />
             <Route path="clusters" element={<ClustersPage />} />
-            <Route path="settings" element={<AdminPage />} />
-            <Route path="audit-log" element={<AuditLogPage />} />
+            <Route element={<RequireInstanceAdmin />}>
+              <Route path="settings" element={<AdminPage />} />
+              <Route path="audit-log" element={<AuditLogPage />} />
+            </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

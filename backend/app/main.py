@@ -8,7 +8,7 @@ from kubernetes.client.exceptions import ApiException
 
 from .config import get_settings
 from .core.audit_middleware import AuditLogMiddleware
-from .core.dependencies import auth_gate, get_current_user
+from .core.dependencies import auth_gate, get_current_user, instance_gate
 from .core.exceptions import (
     ImportedUserError,
     UserAlreadyExistsError,
@@ -19,7 +19,16 @@ from .core.exceptions import (
     user_not_found_handler,
 )
 from .core.kubernetes_client import get_api_client
-from .routers import access_requests, audit, cluster, kubeconfig, rbac, tokens, users
+from .routers import (
+    access_requests,
+    audit,
+    cluster,
+    kubeconfig,
+    permissions,
+    rbac,
+    tokens,
+    users,
+)
 from .routers import auth as auth_router
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
@@ -42,6 +51,7 @@ async def lifespan(app: FastAPI):
     await run_sync(init_db)
     ensure_default_admin()
     from .services.vault_service import init_vault_from_env
+
     await init_vault_from_env()
     yield
 
@@ -52,7 +62,8 @@ openapi_tags = [
         "description": (
             "Authentication endpoints. `POST /login` returns a 15-minute JWT access token "
             "and an httpOnly refresh cookie (7 days). Use `POST /refresh` to silently renew. "
-            "Admin-only endpoints for managing ClusterVision users (create, delete, role change, password reset)."
+            "Admin-only endpoints for managing ClusterVision users (create, delete, password reset). "
+            "Scope role assignments are managed under the `permissions` tag."
         ),
     },
     {
@@ -103,6 +114,14 @@ openapi_tags = [
         ),
     },
     {
+        "name": "permissions",
+        "description": (
+            "Instance-admin-only. Manage per-scope role assignments for ClusterVision login "
+            "accounts — a scope is a real cluster name (or `local`) or the `_instance` "
+            "pseudo-scope for instance-wide settings."
+        ),
+    },
+    {
         "name": "access-requests",
         "description": (
             "Just-in-time access: any authenticated user can request a time-boxed role grant for a "
@@ -133,10 +152,19 @@ and ServiceAccounts) and their RBAC permissions through a single REST API.
 JWT-based. `POST /api/v1/auth/login` → access token (15 min, Bearer) + httpOnly refresh cookie (7 days).
 Use **Authorize** above and enter `Bearer <token>` to authenticate in this UI.
 
-| Role | Permissions |
-|------|-------------|
-| `admin` | Full read & write access to all endpoints |
-| `viewer` | Read-only on GET endpoints |
+Permissions are per-scope, not global — a scope is either a real cluster name
+(or `local`) or the `_instance` pseudo-scope for instance-wide settings
+(login accounts, cluster registry, Vault config, audit log, JIT policy
+config). No role on a scope means no access to it at all, including reads.
+
+| Role | Scope | Permissions |
+|------|-------|-------------|
+| `viewer` | any | Read-only |
+| `operator` | cluster | Read/write on that cluster's users, RBAC, kubeconfig, tokens |
+| `approver` | `_instance` | Approve/deny JIT access requests |
+| `admin` | any | Full read & write within that scope |
+
+Manage per-scope role assignments via `/api/v1/permissions`.
 
 ## User types
 | Type | Auth method | Revocation |
@@ -177,20 +205,24 @@ app.add_exception_handler(UserAlreadyExistsError, user_exists_handler)
 app.add_exception_handler(ImportedUserError, imported_user_handler)
 
 _auth_dep = [Depends(auth_gate)]
+_instance_dep = [Depends(instance_gate)]
 
 app.include_router(auth_router.router)
 # Bootstrap registration — authenticated by its own short-lived register token
 app.include_router(cluster.public_router)
-app.include_router(users.router,      dependencies=_auth_dep)
-app.include_router(rbac.router,       dependencies=_auth_dep)
+app.include_router(users.router, dependencies=_auth_dep)
+app.include_router(rbac.router, dependencies=_auth_dep)
 app.include_router(kubeconfig.router, dependencies=_auth_dep)
-app.include_router(cluster.router,    dependencies=_auth_dep)
-app.include_router(tokens.router,        dependencies=_auth_dep)
-app.include_router(vault_admin_router.router, dependencies=_auth_dep)
+# Registry-wide mutations (add/remove a cluster), not scoped to a single
+# `?cluster=` target — instance-scope gate, not the per-cluster auth_gate.
+app.include_router(cluster.router, dependencies=_instance_dep)
+app.include_router(tokens.router, dependencies=_auth_dep)
+app.include_router(vault_admin_router.router, dependencies=_instance_dep)
+app.include_router(permissions.router, dependencies=_instance_dep)
 # Any authenticated user (viewer included) can list/create requests — approval
-# is gated per-endpoint via require_admin, not at the router level.
+# is gated per-endpoint via require_approver, not at the router level.
 app.include_router(access_requests.router, dependencies=[Depends(get_current_user)])
-app.include_router(audit.router, dependencies=_auth_dep)
+app.include_router(audit.router, dependencies=_instance_dep)
 
 
 @app.get("/health")

@@ -28,7 +28,12 @@ _AUDITED_PREFIXES = (
     "/api/v1/admin",
     "/api/v1/auth/users",
     "/api/v1/access-requests/policies",
+    "/api/v1/permissions",
 )
+# Prefixes whose mutations are scoped to a single `?cluster=` target (auth_gate) —
+# for these, the relevant role to record is the actor's role on that cluster,
+# not their instance-scope role. Everything else here is instance-scope.
+_CLUSTER_SCOPED_PREFIXES = ("/api/v1/rbac", "/api/v1/users", "/api/v1/tokens")
 _AUDITED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 _REDACT_KEYS = {"password", "token", "secret", "bind_password", "ca_data", "new_password", "current_password"}
 
@@ -41,17 +46,23 @@ def _redact(value):
     return value
 
 
-def _actor_from_header(auth_header: str | None) -> tuple[str | None, str | None]:
+def _actor_from_request(request: Request) -> tuple[str | None, str | None]:
     """Best-effort — logging must never depend on/fail with the token being
     valid, that's auth_gate's job. An expired or missing token just means
     the actor is recorded as unknown."""
+    auth_header = request.headers.get("authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None, None
     try:
         payload = decode_token(auth_header.removeprefix("Bearer "), expected_type="access")
     except Exception:
         return None, None
-    return payload.get("sub"), payload.get("role")
+    roles = payload.get("roles") or {}
+    if request.url.path.startswith(_CLUSTER_SCOPED_PREFIXES):
+        scope = request.query_params.get("cluster", "local")
+    else:
+        scope = "_instance"
+    return payload.get("sub"), roles.get(scope)
 
 
 def _write_entry(entry: AuditLogEntry) -> None:
@@ -83,7 +94,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         if should_audit:
-            actor, actor_role = _actor_from_header(request.headers.get("authorization"))
+            actor, actor_role = _actor_from_request(request)
             entry = AuditLogEntry(
                 timestamp=datetime.now(UTC),
                 actor=actor,

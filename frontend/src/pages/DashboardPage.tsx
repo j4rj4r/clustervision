@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Users, Shield, Server, Clock, ScrollText, Plus, ArrowRight } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
-import { useAuthStore } from '../store/authStore'
+import { INSTANCE_SCOPE, useAuthStore } from '../store/authStore'
 import { useUsers } from '../hooks/useUsers'
 import { useClusterRoles } from '../hooks/useRbac'
 import { useClusters } from '../hooks/useCluster'
@@ -43,14 +43,18 @@ function methodVariant(method: string): 'info' | 'danger' | 'default' {
 }
 
 export default function DashboardPage() {
-  const isAdmin = useAuthStore((s) => s.isAdmin())
+  const instanceRole = useAuthStore((s) => s.roleFor(INSTANCE_SCOPE))
+  const isInstanceAdmin = instanceRole === 'admin'
+  // Admins and approvers both see everyone's pending requests (both can act
+  // on them) — everyone else sees only their own.
+  const isPrivileged = isInstanceAdmin || instanceRole === 'approver'
   const username = useAuthStore((s) => s.user?.username)
 
   const { data: usersData, isLoading: loadingUsers } = useUsers()
   const { data: clusterRoles, isLoading: loadingRoles } = useClusterRoles(false, true)
   const { data: clusters, isLoading: loadingClusters } = useClusters()
   const { data: accessRequests = [], isLoading: loadingRequests } = useAccessRequests()
-  const { data: auditPage, isLoading: loadingAudit } = useAuditLog({ limit: 6, offset: 0 }, isAdmin)
+  const { data: auditPage, isLoading: loadingAudit } = useAuditLog({ limit: 6, offset: 0 }, isInstanceAdmin)
 
   const pending = accessRequests.filter((r) => r.status === 'pending')
   const myPending = pending.filter((r) => r.requester === username)
@@ -66,8 +70,8 @@ export default function DashboardPage() {
         <StatTile icon={Users} label="Managed users" value={loadingUsers ? '—' : usersData?.total ?? 0} to="/users" />
         <StatTile
           icon={Clock}
-          label={isAdmin ? 'Pending access requests' : 'Your pending requests'}
-          value={loadingRequests ? '—' : (isAdmin ? pending.length : myPending.length)}
+          label={isPrivileged ? 'Pending access requests' : 'Your pending requests'}
+          value={loadingRequests ? '—' : (isPrivileged ? pending.length : myPending.length)}
           to="/access-requests"
         />
         <StatTile icon={Server} label="Connected clusters" value={loadingClusters ? '—' : clusters?.length ?? 0} to="/clusters" />
@@ -88,7 +92,7 @@ export default function DashboardPage() {
         <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700/60">
             <h2 className="text-sm font-semibold text-surface-100">
-              {isAdmin ? 'Pending access requests' : 'Your pending requests'}
+              {isPrivileged ? 'Pending access requests' : 'Your pending requests'}
             </h2>
             <Link to="/access-requests" className="text-xs text-brand-400 hover:underline flex items-center gap-1">
               View all <ArrowRight size={12} />
@@ -96,16 +100,16 @@ export default function DashboardPage() {
           </div>
           {loadingRequests ? (
             <div className="py-10 text-center text-sm text-surface-400">Loading...</div>
-          ) : (isAdmin ? pending : myPending).length === 0 ? (
+          ) : (isPrivileged ? pending : myPending).length === 0 ? (
             <div className="py-10 text-center text-sm text-surface-400">Nothing pending.</div>
           ) : (
             <ul className="divide-y divide-surface-700">
-              {(isAdmin ? pending : myPending).slice(0, 6).map((r) => (
+              {(isPrivileged ? pending : myPending).slice(0, 6).map((r) => (
                 <li key={r.id} className="px-4 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm text-surface-200 font-mono truncate">{r.target_username}</p>
                     <p className="text-xs text-surface-500 truncate">
-                      {r.role_name} · {r.ttl_minutes} min {isAdmin ? `· requested by ${r.requester}` : ''}
+                      {r.role_name} · {r.ttl_minutes} min {isPrivileged ? `· requested by ${r.requester}` : ''}
                     </p>
                   </div>
                   <Badge variant="warning" dot>pending</Badge>
@@ -115,8 +119,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Recent audit activity — admin only */}
-        {isAdmin && (
+        {/* Recent audit activity — instance admin only */}
+        {isInstanceAdmin && (
           <div className="bg-surface-900 border border-surface-600 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700/60">
               <h2 className="text-sm font-semibold text-surface-100 flex items-center gap-1.5">

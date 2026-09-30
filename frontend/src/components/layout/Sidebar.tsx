@@ -3,6 +3,10 @@ import { Users, Shield, FileCode2, Server, Key, Settings, Clock, ScrollText, Lay
 import { useAuthStore } from '../../store/authStore'
 import { useAccessRequests } from '../../hooks/useAccessRequests'
 
+// Links whose target page shows data scoped to the active cluster — hidden
+// entirely when the account has no role on any cluster at all.
+const CLUSTER_SCOPED_LINKS = new Set(['/users', '/rbac', '/kubeconfig', '/tokens'])
+
 const links = [
   { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard', desc: 'Overview'                 },
   { to: '/users',            icon: Users,     label: 'Users',           desc: 'Manage cluster users'    },
@@ -14,11 +18,13 @@ const links = [
 ]
 
 export default function Sidebar() {
-  const isAdmin = useAuthStore((s) => s.isAdmin())
+  const isInstanceAdmin = useAuthStore((s) => s.isInstanceAdmin())
+  const hasAnyClusterAccess = useAuthStore((s) => s.hasAnyClusterAccess())
   // Same cached query the Access Requests page uses — admins see everyone's
   // pending count (needs their action), others see their own (in progress).
   const { data: accessRequests = [] } = useAccessRequests()
   const pendingCount = accessRequests.filter((r) => r.status === 'pending').length
+  const visibleLinks = links.filter((l) => hasAnyClusterAccess || !CLUSTER_SCOPED_LINKS.has(l.to))
 
   return (
     <aside className="w-56 bg-surface-900 border-r border-surface-600 flex flex-col">
@@ -32,7 +38,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-2 py-4 space-y-0.5">
-        {links.map(({ to, icon: Icon, label, desc }) => (
+        {visibleLinks.map(({ to, icon: Icon, label, desc }) => (
           <NavLink
             key={to}
             to={to}
@@ -62,8 +68,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Settings & Audit log — admin only */}
-      {isAdmin && (
+      {/* Settings & Audit log — instance admin only */}
+      {isInstanceAdmin && (
         <div className="px-2 pb-2 border-t border-surface-700/60 pt-2 space-y-0.5">
           <NavLink
             to="/settings"

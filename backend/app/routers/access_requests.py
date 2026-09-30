@@ -6,7 +6,7 @@ from fastapi.responses import Response
 
 from ..core.async_utils import run_sync
 from ..core.csv_export import as_utc, rows_to_csv
-from ..core.dependencies import get_current_user, require_admin
+from ..core.dependencies import get_current_user, require_admin, require_approver
 from ..dependencies import get_access_request_service
 from ..models.access_request import (
     AccessRequestCreate,
@@ -42,7 +42,8 @@ async def list_access_requests(
     user: UserInfo = Depends(get_current_user),
     svc: AccessRequestService = Depends(get_access_request_service),
 ):
-    requester_filter = None if user.role == "admin" else user.username
+    is_privileged = user.roles.get("_instance") in ("admin", "approver")
+    requester_filter = None if is_privileged else user.username
     return await run_sync(svc.list_requests, requester_filter)
 
 
@@ -113,7 +114,7 @@ async def create_access_request(
 )
 async def approve_access_request(
     request_id: str,
-    admin: UserInfo = Depends(require_admin),
+    admin: UserInfo = Depends(require_approver),
     svc: AccessRequestService = Depends(get_access_request_service),
 ):
     try:
@@ -132,7 +133,7 @@ async def approve_access_request(
 )
 async def deny_access_request(
     request_id: str,
-    admin: UserInfo = Depends(require_admin),
+    admin: UserInfo = Depends(require_approver),
     svc: AccessRequestService = Depends(get_access_request_service),
 ):
     try:
@@ -198,7 +199,7 @@ async def delete_jit_policy(
 )
 async def revoke_access_request(
     request_id: str,
-    admin: UserInfo = Depends(require_admin),
+    admin: UserInfo = Depends(require_approver),
     svc: AccessRequestService = Depends(get_access_request_service),
 ):
     try:

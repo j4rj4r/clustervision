@@ -6,6 +6,8 @@ import { useUsers } from '../../hooks/useUsers'
 import { useNamespaces } from '../../hooks/useRbac'
 import { useGenerateKubeconfig, downloadKubeconfig } from '../../hooks/useKubeconfig'
 import { vaultApi } from '../../api/vault'
+import { useAuthStore } from '../../store/authStore'
+import { useClusterStore } from '../../store/clusterStore'
 
 interface Props {
   preselectedName?: string
@@ -25,6 +27,8 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
     staleTime: 60_000,
   })
   const generate = useGenerateKubeconfig()
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
 
   const vaultEnabled = vaultStatus?.enabled && vaultStatus.healthy
 
@@ -63,7 +67,7 @@ export default function KubeconfigPanel({ preselectedName, preselectedNamespace 
 
   const selectedUser = users.find((u) => userKey(u) === selectedKey)
   const isCert = selectedUser?.user_type === 'certificate'
-  const canGenerate = !!selectedUser && (!isCert || !!privateKey.trim() || !!vaultEnabled)
+  const canGenerate = canWrite && !!selectedUser && (!isCert || !!privateKey.trim() || !!vaultEnabled)
 
   // Auto-update namespace when user changes
   useEffect(() => {

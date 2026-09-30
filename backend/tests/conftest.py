@@ -24,6 +24,7 @@ from app.db.models import Base
 # ambiguity about which one wins.
 _FEATURE_BY_MODULE = {
     "test_core_auth": "Auth — JWT & passwords",
+    "test_core_dependencies": "Authorization — scope roles",
     "test_auth_service": "Authentication",
     "test_ldap_service": "LDAP",
     "test_registry_mixin": "Registry",
@@ -39,6 +40,7 @@ _FEATURE_BY_MODULE = {
 
 _CRITICAL_MODULES = {
     "test_core_auth",
+    "test_core_dependencies",
     "test_auth_service",
     "test_ldap_service",
     "test_audit_middleware",

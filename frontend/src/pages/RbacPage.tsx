@@ -13,12 +13,16 @@ import {
   useCreateRole, useUpdateRole, useDeleteRole,
 } from '../hooks/useRbac'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '../store/authStore'
+import { useClusterStore } from '../store/clusterStore'
 import type { PolicyRule, RoleRead } from '../types/rbac'
 
 type Tab = 'roles' | 'clusterroles' | 'access' | 'simulator'
 
 export default function RbacPage() {
   const qc = useQueryClient()
+  const activeCluster = useClusterStore((s) => s.activeCluster)
+  const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
   const [tab, setTab] = useState<Tab>('roles')
   const [namespace, setNamespace] = useState('default')
   const [showSystem, setShowSystem] = useState(false)
@@ -129,9 +133,11 @@ export default function RbacPage() {
               onChange={(e) => setNamespace(e.target.value)}
               options={namespaces.map((n) => ({ value: n, label: n }))}
             />
-            <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
-              <Plus size={13} /> Create Role
-            </Button>
+            {canWrite && (
+              <Button size="sm" onClick={() => setModal({ open: true, isCluster: false, role: undefined })}>
+                <Plus size={13} /> Create Role
+              </Button>
+            )}
           </div>
           {loadingR ? (
             <div className="text-sm text-surface-400 text-center py-8">Loading...</div>
@@ -144,10 +150,10 @@ export default function RbacPage() {
             <RoleList
               roles={roles}
               title={`Roles — ${namespace}`}
-              onEdit={(role) => setModal({ open: true, isCluster: false, role })}
-              onCopy={(role) => setModal({ open: true, isCluster: false, copyFrom: role })}
-              onDelete={(role) => setDeleteTarget({ role, isCluster: false })}
-              onCreateClick={() => setModal({ open: true, isCluster: false, role: undefined })}
+              onEdit={canWrite ? (role) => setModal({ open: true, isCluster: false, role }) : undefined}
+              onCopy={canWrite ? (role) => setModal({ open: true, isCluster: false, copyFrom: role }) : undefined}
+              onDelete={canWrite ? (role) => setDeleteTarget({ role, isCluster: false }) : undefined}
+              onCreateClick={canWrite ? () => setModal({ open: true, isCluster: false, role: undefined }) : undefined}
             />
           )}
         </div>
@@ -156,11 +162,13 @@ export default function RbacPage() {
       {/* ClusterRoles tab */}
       {tab === 'clusterroles' && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
-              <Plus size={13} /> Create ClusterRole
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setModal({ open: true, isCluster: true, role: undefined })}>
+                <Plus size={13} /> Create ClusterRole
+              </Button>
+            </div>
+          )}
           {loadingCR ? (
             <div className="text-sm text-surface-400 text-center py-8">Loading...</div>
           ) : errorCR ? (
@@ -172,10 +180,10 @@ export default function RbacPage() {
             <RoleList
               roles={clusterRoles}
               title="ClusterRoles"
-              onEdit={(role) => setModal({ open: true, isCluster: true, role })}
-              onCopy={(role) => setModal({ open: true, isCluster: true, copyFrom: role })}
-              onDelete={(role) => setDeleteTarget({ role, isCluster: true })}
-              onCreateClick={() => setModal({ open: true, isCluster: true, role: undefined })}
+              onEdit={canWrite ? (role) => setModal({ open: true, isCluster: true, role }) : undefined}
+              onCopy={canWrite ? (role) => setModal({ open: true, isCluster: true, copyFrom: role }) : undefined}
+              onDelete={canWrite ? (role) => setDeleteTarget({ role, isCluster: true }) : undefined}
+              onCreateClick={canWrite ? () => setModal({ open: true, isCluster: true, role: undefined }) : undefined}
             />
           )}
         </div>

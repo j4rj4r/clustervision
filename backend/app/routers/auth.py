@@ -3,7 +3,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 from ..core.async_utils import run_sync
 from ..core.auth import create_access_token, create_refresh_token, decode_token
@@ -12,7 +11,6 @@ from ..models.auth import LoginRequest, TokenResponse, UserInfo
 from ..services.auth_service import (
     authenticate,
     change_password,
-    change_role,
     check_login_rate_limit,
     create_user,
     delete_user,
@@ -63,12 +61,12 @@ async def login(body: LoginRequest, request: Request, response: Response):
     user = await run_sync(authenticate, body.username, body.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    access_token = create_access_token(user["username"], user["role"])
-    refresh_token = create_refresh_token(user["username"], user["role"])
+    access_token = create_access_token(user["username"], user["roles"])
+    refresh_token = create_refresh_token(user["username"], user["roles"])
     _set_refresh_cookie(response, refresh_token)
     return TokenResponse(
         access_token=access_token,
-        role=user["role"],
+        roles=user["roles"],
         username=user["username"],
     )
 
@@ -88,10 +86,10 @@ async def refresh(cv_refresh: Annotated[str | None, Cookie()] = None):
         )
         resp.delete_cookie(key=_REFRESH_COOKIE, path=_COOKIE_PATH)
         return resp
-    access_token = create_access_token(user["username"], user["role"])
+    access_token = create_access_token(user["username"], user["roles"])
     return TokenResponse(
         access_token=access_token,
-        role=user["role"],
+        roles=user["roles"],
         username=user["username"],
     )
 
@@ -107,9 +105,11 @@ async def me(user: UserInfo = Depends(get_current_user)):
 
 
 # ── Admin: manage CV users ─────────────────────────────────────────────────
+# Accounts are created with just username/password — scope role assignments
+# are managed separately via /api/v1/permissions (see routers/permissions.py).
 
 class CreateUserBody(LoginRequest):
-    role: str = "viewer"
+    pass
 
 
 @router.get("/users", response_model=list[dict])
@@ -119,10 +119,8 @@ async def get_users(_: UserInfo = Depends(require_admin)):
 
 @router.post("/users", status_code=201)
 async def add_user(body: CreateUserBody, _: UserInfo = Depends(require_admin)):
-    if body.role not in ("admin", "viewer"):
-        raise HTTPException(status_code=422, detail="role must be 'admin' or 'viewer'")
-    create_user(body.username, body.password, body.role)
-    return {"username": body.username, "role": body.role}
+    create_user(body.username, body.password)
+    return {"username": body.username}
 
 
 @router.delete("/users/{username}", status_code=204)
@@ -130,19 +128,6 @@ async def remove_user(username: str, current: UserInfo = Depends(require_admin))
     if username == current.username:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     delete_user(username)
-
-
-class ChangeRoleBody(BaseModel):
-    role: str
-
-
-@router.patch("/users/{username}/role", status_code=204)
-async def update_role(username: str, body: ChangeRoleBody, current: UserInfo = Depends(require_admin)):
-    if body.role not in ("admin", "viewer"):
-        raise HTTPException(status_code=422, detail="role must be 'admin' or 'viewer'")
-    if username == current.username:
-        raise HTTPException(status_code=400, detail="Cannot change your own role")
-    change_role(username, body.role)
 
 
 @router.post("/users/{username}/password", status_code=204)

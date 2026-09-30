@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 
 from ..core.auth import hash_password, verify_password
-from ..db.models import LocalUser, LoginAttempt
+from ..db.models import LocalUser, LoginAttempt, RegisteredCluster, ScopeRoleAssignment
 from ..db.session import new_session
 from . import ldap_service
 
@@ -16,6 +16,8 @@ _DUMMY_HASH = "$2b$12$Kix0GsNjGUDMHlTGtqKhCOSVRAf5Y/LNmXZnkgDlJwO7hzf5Q7Psy"
 
 _LOGIN_RATE_LIMIT = 10       # max attempts
 _LOGIN_RATE_WINDOW = timedelta(minutes=5)
+
+INSTANCE_SCOPE = "_instance"
 
 
 def check_login_rate_limit(ip: str) -> None:
@@ -53,6 +55,26 @@ def check_login_rate_limit(ip: str) -> None:
         db.close()
 
 
+def _roles_for(db, username: str) -> dict[str, str]:
+    rows = db.scalars(select(ScopeRoleAssignment).where(ScopeRoleAssignment.username == username))
+    return {r.scope: r.role for r in rows}
+
+
+def _all_scopes(db) -> list[str]:
+    cluster_names = db.scalars(select(RegisteredCluster.name)).all()
+    return [INSTANCE_SCOPE, "local", *cluster_names]
+
+
+def _resync_ldap_roles(db, username: str, role: str) -> None:
+    """Re-derive every scope this account holds from its single AD-group-
+    derived role, replacing whatever was there before — mirrors the
+    "re-derived from AD group membership on every login, never trusted from
+    cache" property the role itself already had."""
+    db.query(ScopeRoleAssignment).filter(ScopeRoleAssignment.username == username).delete()
+    for scope in _all_scopes(db):
+        db.add(ScopeRoleAssignment(username=username, scope=scope, role=role))
+
+
 def ensure_default_admin() -> None:
     """Create initial admin from CV_ADMIN_PASSWORD env var if no users exist yet."""
     password = os.environ.get("CV_ADMIN_PASSWORD")
@@ -64,7 +86,10 @@ def ensure_default_admin() -> None:
         if db.scalar(select(LocalUser).limit(1)) is not None:
             return
         logger.info("Creating default admin from CV_ADMIN_PASSWORD")
-        db.add(LocalUser(username="admin", password_hash=hash_password(password), role="admin", source="local"))
+        db.add(LocalUser(username="admin", password_hash=hash_password(password), source="local"))
+        # Full access out of the box — nothing else exists to scope it to yet.
+        db.add(ScopeRoleAssignment(username="admin", scope=INSTANCE_SCOPE, role="admin"))
+        db.add(ScopeRoleAssignment(username="admin", scope="local", role="admin"))
         db.commit()
     except Exception as e:
         logger.warning("Could not initialize default admin: %s", e)
@@ -89,7 +114,7 @@ def authenticate(username: str, password: str) -> dict | None:
                 return None
             entry.last_login_at = datetime.now(UTC)
             db.commit()
-            return {"username": username, "role": entry.role}
+            return {"username": username, "roles": _roles_for(db, username)}
 
         ldap_result = ldap_service.authenticate(username, password)
         if ldap_result is None:
@@ -98,15 +123,13 @@ def authenticate(username: str, password: str) -> dict | None:
 
         now = datetime.now(UTC)
         if entry is None:
-            db.add(LocalUser(
-                username=username, password_hash=None, role=ldap_result.role,
-                source="ldap", last_login_at=now,
-            ))
+            db.add(LocalUser(username=username, password_hash=None, source="ldap", last_login_at=now))
         else:
-            entry.role = ldap_result.role
             entry.last_login_at = now
+        db.flush()  # scope rows FK to local_users — the row above must exist first
+        _resync_ldap_roles(db, username, ldap_result.role)
         db.commit()
-        return {"username": username, "role": ldap_result.role}
+        return {"username": username, "roles": _roles_for(db, username)}
     finally:
         db.close()
 
@@ -117,7 +140,7 @@ def get_user_entry(username: str) -> dict | None:
     db = new_session()
     try:
         entry = db.get(LocalUser, username)
-        return {"username": username, "role": entry.role} if entry else None
+        return {"username": username, "roles": _roles_for(db, username)} if entry else None
     finally:
         db.close()
 
@@ -128,7 +151,7 @@ def list_users() -> list[dict]:
         return [
             {
                 "username": u.username,
-                "role": u.role,
+                "roles": _roles_for(db, u.username),
                 "source": u.source,
                 "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
             }
@@ -138,14 +161,14 @@ def list_users() -> list[dict]:
         db.close()
 
 
-def create_user(username: str, password: str, role: str) -> None:
+def create_user(username: str, password: str) -> None:
     from fastapi import HTTPException
 
     db = new_session()
     try:
         if db.get(LocalUser, username) is not None:
             raise HTTPException(status_code=409, detail=f"User '{username}' already exists")
-        db.add(LocalUser(username=username, password_hash=hash_password(password), role=role, source="local"))
+        db.add(LocalUser(username=username, password_hash=hash_password(password), source="local"))
         db.commit()
     finally:
         db.close()
@@ -159,6 +182,10 @@ def delete_user(username: str) -> None:
         entry = db.get(LocalUser, username)
         if entry is None:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        # Postgres' ON DELETE CASCADE would handle this too, but SQLite (the
+        # test suite's backend) doesn't enforce FKs by default — do it
+        # explicitly so behavior doesn't depend on that.
+        db.query(ScopeRoleAssignment).filter(ScopeRoleAssignment.username == username).delete()
         db.delete(entry)
         db.commit()
     finally:
@@ -181,7 +208,19 @@ def change_password(username: str, new_password: str) -> None:
         db.close()
 
 
-def change_role(username: str, role: str) -> None:
+def list_scope_roles(username: str) -> list[dict]:
+    from fastapi import HTTPException
+
+    db = new_session()
+    try:
+        if db.get(LocalUser, username) is None:
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        return [{"scope": scope, "role": role} for scope, role in sorted(_roles_for(db, username).items())]
+    finally:
+        db.close()
+
+
+def set_scope_role(username: str, scope: str, role: str) -> None:
     from fastapi import HTTPException
 
     db = new_session()
@@ -190,8 +229,39 @@ def change_role(username: str, role: str) -> None:
         if entry is None:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found")
         if entry.source != "local":
-            raise HTTPException(status_code=400, detail=f"'{username}'s role is managed via AD group membership")
-        entry.role = role
+            raise HTTPException(status_code=400, detail=f"'{username}'s roles are managed via AD group membership")
+        existing = db.get(ScopeRoleAssignment, (username, scope))
+        if existing is None:
+            db.add(ScopeRoleAssignment(username=username, scope=scope, role=role))
+        else:
+            existing.role = role
         db.commit()
+    finally:
+        db.close()
+
+
+def delete_scope_role(username: str, scope: str) -> None:
+    from fastapi import HTTPException
+
+    db = new_session()
+    try:
+        entry = db.get(LocalUser, username)
+        if entry is None:
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        if entry.source != "local":
+            raise HTTPException(status_code=400, detail=f"'{username}'s roles are managed via AD group membership")
+        existing = db.get(ScopeRoleAssignment, (username, scope))
+        if existing is None:
+            raise HTTPException(status_code=404, detail=f"'{username}' has no role on scope '{scope}'")
+        db.delete(existing)
+        db.commit()
+    finally:
+        db.close()
+
+
+def list_scopes() -> list[str]:
+    db = new_session()
+    try:
+        return _all_scopes(db)
     finally:
         db.close()

@@ -15,13 +15,16 @@ class LoginRequest(BaseModel):
         return v
 
 
+RoleName = Literal["viewer", "operator", "approver", "admin"]
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    role: Literal["admin", "viewer"]
+    roles: dict[str, RoleName]
     username: str
 
 
 class UserInfo(BaseModel):
     username: str
-    role: Literal["admin", "viewer"]
+    roles: dict[str, RoleName]
