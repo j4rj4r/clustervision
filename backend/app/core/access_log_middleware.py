@@ -12,6 +12,14 @@ logger = logging.getLogger("app.access")
 # there is no per-request log line in kubectl logs at all — not even a
 # generic one — making every production issue invisible until something
 # raises hard enough to hit one of our own explicit logger.error() calls.
+#
+# uvicorn's own "uvicorn.access" logger is deliberately silenced instead of
+# just left alongside this one (see logging.json's empty "gunicorn.access"
+# handlers — UvicornWorker copies that handler list onto uvicorn.access at
+# worker boot): without that, every request would be logged twice per line,
+# once here with structured fields and once as uvicorn's unstructured
+# "<ip> - "<method> <path> HTTP/1.1" <status>" string, via two different
+# loggers that both happen to write to the same stdout handler.
 class AccessLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.monotonic()
@@ -33,6 +41,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
                 "http_path": request.url.path,
                 "http_status": response.status_code,
                 "duration_ms": round(duration_ms, 1),
+                "client_ip": request.client.host if request.client else None,
                 **({"cluster": cluster} if cluster else {}),
             },
         )
