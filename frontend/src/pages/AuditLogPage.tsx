@@ -87,7 +87,6 @@ export default function AuditLogPage() {
         <Input label="To" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
         <Button
           variant="secondary"
-          size="sm"
           loading={exportCsv.isPending}
           onClick={() =>
             exportCsv.mutate({
