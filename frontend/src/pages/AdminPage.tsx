@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, KeyRound, ShieldCheck, RefreshCw, Link2 } from 'lucide-react'
+import { Plus, Trash2, KeyRound, ShieldCheck, Link2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi, type CvUser } from '../api/admin'
 import { useAuthStore } from '../store/authStore'
@@ -157,9 +157,6 @@ export default function AdminPage() {
           <p className="text-sm text-surface-400 mt-0.5">ClusterVision access management</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['cv-users'] })}>
-            <RefreshCw size={13} />
-          </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus size={13} /> Create user
           </Button>

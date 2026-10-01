@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, RefreshCw, FileInput } from 'lucide-react'
+import { Plus, FileInput } from 'lucide-react'
 import Button from '../components/ui/Button'
 import UserList from '../components/users/UserList'
 import CreateUserWizard from '../components/users/CreateUserWizard'
 import DeleteUserModal from '../components/users/DeleteUserModal'
 import ImportUserModal from '../components/users/ImportUserModal'
 import { useUsers } from '../hooks/useUsers'
-import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
 import { useClusterStore } from '../store/clusterStore'
 import type { User } from '../types/user'
@@ -15,7 +14,6 @@ import type { User } from '../types/user'
 export default function UsersPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useUsers()
-  const qc = useQueryClient()
   const activeCluster = useClusterStore((s) => s.activeCluster)
   const canWrite = useAuthStore((s) => s.canWrite(activeCluster))
 
@@ -33,9 +31,6 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['users'] })}>
-            <RefreshCw size={13} />
-          </Button>
           {canWrite && (
             <>
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
