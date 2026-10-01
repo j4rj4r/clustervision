@@ -8,6 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from kubernetes.client.exceptions import ApiException
 
 from .config import get_settings
+from .core.access_log_middleware import AccessLogMiddleware
 from .core.audit_middleware import AuditLogMiddleware
 from .core.dependencies import auth_gate, get_current_user, instance_gate
 from .core.exceptions import (
@@ -62,6 +63,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Could not initialize Kubernetes client: %s", e)
     await run_sync(init_db)
+    # init_db() runs Alembic migrations, whose env.py calls fileConfig() on
+    # alembic.ini. fileConfig() resets the root logger's level/handlers from
+    # the ini's [logger_root] section (typically WARN) regardless of
+    # disable_existing_loggers — that flag only protects other loggers from
+    # being disabled, not the root logger's config. That silently undid the
+    # INFO level set by basicConfig() above on every single startup, which is
+    # why no app.* request/error logging ever reached stdout in production.
+    # Re-assert our policy now that migrations are done.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s %(name)s %(message)s",
+        stream=sys.stdout,
+        force=True,
+    )
     ensure_default_admin()
     from .services.vault_service import init_vault_from_env
 
@@ -211,6 +226,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added last so it's the outermost layer — sees every request, including
+# ones CORS or another middleware would otherwise reject before our own
+# route/exception-handling code ever runs.
+app.add_middleware(AccessLogMiddleware)
 
 app.add_exception_handler(ApiException, kubernetes_exception_handler)
 app.add_exception_handler(UserNotFoundError, user_not_found_handler)

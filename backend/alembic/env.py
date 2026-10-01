@@ -9,7 +9,14 @@ from app.db.models import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers defaults to True, which silently disables
+    # every logger already created at this point — including every app.*
+    # logger from our own modules, since this runs during init_db() at
+    # app startup, well after all of them were imported. That's why no
+    # request-level logging ever reached stdout: everything after the
+    # migration step (literally every real request the app ever serves)
+    # was being logged through a logger with `.disabled = True`.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
