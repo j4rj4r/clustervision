@@ -18,6 +18,9 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = (time.monotonic() - start) * 1000
         cluster = request.query_params.get("cluster", "")
+        # Extra fields land as their own JSON keys (see JsonFormatter), so a
+        # log tool can filter/aggregate on http_status, duration_ms, etc.
+        # directly instead of regex-parsing the message string.
         logger.info(
             "%s %s%s -> %s (%.1fms)",
             request.method,
@@ -25,5 +28,12 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             f" [cluster={cluster}]" if cluster else "",
             response.status_code,
             duration_ms,
+            extra={
+                "http_method": request.method,
+                "http_path": request.url.path,
+                "http_status": response.status_code,
+                "duration_ms": round(duration_ms, 1),
+                **({"cluster": cluster} if cluster else {}),
+            },
         )
         return response

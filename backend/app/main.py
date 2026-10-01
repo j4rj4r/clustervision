@@ -1,5 +1,4 @@
 import logging
-import sys
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -21,6 +20,7 @@ from .core.exceptions import (
     user_not_found_handler,
 )
 from .core.kubernetes_client import get_api_client
+from .core.logging_config import configure_logging
 from .routers import (
     access_requests,
     audit,
@@ -35,19 +35,14 @@ from .routers import auth as auth_router
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
 
-# force=True: basicConfig() is a no-op if the root logger already has a
-# handler — which it can, depending on what gunicorn/uvicorn's own logging
-# setup did before this module gets imported. force=True guarantees our
-# format/level/stream wins regardless, so app-level log.error() calls (e.g.
-# the real Kubernetes API error behind a sanitized 403 response) are never
-# silently dropped. Explicit stdout to match kubectl logs' primary stream
-# and gunicorn's own "console" handler convention.
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s %(name)s %(message)s",
-    stream=sys.stdout,
-    force=True,
-)
+# force=True: this is a no-op if the root logger already has a handler —
+# which it can, depending on what gunicorn/uvicorn's own logging setup did
+# before this module gets imported. force=True guarantees our format/level/
+# stream wins regardless, so app-level log.error() calls (e.g. the real
+# Kubernetes API error behind a sanitized 403 response) are never silently
+# dropped. JSON output (see logging_config.py) so every log source in the
+# process shares one machine-parseable shape for log aggregation tools.
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -71,12 +66,7 @@ async def lifespan(app: FastAPI):
     # INFO level set by basicConfig() above on every single startup, which is
     # why no app.* request/error logging ever reached stdout in production.
     # Re-assert our policy now that migrations are done.
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s %(name)s %(message)s",
-        stream=sys.stdout,
-        force=True,
-    )
+    configure_logging()
     ensure_default_admin()
     from .services.vault_service import init_vault_from_env
 
