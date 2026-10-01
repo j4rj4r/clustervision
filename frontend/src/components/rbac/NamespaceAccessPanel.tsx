@@ -113,7 +113,7 @@ export default function NamespaceAccessPanel() {
                   </td>
                   <td className="px-4 py-3 font-mono text-surface-200 text-xs">{e.role}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={e.role_kind === 'ClusterRole' ? 'warning' : 'info'}>{e.role_kind}</Badge>
+                    <Badge variant={e.role_kind === 'ClusterRole' ? 'danger' : 'info'}>{e.role_kind}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={SCOPE_VARIANT[e.scope]} dot>{e.scope}</Badge>
