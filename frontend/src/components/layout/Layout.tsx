@@ -3,10 +3,22 @@ import { Outlet } from 'react-router-dom'
 import { ServerCrash } from 'lucide-react'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
-import { useClusterInfo } from '../../hooks/useCluster'
+import { useBackendHealth } from '../../hooks/useBackendHealth'
+import type { ApiError } from '../../api/client'
 
 export default function Layout() {
-  const { isError, isPending } = useClusterInfo()
+  const { isError, isPending, error } = useBackendHealth()
+  // No response at all (status undefined) means our own backend is
+  // genuinely unreachable — a real response with an error status would mean
+  // the backend answered but rejected the request for some other reason.
+  // Either way this check is deliberately independent of the active
+  // cluster (see useBackendHealth) — gating the whole app shell, including
+  // TopBar, on a per-cluster query used to cause an infinite mount/unmount
+  // loop whenever the selected cluster was unreachable: TopBar renders only
+  // when this resolves, but TopBar itself also queries cluster info, and a
+  // query with no cached success data refetches on every mount, flipping
+  // this back to pending and unmounting TopBar again, forever.
+  const backendUnreachable = isError && (error as ApiError | null)?.status === undefined
 
   if (isPending) {
     return (
@@ -16,7 +28,7 @@ export default function Layout() {
     )
   }
 
-  if (isError) {
+  if (backendUnreachable) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-950">
         <div className="flex flex-col items-center gap-4 text-center px-6">

@@ -1,4 +1,4 @@
-import { Server, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useClusterInfo, useClusters } from '../../hooks/useCluster'
@@ -8,6 +8,7 @@ import { authApi } from '../../api/auth'
 import { queryClient } from '../../lib/queryClient'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
+import ClusterSwitcher from './ClusterSwitcher'
 
 const routeLabels: Record<string, string> = {
   '/users':      'Users',
@@ -59,22 +60,7 @@ export default function TopBar() {
           ? 'bg-red-950/30 border-red-800/50'
           : 'bg-surface-800 border-surface-500 hover:border-brand-500/60'
       }`}>
-        <Server size={13} className="text-surface-300 shrink-0" />
-
-        {clusters.length > 1 ? (
-          <select
-            aria-label="Active cluster"
-            value={activeCluster}
-            onChange={(e) => setActiveCluster(e.target.value)}
-            className="bg-transparent text-xs text-surface-200 font-mono cursor-pointer focus:outline-none"
-          >
-            {clusters.map((c) => (
-              <option key={c.name} value={c.name} className="bg-surface-800">{c.name}</option>
-            ))}
-          </select>
-        ) : (
-          <span className="text-xs text-surface-200 font-mono">{activeCluster}</span>
-        )}
+        <ClusterSwitcher />
 
         <span className="w-px h-3 bg-surface-600 mx-0.5" />
 
