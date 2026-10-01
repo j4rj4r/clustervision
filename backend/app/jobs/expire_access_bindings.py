@@ -13,6 +13,7 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from ..core.kubernetes_client import get_local_api_client
+from ..core.logging_config import configure_logging
 from ..db.session import init_db, new_session
 from ..services.access_request_service import (
     EXPIRES_ANNOTATION,
@@ -21,7 +22,10 @@ from ..services.access_request_service import (
 )
 from ..services.cluster_service import get_cluster_service
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+# Same JSON format as the backend app (see logging_config.py) so a log
+# aggregator doesn't have to handle two different shapes depending on
+# whether a line came from the Deployment or this CronJob.
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +72,11 @@ def _reconcile(api_client: client.ApiClient, cluster_label: str) -> int:
 
 def main() -> None:
     init_db()
+    # init_db() runs Alembic migrations, whose env.py calls fileConfig() on
+    # alembic.ini — that resets the root logger's handler/level regardless
+    # of disable_existing_loggers (see main.py's lifespan for the full
+    # explanation). Re-assert our format now that migrations are done.
+    configure_logging()
 
     total = _reconcile(get_local_api_client(), "local")
 
