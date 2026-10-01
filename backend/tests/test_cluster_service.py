@@ -45,6 +45,23 @@ def test_remove_nonexistent_cluster_raises(svc, db_session):
         svc.remove_cluster("does-not-exist")
 
 
+def test_build_client_sends_properly_prefixed_bearer_token(svc, db_session):
+    """Regression test: Configuration.get_api_key_with_prefix() looks up the
+    prefix by the "BearerToken" identifier, not the "authorization" alias
+    used for the key itself. Keying api_key_prefix on "authorization" (the
+    original bug) silently drops the "Bearer " prefix, so the apiserver
+    can't recognize the token and authenticates the request as
+    system:anonymous instead of the registered cluster's ServiceAccount."""
+    api_client = svc._build_client("prod", {"api_url": "https://prod:6443", "ca_data": "Y2E=", "token": "tok1"})
+    try:
+        auth = api_client.configuration.auth_settings()
+        assert auth["BearerToken"]["value"] == "Bearer tok1"
+    finally:
+        api_client.close()
+        with svc._cache_lock:
+            svc._drop_client("prod")
+
+
 def test_update_configs_credential_rotation(svc, db_session):
     """_update_configs must apply targeted changes (e.g. a token rotation)
     without disturbing other registered clusters."""

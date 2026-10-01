@@ -139,8 +139,15 @@ class ClusterService:
         configuration.ssl_ca_cert = tmp.name
         configuration.verify_ssl = True
 
+        # Configuration.get_api_key_with_prefix() looks up the prefix by the
+        # *identifier* ("BearerToken", the auth scheme name the generated
+        # client's auth_settings() emits), not by the "authorization" alias
+        # used for the key itself — keying the prefix dict on "authorization"
+        # silently drops the "Bearer " prefix, so the apiserver never
+        # recognizes the token and the request is authenticated as
+        # system:anonymous instead of the registered cluster's ServiceAccount.
         configuration.api_key = {"authorization": cfg["token"]}
-        configuration.api_key_prefix = {"authorization": "Bearer"}
+        configuration.api_key_prefix = {"BearerToken": "Bearer"}
         return client.ApiClient(configuration)
 
     def get_api_client(self, name: str) -> client.ApiClient:
