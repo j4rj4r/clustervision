@@ -2,6 +2,12 @@ FROM python:3.12-slim
 
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}
+# Without this, Python's stdout is block-buffered (not line-buffered) since
+# it isn't a TTY — app-level log.error() calls (e.g. the Kubernetes API
+# error logged before being sanitized into the generic 403 response) can
+# sit unflushed in a worker's buffer indefinitely under low request volume,
+# never reaching `kubectl logs` until enough other output forces a flush.
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
