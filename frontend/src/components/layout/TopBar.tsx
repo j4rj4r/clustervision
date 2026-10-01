@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useClusterInfo, useClusters } from '../../hooks/useCluster'
 import { useClusterStore } from '../../store/clusterStore'
 import { useAuthStore } from '../../store/authStore'
@@ -45,6 +46,7 @@ export default function TopBar() {
     clearAuth()
     // Cached queries belong to the old session — don't leak them to the next user
     queryClient.clear()
+    toast.success('Signed out')
     navigate('/login', { replace: true })
   }
 
