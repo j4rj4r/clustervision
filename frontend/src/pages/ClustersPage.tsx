@@ -59,12 +59,11 @@ export default function ClustersPage() {
                 {!c.is_local && isInstanceAdmin && (
                   <Button
                     size="sm"
-                    variant="ghost"
-                    aria-label="Remove cluster"
+                    variant="secondary"
                     onClick={(e) => { e.stopPropagation(); setRemoveTarget(c.name) }}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                    className="text-red-400 border-red-500/30 hover:bg-red-950/40 hover:border-red-500/50 hover:text-red-300"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={13} /> Delete
                   </Button>
                 )}
               </div>
@@ -75,12 +74,12 @@ export default function ClustersPage() {
 
       {addOpen && <AddClusterModal onClose={() => setAddOpen(false)} />}
 
-      <Modal open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Remove cluster" size="sm">
+      <Modal open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Delete cluster" size="sm">
         <div className="space-y-5">
           <div className="flex gap-3 p-3 rounded-lg bg-red-950/40 border border-red-500/20">
             <TriangleAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
             <p className="text-sm text-surface-200">
-              Remove <span className="font-mono font-semibold text-surface-100">{removeTarget}</span> from
+              Delete <span className="font-mono font-semibold text-surface-100">{removeTarget}</span> from
               ClusterVision? The cluster itself is untouched, but its stored connection credentials are deleted.
             </p>
           </div>
@@ -92,7 +91,7 @@ export default function ClustersPage() {
               onClick={() => remove.mutate(removeTarget!, { onSuccess: () => setRemoveTarget(null) })}
               className="flex-1"
             >
-              <Trash2 size={14} /> Remove
+              <Trash2 size={14} /> Delete
             </Button>
           </div>
         </div>
