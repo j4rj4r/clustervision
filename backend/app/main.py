@@ -1,4 +1,5 @@
 import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -33,7 +34,19 @@ from .routers import auth as auth_router
 from .routers import vault_admin as vault_admin_router
 from .services.auth_service import ensure_default_admin
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+# force=True: basicConfig() is a no-op if the root logger already has a
+# handler — which it can, depending on what gunicorn/uvicorn's own logging
+# setup did before this module gets imported. force=True guarantees our
+# format/level/stream wins regardless, so app-level log.error() calls (e.g.
+# the real Kubernetes API error behind a sanitized 403 response) are never
+# silently dropped. Explicit stdout to match kubectl logs' primary stream
+# and gunicorn's own "console" handler convention.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s %(name)s %(message)s",
+    stream=sys.stdout,
+    force=True,
+)
 logger = logging.getLogger(__name__)
 
 
