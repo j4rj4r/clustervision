@@ -1,0 +1,1 @@
+[{"values":["3.12"],"name":"Python.Version"},{"values":["PostgreSQL 16 (unit suite: SQLite in-memory; migration smoke test: real Postgres)"],"name":"Database"},{"values":["f8c4157f1cd0468f4bffc2b60708b10046e0856c"],"name":"Git.Commit"},{"values":["199/merge"],"name":"Git.Branch"},{"values":["615"],"name":"CI.RunNumber"}]
